@@ -1,0 +1,84 @@
+version: "3"
+
+vars:
+  APP_NAME: semver
+  BUILD_DIR: build
+  CMD_DIR: cmd/{{.APP_NAME}}
+
+tasks:
+  default:
+    desc: "Run clean and build tasks"
+    cmds:
+      - task: clean
+      - task: build
+
+  clean:
+    desc: "Clean the build directory and Go cache"
+    cmds:
+      - rm -rf {{.BUILD_DIR}}
+      - go clean -cache
+
+  test:
+    desc: Run all tests and generate coverage report.
+    silent: false
+    cmds:
+      - go test ./... -coverprofile=coverage.out
+      - task: test/view-total-coverage
+
+  test/view-total-coverage:
+    desc: Display total test coverage from coverage.out
+    silent: true
+    internal: true
+    cmds:
+      - echo ""
+      - echo "Total Coverage:"
+      - go tool cover -func=coverage.out | grep total | awk -F '[[:space:]]+' '{print $NF}'
+
+  test/view-coverage:
+    desc: View the HTML coverage report.
+    internal: true
+    cmds:
+      - go tool cover -html=coverage.out
+      - echo "Coverage report displayed in your default browser."
+
+  test/coverage:
+    desc: Run go tests and use go tool cover.
+    silent: false
+    deps:
+      - test
+    cmds:
+      - task: test/view-coverage
+
+  test/force:
+    desc: Clean go tests cache and run all tests.
+    silent: false
+    cmds:
+      - go clean -testcache
+      - task: test
+
+  modernize:
+    desc: Run go-modernize
+    silent: false
+    cmds:
+      - modernize -test ./...
+
+  lint:
+    desc: Run golangci-lint
+    silent: false
+    cmds:
+      - golangci-lint run ./...
+
+  build:
+    desc: "Building the binary..."
+    cmds:
+      - |
+        mkdir -p {{.BUILD_DIR}}
+        go build -o {{.BUILD_DIR}}/{{.APP_NAME}} {{.CMD_DIR}}/main.go
+
+  install:
+    desc: "Install the binary using Go install"
+    silent: false
+    deps:
+      - test
+    cmds:
+      - cd {{.CMD_DIR}} && go install .

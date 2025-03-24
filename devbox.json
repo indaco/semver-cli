@@ -1,0 +1,27 @@
+{
+  "$schema": "https://raw.githubusercontent.com/jetify-com/devbox/0.14.0/.schema/devbox.schema.json",
+  "packages": [
+    "git@latest",
+    "go@1.23",
+    "golangci-lint@latest",
+    "go-task@latest",
+    "gnumake@latest"
+  ],
+  "env": {
+    "GOPATH": "$HOME/go/",
+    "PATH": "$PATH:$HOME/go/bin"
+  },
+  "shell": {
+    "init_hook": [
+      "echo '\nWelcome to the semver-cli devbox!\n'",
+      "echo '* Set GOROOT'",
+      "export GOROOT=$(go env GOROOT)",
+      "echo '* Set Git hooks path\n'",
+      "find .githooks -type f -exec chmod +x {} \\;",
+      "git config core.hooksPath .githooks",
+      "echo '* Install go-modernize'",
+      "go install golang.org/x/tools/gopls/internal/analysis/modernize/cmd/modernize@latest"
+    ],
+    "scripts": {}
+  }
+}

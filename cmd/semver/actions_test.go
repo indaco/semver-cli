@@ -57,9 +57,9 @@ func runCLITest(t *testing.T, args []string, workdir string) {
 
 	versionPath := filepath.Join(workdir, ".version")
 
-	app, err := setupCLI(versionPath)
+	app, err := newCLI(versionPath)
 	if err != nil {
-		t.Fatalf("setupCLI failed: %v", err)
+		t.Fatalf("newCLI failed: %v", err)
 	}
 
 	err = app.Run(context.Background(), args)
@@ -150,9 +150,9 @@ func TestCLI_ShowCommand(t *testing.T) {
 func TestCLI_ShowCommand_FileNotFound(t *testing.T) {
 	tmp := t.TempDir()
 	defaultPath := filepath.Join(tmp, ".version")
-	app, err := setupCLI(defaultPath)
+	app, err := newCLI(defaultPath)
 	if err != nil {
-		t.Fatalf("setupCLI failed: %v", err)
+		t.Fatalf("newCLI failed: %v", err)
 	}
 
 	err = app.Run(context.Background(), []string{"semver", "show", "--path", "./missing.version"})
@@ -172,10 +172,10 @@ func TestCLI_PreCommand_InvalidVersion(t *testing.T) {
 	// Write invalid version string before CLI setup
 	_ = os.WriteFile(customPath, []byte("not-a-version\n"), semver.VersionFilePerm)
 
-	defaultPath := filepath.Join(tmp, ".version") // not used, but required by setupCLI
-	app, err := setupCLI(defaultPath)
+	defaultPath := filepath.Join(tmp, ".version") // not used, but required by newCLI
+	app, err := newCLI(defaultPath)
 	if err != nil {
-		t.Fatalf("setupCLI failed: %v", err)
+		t.Fatalf("newCLI failed: %v", err)
 	}
 
 	err = app.Run(context.Background(), []string{

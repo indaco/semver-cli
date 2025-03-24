@@ -8,9 +8,9 @@ import (
 	"github.com/urfave/cli/v3"
 )
 
-// setupCLI builds and returns the root CLI command,
+// newCLI builds and returns the root CLI command,
 // configuring all subcommands and flags for the semver tool.
-func setupCLI(defaultPath string) (*cli.Command, error) {
+func newCLI(defaultPath string) (*cli.Command, error) {
 	if err := semver.InitializeVersionFile(defaultPath); err != nil {
 		return nil, err
 	}

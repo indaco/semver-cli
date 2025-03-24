@@ -25,7 +25,7 @@ func runCLI(args []string) error {
 		defaultPath = cfg.Path
 	}
 
-	app, err := setupCLI(defaultPath)
+	app, err := newCLI(defaultPath)
 	if err != nil {
 		return err
 	}

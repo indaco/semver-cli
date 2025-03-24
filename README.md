@@ -89,7 +89,7 @@ USAGE:
    semver [global options] [command [command options]]
 
 VERSION:
-   v0.1.0
+   v0.1.1
 
 COMMANDS:
    patch    Increment patch version

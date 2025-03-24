@@ -6,7 +6,7 @@ import (
 
 // TestGetVersion checks if the GetVersion function correctly retrieves the embedded version.
 func TestGetVersion(t *testing.T) {
-	expectedVersion := "0.1.0"
+	expectedVersion := "0.1.1"
 
 	got := GetVersion()
 	if got != expectedVersion {

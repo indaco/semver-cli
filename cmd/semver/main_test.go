@@ -90,3 +90,37 @@ func TestRunMain_SetupCLIError(t *testing.T) {
 		t.Errorf("unexpected error: %v", err)
 	}
 }
+
+func TestRunMain_LoadConfigError(t *testing.T) {
+	tmp := t.TempDir()
+
+	// Create an unreadable .semver.yaml file
+	configPath := filepath.Join(tmp, ".semver.yaml")
+	if err := os.WriteFile(configPath, []byte("path: ./broken.version"), 0000); err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() {
+		_ = os.Chmod(configPath, 0644) // restore permissions so temp dir can be cleaned
+	})
+
+	origDir, err := os.Getwd()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := os.Chdir(tmp); err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() {
+		if err := os.Chdir(origDir); err != nil {
+			t.Fatalf("failed to restore working directory: %v", err)
+		}
+	})
+
+	err = runCLI([]string{"semver", "patch"})
+	if err == nil {
+		t.Fatal("expected error from LoadConfig, got nil")
+	}
+	if !strings.Contains(err.Error(), "permission denied") {
+		t.Errorf("unexpected error: %v", err)
+	}
+}

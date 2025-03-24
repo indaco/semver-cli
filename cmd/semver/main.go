@@ -15,7 +15,10 @@ func main() {
 }
 
 func runCLI(args []string) error {
-	cfg, _ := config.LoadConfig()
+	cfg, err := config.LoadConfig()
+	if err != nil {
+		return err
+	}
 
 	defaultPath := ".version"
 	if cfg != nil && cfg.Path != "" {

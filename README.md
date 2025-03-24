@@ -2,7 +2,7 @@
   <code>semver</code>
 </h1>
 <h2 align="center" style="font-size: 1.5rem;">
-  A simple Go CLI tool to manage semantic versioning using a <i>.version</i> file.
+  A simple CLI to manage semantic versioning using a <i>.version</i> file.
 </h2>
 
 <p align="center">

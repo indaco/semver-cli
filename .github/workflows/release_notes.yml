@@ -35,6 +35,6 @@ jobs:
           draft: false
           prerelease: false
           make_latest: 'true'
-          token: ${{ secrets.TEMPO_TOKEN }}
+          token: ${{ secrets.SEMVER_TOKEN }}
           body_path: ${{ github.workspace }}/.changes/${{ steps.extract_version.outputs.version }}.md
           generate_release_notes: false

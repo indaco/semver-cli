@@ -31,7 +31,7 @@ jobs:
         uses: softprops/action-gh-release@v2
         with:
           tag_name: ${{ steps.extract_version.outputs.version }}
-          name: Release ${{ steps.extract_version.outputs.version }}
+          name: ${{ steps.extract_version.outputs.version }}
           draft: false
           prerelease: false
           make_latest: 'true'

@@ -27,19 +27,6 @@ jobs:
             exit 1
           fi
 
-      - name: Read release notes
-        id: read_notes
-        run: |
-          NOTES_FILE=".changes/${{ steps.extract_version.outputs.version }}.md"
-          if [[ -f "$NOTES_FILE" ]]; then
-            RELEASE_NOTES=$(cat "$NOTES_FILE")
-            echo "release_notes<<EOF" >> $GITHUB_OUTPUT
-            echo "$RELEASE_NOTES" >> $GITHUB_OUTPUT
-            echo "EOF" >> $GITHUB_OUTPUT
-          else
-            exit 1
-          fi
-
       - name: Create Release
         uses: softprops/action-gh-release@v2
         with:
@@ -48,6 +35,6 @@ jobs:
           draft: false
           prerelease: false
           make_latest: 'true'
-          token: ${{ secrets.SEMVER_TOKEN }}
-          body: ${{ steps.read_notes.outputs.release_notes }}
-          generate_release_notes: true
+          token: ${{ secrets.TEMPO_TOKEN }}
+          body_path: ${{ github.workspace }}/.changes/${{ steps.extract_version.outputs.version }}.md
+          generate_release_notes: false

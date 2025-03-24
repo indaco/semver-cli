@@ -28,7 +28,7 @@ var (
 	// It can be overridden in tests.
 	execCommand = exec.Command
 
-	ErrInvalidVersion = errors.New("invalid version format")
+	errInvalidVersion = errors.New("invalid version format")
 )
 
 // String returns the string representation of the semantic version.
@@ -44,23 +44,23 @@ func (v SemVersion) String() string {
 // If not, it attempts to use the latest git tag (if valid), or falls back to 0.1.0.
 func InitializeVersionFile(path string) error {
 	if _, err := os.Stat(path); err == nil {
-		return nil
+		return nil // Already exists
 	}
 
 	cmd := execCommand("git", "describe", "--tags", "--abbrev=0")
 	output, err := cmd.Output()
-	version := "0.1.0"
+	version := SemVersion{Major: 0, Minor: 1, Patch: 0} // Default
 
 	if err == nil {
 		tag := strings.TrimSpace(string(output))
 		tag = strings.TrimPrefix(tag, "v")
 
-		if _, parseErr := parseVersion(tag); parseErr == nil {
-			version = tag
+		if parsed, parseErr := parseVersion(tag); parseErr == nil {
+			version = parsed
 		}
 	}
 
-	return os.WriteFile(path, []byte(version+"\n"), VersionFilePerm)
+	return SaveVersion(path, version)
 }
 
 // ReadVersion reads a version string from the given file and parses it into a SemVersion.
@@ -72,9 +72,9 @@ func ReadVersion(path string) (SemVersion, error) {
 	return parseVersion(string(data))
 }
 
-// writeVersion writes a SemVersion to the given file path.
-func WriteVersion(path string, version SemVersion) error {
-	return os.WriteFile(path, []byte(version.String()+"\n"), 0644)
+// SaveVersion writes a SemVersion to the given file path.
+func SaveVersion(path string, version SemVersion) error {
+	return os.WriteFile(path, []byte(version.String()+"\n"), VersionFilePerm)
 }
 
 // UpdateVersion bumps the version at the given file path by the specified level:
@@ -102,7 +102,7 @@ func UpdateVersion(path, level string) error {
 		return errors.New("unknown level: " + level)
 	}
 
-	return WriteVersion(path, version)
+	return SaveVersion(path, version)
 }
 
 // IncrementPreRelease increments the numeric suffix of a pre-release label.
@@ -134,7 +134,7 @@ func IncrementPreRelease(current, base string) string {
 func parseVersion(s string) (SemVersion, error) {
 	matches := versionRegex.FindStringSubmatch(strings.TrimSpace(s))
 	if len(matches) < 4 {
-		return SemVersion{}, ErrInvalidVersion
+		return SemVersion{}, errInvalidVersion
 	}
 
 	// The regex ensures these will always be digits, but parse defensively

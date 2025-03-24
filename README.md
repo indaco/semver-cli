@@ -15,7 +15,9 @@
   <a href="https://goreportcard.com/report/github.com/indaco/semver-cli" target="_blank">
     <img src="https://goreportcard.com/badge/github.com/indaco/semver-cli" alt="Go Report Card" />
   </a>
-  <img src="https://img.shields.io/github/v/release/indaco/semver-cli?sort=semver&style=flat-square" alt="Version" />
+  <a href="https://badge.fury.io/gh/indaco%2Fsemver-cli">
+    <img src="https://badge.fury.io/gh/indaco%2Fsemver-cli.svg" alt="version" height="18">
+  </a>
   <a href="https://pkg.go.dev/github.com/indaco/semver-cli" target="_blank">
     <img src="https://pkg.go.dev/badge/github.com/indaco/semver-cli.svg" alt="Go Reference" />
   </a>

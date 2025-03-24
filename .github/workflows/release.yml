@@ -1,0 +1,27 @@
+name: Release
+on:
+  release:
+    types: [created]
+jobs:
+  goreleaser:
+    runs-on: ubuntu-latest
+    environment:
+      name: Release
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: '1.23'
+          check-latest: true
+
+      - name: Run GoReleaser
+        uses: goreleaser/goreleaser-action@v6
+        with:
+          distribution: goreleaser
+          version: latest
+          args: release --clean
+        env:
+          GITHUB_TOKEN: ${{ secrets.SEMVER_TOKEN }}

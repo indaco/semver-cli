@@ -84,7 +84,9 @@ build: ## Build the binary with development metadata
 
 .PHONY: install
 install: ## Install the binary using Go install
-	@$(MAKE) test
+	@$(MAKE) modernize
+	@$(MAKE) lint
+	@$(MAKE) test/force
 	@echo "$(color_bold_cyan)* Install the binary using Go install$(color_reset)"
 	@cd $(CMD_DIR) && $(GO) install .
 

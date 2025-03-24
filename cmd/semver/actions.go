@@ -50,7 +50,7 @@ func setPreRelease() func(ctx context.Context, cmd *cli.Command) error {
 			version.PreRelease = label
 		}
 
-		return semver.WriteVersion(path, version)
+		return semver.SaveVersion(path, version)
 	}
 }
 

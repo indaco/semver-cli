@@ -38,28 +38,28 @@ func TestParseAndString(t *testing.T) {
 func TestParseVersion_ErrorCases(t *testing.T) {
 	t.Run("invalid format (missing patch)", func(t *testing.T) {
 		_, err := parseVersion("1.2")
-		if err == nil || !errors.Is(err, ErrInvalidVersion) {
+		if err == nil || !errors.Is(err, errInvalidVersion) {
 			t.Errorf("expected ErrInvalidVersion, got %v", err)
 		}
 	})
 
 	t.Run("non-numeric major", func(t *testing.T) {
 		_, err := parseVersion("a.2.3")
-		if err == nil || !errors.Is(err, ErrInvalidVersion) {
+		if err == nil || !errors.Is(err, errInvalidVersion) {
 			t.Errorf("expected ErrInvalidVersion, got %v", err)
 		}
 	})
 
 	t.Run("non-numeric minor", func(t *testing.T) {
 		_, err := parseVersion("1.b.3")
-		if err == nil || !errors.Is(err, ErrInvalidVersion) {
+		if err == nil || !errors.Is(err, errInvalidVersion) {
 			t.Errorf("expected ErrInvalidVersion, got %v", err)
 		}
 	})
 
 	t.Run("non-numeric patch", func(t *testing.T) {
 		_, err := parseVersion("1.2.c")
-		if err == nil || !errors.Is(err, ErrInvalidVersion) {
+		if err == nil || !errors.Is(err, errInvalidVersion) {
 			t.Errorf("expected ErrInvalidVersion, got %v", err)
 		}
 	})
@@ -184,7 +184,7 @@ func TestSetPreRelease(t *testing.T) {
 
 	version, _ := ReadVersion(path)
 	version.PreRelease = "rc.1"
-	if err := WriteVersion(path, version); err != nil {
+	if err := SaveVersion(path, version); err != nil {
 		t.Fatal(err)
 	}
 

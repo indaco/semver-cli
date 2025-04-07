@@ -30,6 +30,7 @@ a11y-results
 
 # tests
 coverage.out
+coverage.txt
 
 #devbox
 .devbox

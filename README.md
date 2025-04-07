@@ -9,8 +9,8 @@
   <a href="https://github.com/indaco/semver-cli/actions/workflows/ci.yml" target="_blank">
     <img src="https://github.com/indaco/semver-cli/actions/workflows/ci.yml/badge.svg" alt="CI" />
   </a>
-  <a href="https://coveralls.io/github/indaco/semver-cli?branch=main" target="_blank">
-    <img src="https://coveralls.io/repos/github/indaco/semver-cli/badge.svg?branch=main" alt="Coverage Status" />
+  <a href="https://codecov.io/gh/indaco/semver-cli">
+    <img src="https://codecov.io/gh/indaco/semver-cli/branch/main/graph/badge.svg" alt="Code coverage" />
   </a>
   <a href="https://goreportcard.com/report/github.com/indaco/semver-cli" target="_blank">
     <img src="https://goreportcard.com/badge/github.com/indaco/semver-cli" alt="Go Report Card" />

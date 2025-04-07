@@ -22,23 +22,23 @@ tasks:
     desc: Run all tests and generate coverage report.
     silent: false
     cmds:
-      - go test ./... -coverprofile=coverage.out
+      - go test ./... -coverprofile=coverage.txt
       - task: test/view-total-coverage
 
   test/view-total-coverage:
-    desc: Display total test coverage from coverage.out
+    desc: Display total test coverage from coverage.txt
     silent: true
     internal: true
     cmds:
       - echo ""
       - echo "Total Coverage:"
-      - go tool cover -func=coverage.out | grep total | awk -F '[[:space:]]+' '{print $NF}'
+      - go tool cover -func=coverage.txt | grep total | awk -F '[[:space:]]+' '{print $NF}'
 
   test/view-coverage:
     desc: View the HTML coverage report.
     internal: true
     cmds:
-      - go tool cover -html=coverage.out
+      - go tool cover -html=coverage.txt
       - echo "Coverage report displayed in your default browser."
 
   test/coverage:

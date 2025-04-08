@@ -21,10 +21,7 @@ func TestNewCLI_BasicStructure(t *testing.T) {
 	versionPath := filepath.Join(tmpDir, ".version")
 	_ = os.WriteFile(versionPath, []byte("1.2.3\n"), semver.VersionFilePerm)
 
-	app, err := newCLI(versionPath)
-	if err != nil {
-		t.Fatalf("newCli failed: %v", err)
-	}
+	app := newCLI(versionPath)
 
 	wantCommands := []string{"patch", "minor", "major", "pre", "show"}
 	for _, name := range wantCommands {
@@ -54,10 +51,7 @@ func TestNewCLI_ShowCommand(t *testing.T) {
 	r, w, _ := os.Pipe()
 	os.Stdout = w
 
-	app, err := newCLI(versionPath)
-	if err != nil {
-		t.Fatalf("newCli failed: %v", err)
-	}
+	app := newCLI(versionPath)
 
 	err = app.Run(context.Background(), []string{"semver", "show", "--path", versionPath})
 
@@ -101,10 +95,7 @@ func TestNewCLI_UsesConfigPath(t *testing.T) {
 		}
 	})
 
-	app, err := newCLI(versionPath) // we still need to pass a dummy path
-	if err != nil {
-		t.Fatalf("newCli failed: %v", err)
-	}
+	app := newCLI(versionPath) // we still need to pass a dummy path
 
 	err = app.Run(context.Background(), []string{"semver", "patch"})
 	if err != nil {

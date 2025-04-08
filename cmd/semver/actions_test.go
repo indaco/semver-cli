@@ -57,10 +57,7 @@ func runCLITest(t *testing.T, args []string, workdir string) {
 
 	versionPath := filepath.Join(workdir, ".version")
 
-	app, err := newCLI(versionPath)
-	if err != nil {
-		t.Fatalf("newCLI failed: %v", err)
-	}
+	app := newCLI(versionPath)
 
 	err = app.Run(context.Background(), args)
 	if err != nil {
@@ -150,12 +147,9 @@ func TestCLI_ShowCommand(t *testing.T) {
 func TestCLI_ShowCommand_FileNotFound(t *testing.T) {
 	tmp := t.TempDir()
 	defaultPath := filepath.Join(tmp, ".version")
-	app, err := newCLI(defaultPath)
-	if err != nil {
-		t.Fatalf("newCLI failed: %v", err)
-	}
+	app := newCLI(defaultPath)
 
-	err = app.Run(context.Background(), []string{"semver", "show", "--path", "./missing.version"})
+	err := app.Run(context.Background(), []string{"semver", "show", "--path", "./missing.version"})
 	if err == nil {
 		t.Fatal("expected error due to missing version file, got nil")
 	}
@@ -173,18 +167,98 @@ func TestCLI_PreCommand_InvalidVersion(t *testing.T) {
 	_ = os.WriteFile(customPath, []byte("not-a-version\n"), semver.VersionFilePerm)
 
 	defaultPath := filepath.Join(tmp, ".version") // not used, but required by newCLI
-	app, err := newCLI(defaultPath)
-	if err != nil {
-		t.Fatalf("newCLI failed: %v", err)
-	}
+	app := newCLI(defaultPath)
 
-	err = app.Run(context.Background(), []string{
+	err := app.Run(context.Background(), []string{
 		"semver", "pre", "--label", "alpha", "--path", customPath,
 	})
 	if err == nil {
 		t.Fatal("expected error due to invalid version, got nil")
 	}
 	if !strings.Contains(err.Error(), "invalid version format") {
+		t.Errorf("unexpected error: %v", err)
+	}
+}
+
+func TestCLI_BumpMinor_InitializeVersionFileError(t *testing.T) {
+	tmp := t.TempDir()
+
+	// Create a non-writable directory
+	noWrite := filepath.Join(tmp, "protected")
+	if err := os.Mkdir(noWrite, 0555); err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() {
+		_ = os.Chmod(noWrite, 0755)
+	})
+
+	// Use a path inside the non-writable dir
+	protectedPath := filepath.Join(noWrite, ".version")
+
+	defaultPath := filepath.Join(tmp, ".version") // not used but needed for CLI setup
+	app := newCLI(defaultPath)
+
+	err := app.Run(context.Background(), []string{
+		"semver", "minor", "--path", protectedPath,
+	})
+	if err == nil {
+		t.Fatal("expected error from InitializeVersionFile, got nil")
+	}
+	if !strings.Contains(err.Error(), "permission denied") {
+		t.Errorf("unexpected error: %v", err)
+	}
+}
+
+func TestCLI_BumpMajor_InitializeVersionFileError(t *testing.T) {
+	tmp := t.TempDir()
+
+	noWrite := filepath.Join(tmp, "protected")
+	if err := os.Mkdir(noWrite, 0555); err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() {
+		_ = os.Chmod(noWrite, 0755)
+	})
+
+	protectedPath := filepath.Join(noWrite, ".version")
+
+	defaultPath := filepath.Join(tmp, ".version")
+	app := newCLI(defaultPath)
+
+	err := app.Run(context.Background(), []string{
+		"semver", "major", "--path", protectedPath,
+	})
+	if err == nil {
+		t.Fatal("expected error from InitializeVersionFile, got nil")
+	}
+	if !strings.Contains(err.Error(), "permission denied") {
+		t.Errorf("unexpected error: %v", err)
+	}
+}
+
+func TestCLI_PreCommand_InitializeVersionFileError(t *testing.T) {
+	tmp := t.TempDir()
+
+	noWrite := filepath.Join(tmp, "protected")
+	if err := os.Mkdir(noWrite, 0555); err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() {
+		_ = os.Chmod(noWrite, 0755)
+	})
+
+	protectedPath := filepath.Join(noWrite, ".version")
+
+	defaultPath := filepath.Join(tmp, ".version")
+	app := newCLI(defaultPath)
+
+	err := app.Run(context.Background(), []string{
+		"semver", "pre", "--label", "alpha", "--path", protectedPath,
+	})
+	if err == nil {
+		t.Fatal("expected error from InitializeVersionFile, got nil")
+	}
+	if !strings.Contains(err.Error(), "permission denied") {
 		t.Errorf("unexpected error: %v", err)
 	}
 }

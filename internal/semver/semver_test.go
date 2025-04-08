@@ -83,6 +83,29 @@ func TestParseVersion_InvalidFormat(t *testing.T) {
 	}
 }
 
+func TestParseVersion_NumberConversionErrors(t *testing.T) {
+	tests := []struct {
+		input         string
+		expectedError string
+	}{
+		{"a.2.3", "invalid major version"},
+		{"1.b.3", "invalid minor version"},
+		{"1.2.c", "invalid patch version"},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.input, func(t *testing.T) {
+			_, err := parseVersion(tt.input)
+			if err == nil {
+				t.Fatalf("expected error, got nil")
+			}
+			if !strings.Contains(err.Error(), tt.expectedError) {
+				t.Errorf("expected error to contain %q, got %v", tt.expectedError, err)
+			}
+		})
+	}
+}
+
 /* ------------------------------------------------------------------------- */
 /* VERSION UPDATES                                                           */
 /* ------------------------------------------------------------------------- */

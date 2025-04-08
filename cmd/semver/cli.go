@@ -9,8 +9,7 @@ import (
 
 // newCLI builds and returns the root CLI command,
 // configuring all subcommands and flags for the semver tool.
-func newCLI(defaultPath string) (*cli.Command, error) {
-
+func newCLI(defaultPath string) *cli.Command {
 	return &cli.Command{
 		Name:    "semver",
 		Version: fmt.Sprintf("v%s", version.GetVersion()),
@@ -61,6 +60,5 @@ func newCLI(defaultPath string) (*cli.Command, error) {
 				Action: showVersion(),
 			},
 		},
-	}, nil
-
+	}
 }

@@ -22,7 +22,7 @@ const VersionFilePerm = 0600
 
 var (
 	// versionRegex matches semantic version strings with optional pre-release.
-	versionRegex = regexp.MustCompile(`^(\d+)\.(\d+)\.(\d+)(?:-([\w.-]+))?$`)
+	versionRegex = regexp.MustCompile(`^([^.]+)\.([^.]+)\.([^-]+)(?:-([\w.-]+))?$`)
 
 	// execCommand is used to run external commands (e.g., git).
 	// It can be overridden in tests.
@@ -140,15 +140,15 @@ func parseVersion(s string) (SemVersion, error) {
 	// The regex ensures these will always be digits, but parse defensively
 	major, err := strconv.Atoi(matches[1])
 	if err != nil {
-		return SemVersion{}, fmt.Errorf("invalid major version: %w", err)
+		return SemVersion{}, fmt.Errorf("%w: invalid major version: %v", errInvalidVersion, err)
 	}
 	minor, err := strconv.Atoi(matches[2])
 	if err != nil {
-		return SemVersion{}, fmt.Errorf("invalid minor version: %w", err)
+		return SemVersion{}, fmt.Errorf("%w: invalid minor version: %v", errInvalidVersion, err)
 	}
 	patch, err := strconv.Atoi(matches[3])
 	if err != nil {
-		return SemVersion{}, fmt.Errorf("invalid patch version: %w", err)
+		return SemVersion{}, fmt.Errorf("%w: invalid patch version: %v", errInvalidVersion, err)
 	}
 	pre := matches[4]
 

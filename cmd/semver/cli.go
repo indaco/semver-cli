@@ -3,7 +3,6 @@ package main
 import (
 	"fmt"
 
-	"github.com/indaco/semver-cli/internal/semver"
 	"github.com/indaco/semver-cli/internal/version"
 	"github.com/urfave/cli/v3"
 )
@@ -11,9 +10,6 @@ import (
 // newCLI builds and returns the root CLI command,
 // configuring all subcommands and flags for the semver tool.
 func newCLI(defaultPath string) (*cli.Command, error) {
-	if err := semver.InitializeVersionFile(defaultPath); err != nil {
-		return nil, err
-	}
 
 	return &cli.Command{
 		Name:    "semver",

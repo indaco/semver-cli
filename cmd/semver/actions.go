@@ -11,21 +11,33 @@ import (
 // bumpPatch increments the patch version of the .version file.
 func bumpPatch() func(ctx context.Context, cmd *cli.Command) error {
 	return func(ctx context.Context, cmd *cli.Command) error {
-		return semver.UpdateVersion(cmd.String("path"), "patch")
+		path := cmd.String("path")
+		if err := semver.InitializeVersionFile(path); err != nil {
+			return err
+		}
+		return semver.UpdateVersion(path, "patch")
 	}
 }
 
 // bumpMinor increments the minor version and resets patch.
 func bumpMinor() func(ctx context.Context, cmd *cli.Command) error {
 	return func(ctx context.Context, cmd *cli.Command) error {
-		return semver.UpdateVersion(cmd.String("path"), "minor")
+		path := cmd.String("path")
+		if err := semver.InitializeVersionFile(path); err != nil {
+			return err
+		}
+		return semver.UpdateVersion(path, "minor")
 	}
 }
 
 // bumpMajor increments the major version and resets minor/patch.
 func bumpMajor() func(ctx context.Context, cmd *cli.Command) error {
 	return func(ctx context.Context, cmd *cli.Command) error {
-		return semver.UpdateVersion(cmd.String("path"), "major")
+		path := cmd.String("path")
+		if err := semver.InitializeVersionFile(path); err != nil {
+			return err
+		}
+		return semver.UpdateVersion(path, "major")
 	}
 }
 
@@ -36,6 +48,10 @@ func setPreRelease() func(ctx context.Context, cmd *cli.Command) error {
 		label := cmd.String("label")
 		inc := cmd.Bool("inc")
 
+		if err := semver.InitializeVersionFile(path); err != nil {
+			return err
+		}
+
 		version, err := semver.ReadVersion(path)
 		if err != nil {
 			return err
@@ -45,7 +61,7 @@ func setPreRelease() func(ctx context.Context, cmd *cli.Command) error {
 			version.PreRelease = semver.IncrementPreRelease(version.PreRelease, label)
 		} else {
 			if version.PreRelease == "" {
-				version.Patch++ // <-- Bump patch before applying label
+				version.Patch++
 			}
 			version.PreRelease = label
 		}
@@ -57,10 +73,13 @@ func setPreRelease() func(ctx context.Context, cmd *cli.Command) error {
 // showVersion prints the current version to stdout.
 func showVersion() func(ctx context.Context, cmd *cli.Command) error {
 	return func(ctx context.Context, cmd *cli.Command) error {
-		version, err := semver.ReadVersion(cmd.String("path"))
+		path := cmd.String("path")
+
+		version, err := semver.ReadVersion(path)
 		if err != nil {
-			return err
+			return err // do not fallback or initialize
 		}
+
 		fmt.Println(version.String())
 		return nil
 	}

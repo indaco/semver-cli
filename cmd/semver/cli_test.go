@@ -118,27 +118,39 @@ func TestNewCLI_UsesConfigPath(t *testing.T) {
 	}
 }
 
-func TestNewCLI_InitializeVersionFileError(t *testing.T) {
+func TestRunCLI_InitializeVersionFileError(t *testing.T) {
 	tmp := t.TempDir()
+
 	noWrite := filepath.Join(tmp, "nonwritable")
 	if err := os.Mkdir(noWrite, 0555); err != nil {
 		t.Fatal(err)
 	}
-	// Use a closure to check error from Chmod
-	defer func() {
-		if err := os.Chmod(noWrite, 0755); err != nil {
-			t.Fatalf("failed to restore permissions on %s: %v", noWrite, err)
-		}
-	}()
+	t.Cleanup(func() {
+		_ = os.Chmod(noWrite, 0755)
+	})
 
-	versionPath := filepath.Join(noWrite, ".version")
+	versionPath := filepath.Join("nonwritable", ".version")
+	yamlPath := filepath.Join(tmp, ".semver.yaml")
+	if err := os.WriteFile(yamlPath, []byte("path: "+versionPath+"\n"), 0644); err != nil {
+		t.Fatal(err)
+	}
 
-	app, err := newCLI(versionPath)
+	origDir, err := os.Getwd()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := os.Chdir(tmp); err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() {
+		_ = os.Chdir(origDir)
+	})
+
+	err = runCLI([]string{"semver", "patch"})
 	if err == nil {
-		t.Fatal("expected error from initializeVersionFile, got nil")
+		t.Fatal("expected error from InitializeVersionFile, got nil")
 	}
 	if !strings.Contains(err.Error(), "permission denied") {
 		t.Errorf("unexpected error: %v", err)
 	}
-	_ = app // suppress unused if we fail early
 }

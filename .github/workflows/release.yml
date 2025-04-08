@@ -28,7 +28,7 @@ jobs:
   goreleaser:
     name: goreleaser
     runs-on: ubuntu-latest
-    needs: release-notes
+    needs: create-release-notes
     environment:
       name: Release
 

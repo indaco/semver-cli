@@ -42,6 +42,7 @@
 
 ## ✨ Features
 
+- Initialize version file using `init` command
 - Bump patch, minor, or major versions
 - Add or update pre-release labels (`alpha`, `beta.1`, etc.)
 - Auto-increment pre-release versions
@@ -91,9 +92,10 @@ USAGE:
    semver [global options] [command [command options]]
 
 VERSION:
-   v0.1.1
+   v0.2.0
 
 COMMANDS:
+   init     Initialize a .version file (auto-detects Git tag or starts from 0.1.0)
    patch    Increment patch version
    minor    Increment minor version and reset patch
    major    Increment major version and reset minor and patch
@@ -130,7 +132,7 @@ semver patch
 path: ./my-folder/.version
 ```
 
-If both are missing, the CLI uses .version in the current directory.
+If both are missing, the CLI uses `.version` in the current directory.
 
 ## 🛠 Auto-initialization
 
@@ -142,7 +144,27 @@ If the `.version` file does not exist when running the CLI:
 
 This ensures your project always has a starting point.
 
+Alternatively, run `semver init` explicitly:
+
+```bash
+semver init
+# => Initialized .version with version 0.1.0
+```
+
+You can also specify a custom path:
+
+```bash
+semver init --path internal/version/.version
+```
+
 ## 🚀 Usage
+
+**Initialize .version file**
+
+```bash
+semver init
+# => Initialized .version with version 0.1.0
+```
 
 **Show the current version**
 

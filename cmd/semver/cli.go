@@ -21,31 +21,52 @@ func newCLI(defaultPath string) *cli.Command {
 				Usage:   "Path to .version file",
 				Value:   defaultPath,
 			},
+			&cli.BoolFlag{
+				Name:  "no-auto-init",
+				Usage: "Disable auto-initialization of the .version file",
+			},
 		},
 		Commands: []*cli.Command{
 			{
-				Name:   "init",
-				Usage:  "Initialize a .version file (auto-detects Git tag or starts from 0.1.0)",
-				Action: initVersion(),
+				Name:      "show",
+				Usage:     "Display current version",
+				UsageText: "semver show",
+				Action:    showVersion(),
 			},
 			{
-				Name:   "patch",
-				Usage:  "Increment patch version",
-				Action: bumpPatch(),
+				Name:      "set",
+				Usage:     "Set the version manually",
+				UsageText: "semver set <version> [--pre label]",
+				Flags: []cli.Flag{
+					&cli.StringFlag{
+						Name:  "pre",
+						Usage: "Optional pre-release label",
+					},
+				},
+				Action: setVersion(),
 			},
 			{
-				Name:   "minor",
-				Usage:  "Increment minor version and reset patch",
-				Action: bumpMinor(),
+				Name:      "patch",
+				Usage:     "Increment patch version",
+				UsageText: "semver patch",
+				Action:    bumpPatch(),
 			},
 			{
-				Name:   "major",
-				Usage:  "Increment major version and reset minor and patch",
-				Action: bumpMajor(),
+				Name:      "minor",
+				Usage:     "Increment minor version and reset patch",
+				UsageText: "semver minor",
+				Action:    bumpMinor(),
 			},
 			{
-				Name:  "pre",
-				Usage: "Set pre-release label (e.g., alpha, beta.1)",
+				Name:      "major",
+				Usage:     "Increment major version and reset minor and patch",
+				UsageText: "semver major",
+				Action:    bumpMajor(),
+			},
+			{
+				Name:      "pre",
+				Usage:     "Set pre-release label (e.g., alpha, beta.1)",
+				UsageText: "semver pre --label <label> [--inc]",
 				Flags: []cli.Flag{
 					&cli.StringFlag{
 						Name:     "label",
@@ -60,9 +81,15 @@ func newCLI(defaultPath string) *cli.Command {
 				Action: setPreRelease(),
 			},
 			{
-				Name:   "show",
-				Usage:  "Display current version",
-				Action: showVersion(),
+				Name:   "validate",
+				Usage:  "Validate the .version file",
+				Action: validateVersion(),
+			},
+			{
+				Name:      "init",
+				Usage:     "Initialize a .version file (auto-detects Git tag or starts from 0.1.0)",
+				UsageText: "semver init",
+				Action:    initVersion(),
 			},
 		},
 	}

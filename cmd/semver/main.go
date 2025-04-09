@@ -22,7 +22,7 @@ func runCLI(args []string) error {
 
 	defaultPath := ".version"
 	if cfg != nil && cfg.Path != "" {
-		defaultPath = cfg.Path
+		defaultPath = config.NormalizeVersionPath(cfg.Path)
 	}
 
 	app := newCLI(defaultPath)

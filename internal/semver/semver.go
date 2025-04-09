@@ -58,7 +58,7 @@ func initializeVersionFile(path string) error {
 		tag := strings.TrimSpace(string(output))
 		tag = strings.TrimPrefix(tag, "v")
 
-		if parsed, parseErr := parseVersion(tag); parseErr == nil {
+		if parsed, parseErr := ParseVersion(tag); parseErr == nil {
 			version = parsed
 		}
 	}
@@ -66,25 +66,18 @@ func initializeVersionFile(path string) error {
 	return SaveVersion(path, version)
 }
 
-func InitializeVersionFileWithFeedback(path string) (created bool, version SemVersion, err error) {
+func InitializeVersionFileWithFeedback(path string) (created bool, err error) {
 	if _, err := os.Stat(path); err == nil {
-		// File exists → return parsed version, not created
-		v, readErr := ReadVersion(path)
-		return false, v, readErr
+		// File exists → not created; do NOT read or parse
+		return false, nil
 	}
 
-	// Call existing logic
 	err = InitializeVersionFile(path)
 	if err != nil {
-		return false, SemVersion{}, err
+		return false, err
 	}
 
-	v, err := ReadVersion(path) // re-read to show the actual result
-	if err != nil {
-		return true, SemVersion{}, err // file was created but content invalid
-	}
-
-	return true, v, nil
+	return true, nil
 }
 
 // ReadVersion reads a version string from the given file and parses it into a SemVersion.
@@ -93,7 +86,7 @@ func ReadVersion(path string) (SemVersion, error) {
 	if err != nil {
 		return SemVersion{}, err
 	}
-	return parseVersion(string(data))
+	return ParseVersion(string(data))
 }
 
 // SaveVersion writes a SemVersion to the given file path.
@@ -157,9 +150,9 @@ func IncrementPreRelease(current, base string) string {
 	return formatPreRelease(base, 1)
 }
 
-// parseVersion parses a semantic version string and returns a SemVersion.
+// ParseVersion parses a semantic version string and returns a SemVersion.
 // Returns an error if the version format is invalid.
-func parseVersion(s string) (SemVersion, error) {
+func ParseVersion(s string) (SemVersion, error) {
 	matches := versionRegex.FindStringSubmatch(strings.TrimSpace(s))
 	if len(matches) < 4 {
 		return SemVersion{}, errInvalidVersion

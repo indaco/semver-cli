@@ -32,6 +32,7 @@
 ## 📖 Table of Contents
 
 - [✨ Features](#-features)
+- [❓ Why .version?](#-why-version)
 - [💻 Installation](#-installation)
 - [🛠️ CLI Commands & Options](#️-cli-commands--options)
 - [⚙️ Configuration](#️-configuration)
@@ -42,21 +43,41 @@
 
 ## ✨ Features
 
-- Initialize version file using `init` command
-- Bump patch, minor, or major versions
-- Add or update pre-release labels (`alpha`, `beta.1`, etc.)
-- Auto-increment pre-release versions
-- Show current version
+- [SemVer 2.0.0](https://semver.org/) compliant
+- **Lightweight .version file** to store and track version across environments
+- `init` command to bootstrap the .version file from Git or default to `0.1.0`
+- Bump versions with patch, minor, or major
+- Add or update **pre-release labels** like `alpha`, `beta.1`, `rc.2`, etc.
+- Auto-increment pre-releases (`--inc`)
+- `set` command for full manual control (including pre-release)
+- `show` current version — perfect for CI/CD build outputs
+- `validate` the `.version` file for correctness
+- `--no-auto-init` mode for strict CI/CD environments
+- Configurable via flag, environment, or `.semver.yaml`
+
+## ❓ Why .version?
+
+Many Go projects — especially CLIs and internal tools — need a simple way to track their version outside of `go.mod`.
+
+Using a `.version` file:
+
+- ✅ Keeps the version readable and accessible at the project root
+- ✅ Works with any language, not just Go
+- ✅ Is easy to diff and track in Git
+- ✅ Plays well with CI/CD pipelines (e.g., Docker labels, GitHub Actions)
+- ✅ Lets you embed the version with something like `getVersion()` in your app
+
+This project was built with that workflow in mind — it's not for every use case, but if you're managing your app version manually, `.version` is a clean and flexible choice.
 
 ## 💻 Installation
 
-#### Option 1: Install via `go install` (global)
+### Option 1: Install via `go install` (global)
 
 ```bash
 go install github.com/indaco/semver-cli/cmd/semver@latest
 ```
 
-#### Option 2: Install via `go install` (tool)
+### Option 2: Install via `go install` (tool)
 
 With Go 1.24 or greater installed, you can install `semver` locally in your project by running:
 
@@ -70,11 +91,11 @@ Once installed, use it with
 go tool semver
 ```
 
-#### Option 3: Prebuilt binaries
+### Option 3: Prebuilt binaries
 
 Download the pre-compiled binaries from the [releases page](https://github.com/indaco/semver/releases) and place the binary in your system’s PATH.
 
-#### Option 4: Clone and build manually
+### Option 4: Clone and build manually
 
 ```bash
 git clone https://github.com/indaco/semver-cli.git
@@ -92,21 +113,24 @@ USAGE:
    semver [global options] [command [command options]]
 
 VERSION:
-   v0.2.0
+   v0.3.0
 
 COMMANDS:
-   init     Initialize a .version file (auto-detects Git tag or starts from 0.1.0)
-   patch    Increment patch version
-   minor    Increment minor version and reset patch
-   major    Increment major version and reset minor and patch
-   pre      Set pre-release label (e.g., alpha, beta.1)
-   show     Display current version
-   help, h  Shows a list of commands or help for one command
+   show      Display current version
+   set       Set the version manually
+   patch     Increment patch version
+   minor     Increment minor version and reset patch
+   major     Increment major version and reset minor and patch
+   pre       Set pre-release label (e.g., alpha, beta.1)
+   validate  Validate the .version file
+   init      Initialize a .version file (auto-detects Git tag or starts from 0.1.0)
+   help, h   Shows a list of commands or help for one command
 
 GLOBAL OPTIONS:
-   --path value, -p value  Path to .version file (default: ".version")
-   --help, -h              show help
-   --version, -v           print the version
+   --path string, -p string  Path to .version file (default: ".version")
+   --no-auto-init            Disable auto-initialization of the .version file (default: false)
+   --help, -h                show help
+   --version, -v             print the version
 ```
 
 ## ⚙️ Configuration
@@ -157,21 +181,44 @@ You can also specify a custom path:
 semver init --path internal/version/.version
 ```
 
-## 🚀 Usage
+This behavior ensures your project always has a valid version starting point.
 
-**Initialize .version file**
+**To disable auto-initialization**, use the `--no-auto-init` flag.
+This is useful in CI/CD environments or stricter workflows where you want the command to fail if the file is missing:
 
 ```bash
-semver init
-# => Initialized .version with version 0.1.0
+semver patch --no-auto-init
+# => Error: .version file not found
 ```
 
-**Show the current version**
+## 🚀 Usage
+
+**Display current version**
 
 ```bash
 # .version = 1.2.3
 semver show
 # => 1.2.3
+```
+
+```bash
+# Fail if .version is missing (no auto-initialization)
+semver show --no-auto-init
+# => Error: failed to read version file at .version: no such file or directory
+```
+
+**Set version manually**
+
+```bash
+semver set 2.1.0
+# => .version is now 2.1.0
+```
+
+You can also set a pre-release version:
+
+```bash
+semver set 2.1.0 --pre beta.1
+# => .version is now 2.1.0-beta.1
 ```
 
 **Bump patch version**
@@ -198,7 +245,7 @@ semver major
 # => 2.0.0
 ```
 
-**Set a pre-release label**
+**Manage pre-release versions**
 
 ```bash
 # .version = 0.2.1
@@ -226,6 +273,31 @@ semver pre --label alpha --inc
 # .version = 1.2.3
 semver pre --label alpha --inc
 # => 1.2.3-alpha.1
+```
+
+**Validate .version file**
+
+Check whether the `.version` file exists and contains a valid semantic version:
+
+```bash
+# .version = 1.2.3
+semver validate
+# => Valid version file at ./<path>/.version
+```
+
+If the file is missing or contains an invalid value, an error is returned:
+
+```bash
+# .version = invalid-content
+semver validate
+# => Error: invalid version format: ...
+```
+
+**Initialize .version file**
+
+```bash
+semver init
+# => Initialized .version with version 0.1.0
 ```
 
 ## 🤝 Contributing

@@ -5,6 +5,7 @@ import (
 	"context"
 	"fmt"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"strings"
 	"testing"
@@ -165,6 +166,42 @@ func TestCLI_ShowCommand(t *testing.T) {
 	}
 }
 
+func TestCLI_SetVersion_Valid(t *testing.T) {
+	tmp := t.TempDir()
+
+	runCLITest(t, []string{"semver", "set", "2.5.0"}, tmp)
+
+	content, _ := os.ReadFile(filepath.Join(tmp, ".version"))
+	if got := strings.TrimSpace(string(content)); got != "2.5.0" {
+		t.Errorf("expected 2.5.0, got %q", got)
+	}
+}
+
+func TestCLI_SetVersion_WithPreRelease(t *testing.T) {
+	tmp := t.TempDir()
+
+	runCLITest(t, []string{"semver", "set", "3.0.0", "--pre", "beta.2"}, tmp)
+
+	content, _ := os.ReadFile(filepath.Join(tmp, ".version"))
+	if got := strings.TrimSpace(string(content)); got != "3.0.0-beta.2" {
+		t.Errorf("expected 3.0.0-beta.2, got %q", got)
+	}
+}
+
+func TestCLI_ValidateCommand_ValidVersion(t *testing.T) {
+	tmp := t.TempDir()
+	writeVersionFile(t, tmp, "1.2.3")
+
+	output := captureStdout(func() {
+		runCLITest(t, []string{"semver", "validate"}, tmp)
+	})
+
+	expected := fmt.Sprintf("Valid version file at %s/.version", tmp)
+	if !strings.Contains(output, expected) {
+		t.Errorf("expected output to contain %q, got %q", expected, output)
+	}
+}
+
 /* ------------------------------------------------------------------------- */
 /* ERROR CASES                                                               */
 /* ------------------------------------------------------------------------- */
@@ -209,18 +246,30 @@ func TestCLI_InitCommand_FileAlreadyExists(t *testing.T) {
 	}
 }
 
-func TestCLI_ShowCommand_FileNotFound(t *testing.T) {
+func TestCLI_InitCommand_ReadVersionFails(t *testing.T) {
 	tmp := t.TempDir()
-	defaultPath := filepath.Join(tmp, ".version")
-	app := newCLI(defaultPath)
+	path := filepath.Join(tmp, ".version")
 
-	err := app.Run(context.Background(), []string{"semver", "show", "--path", "./missing.version"})
-	if err == nil {
-		t.Fatal("expected error due to missing version file, got nil")
+	// Override InitializeVersionFile to write invalid content
+	original := semver.InitializeVersionFile
+	semver.InitializeVersionFile = func(p string) error {
+		return os.WriteFile(p, []byte("not-a-version\n"), 0600)
 	}
+	t.Cleanup(func() { semver.InitializeVersionFile = original })
 
-	if !strings.Contains(err.Error(), "no such file") {
+	app := newCLI(path)
+
+	err := app.Run(context.Background(), []string{
+		"semver", "init", "--path", path,
+	})
+	if err == nil {
+		t.Fatal("expected error due to invalid version content, got nil")
+	}
+	if !strings.Contains(err.Error(), "failed to read version file") {
 		t.Errorf("unexpected error: %v", err)
+	}
+	if !strings.Contains(err.Error(), "invalid version format") {
+		t.Errorf("expected invalid version format message, got %v", err)
 	}
 }
 
@@ -325,6 +374,206 @@ func TestCLI_PreCommand_InitializeVersionFileError(t *testing.T) {
 	}
 	if !strings.Contains(err.Error(), "permission denied") {
 		t.Errorf("unexpected error: %v", err)
+	}
+}
+
+func TestCLI_PreCommand_SaveVersionFails(t *testing.T) {
+	if os.Getenv("TEST_SEMVER_PRE_SAVE_FAIL") == "1" {
+		tmp := t.TempDir()
+		versionPath := filepath.Join(tmp, ".version")
+
+		// Write a valid version
+		if err := os.WriteFile(versionPath, []byte("1.2.3\n"), 0444); err != nil {
+			fmt.Fprintln(os.Stderr, "failed to write .version file:", err)
+			os.Exit(1)
+		}
+
+		// Ensure the file itself is read-only
+		if err := os.Chmod(versionPath, 0444); err != nil {
+			fmt.Fprintln(os.Stderr, "failed to chmod .version file:", err)
+			os.Exit(1)
+		}
+		defer func() {
+			_ = os.Chmod(versionPath, 0644) // cleanup
+		}()
+
+		app := newCLI(versionPath)
+		err := app.Run(context.Background(), []string{
+			"semver", "pre", "--label", "rc", "--path", versionPath,
+		})
+		if err != nil {
+			fmt.Fprintln(os.Stderr, err)
+			os.Exit(1)
+		}
+		os.Exit(0) // Unexpected success
+	}
+
+	cmd := exec.Command(os.Args[0], "-test.run=TestCLI_PreCommand_SaveVersionFails")
+	cmd.Env = append(os.Environ(), "TEST_SEMVER_PRE_SAVE_FAIL=1")
+	output, err := cmd.CombinedOutput()
+
+	if err == nil {
+		t.Fatal("expected error due to save failure, got nil")
+	}
+
+	if !strings.Contains(string(output), "failed to save version") {
+		t.Errorf("expected wrapped error message, got: %q", string(output))
+	}
+}
+
+func TestCLI_SetVersion_InvalidFormat(t *testing.T) {
+	tmp := t.TempDir()
+	app := newCLI(filepath.Join(tmp, ".version"))
+
+	err := app.Run(context.Background(), []string{"semver", "set", "invalid.version"})
+	if err == nil {
+		t.Fatal("expected error due to invalid version format, got nil")
+	}
+	if !strings.Contains(err.Error(), "invalid version format") {
+		t.Errorf("unexpected error: %v", err)
+	}
+}
+
+func TestCLI_SetVersion_MissingArgument(t *testing.T) {
+	if os.Getenv("TEST_SEMVER_MISSING_ARG") == "1" {
+		tmp := t.TempDir()
+		versionPath := filepath.Join(tmp, ".version")
+		app := newCLI(versionPath)
+		err := app.Run(context.Background(), []string{"semver", "set"})
+		if err != nil {
+			fmt.Fprintln(os.Stderr, err)
+		}
+		return
+	}
+
+	cmd := exec.Command(os.Args[0], "-test.run=TestCLI_SetVersion_MissingArgument")
+	cmd.Env = append(os.Environ(), "TEST_SEMVER_MISSING_ARG=1")
+	output, err := cmd.CombinedOutput()
+
+	if err == nil {
+		t.Fatal("expected non-zero exit status")
+	}
+
+	expected := "missing required version argument"
+	if !strings.Contains(string(output), expected) {
+		t.Errorf("expected output to contain %q, got %q", expected, string(output))
+	}
+}
+
+func TestCLI_SetVersion_SaveError(t *testing.T) {
+	tmp := t.TempDir()
+
+	protectedDir := filepath.Join(tmp, "protected")
+	if err := os.Mkdir(protectedDir, 0555); err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() {
+		_ = os.Chmod(protectedDir, 0755)
+	})
+
+	versionPath := filepath.Join(protectedDir, ".version")
+	app := newCLI(versionPath)
+
+	err := app.Run(context.Background(), []string{
+		"semver", "set", "3.0.0", "--path", versionPath,
+	})
+	if err == nil {
+		t.Fatal("expected error due to save failure, got nil")
+	}
+
+	if !strings.Contains(err.Error(), "failed to save version") {
+		t.Errorf("unexpected error message: %v", err)
+	}
+}
+
+func TestCLI_ValidateCommand_InvalidVersion(t *testing.T) {
+	tmp := t.TempDir()
+	path := writeVersionFile(t, tmp, "not-a-version")
+
+	app := newCLI(path)
+	err := app.Run(context.Background(), []string{"semver", "validate"})
+	if err == nil {
+		t.Fatal("expected error due to invalid version, got nil")
+	}
+	if !strings.Contains(err.Error(), "invalid version") {
+		t.Errorf("unexpected error message: %v", err)
+	}
+}
+
+func TestCLI_ValidateCommand_MissingFile(t *testing.T) {
+	tmp := t.TempDir()
+	path := filepath.Join(tmp, "missing.version")
+
+	app := newCLI(path)
+	err := app.Run(context.Background(), []string{"semver", "validate", "--path", path})
+	if err == nil {
+		t.Fatal("expected error due to missing version file, got nil")
+	}
+	if !strings.Contains(err.Error(), "no such file") {
+		t.Errorf("unexpected error: %v", err)
+	}
+}
+
+func TestCLI_ShowCommand_NoAutoInit_MissingFile(t *testing.T) {
+	if os.Getenv("TEST_SEMVER_NO_AUTO_INIT") == "1" {
+		tmp := t.TempDir()
+		versionPath := filepath.Join(tmp, ".version")
+
+		app := newCLI(versionPath)
+		err := app.Run(context.Background(), []string{"semver", "show", "--no-auto-init"})
+		if err != nil {
+			fmt.Fprintln(os.Stderr, err)
+		}
+		return
+	}
+
+	cmd := exec.Command(os.Args[0], "-test.run=TestCLI_ShowCommand_NoAutoInit_MissingFile")
+	cmd.Env = append(os.Environ(), "TEST_SEMVER_NO_AUTO_INIT=1")
+	output, err := cmd.CombinedOutput()
+
+	if err == nil {
+		t.Fatal("expected non-zero exit status")
+	}
+
+	expected := "version file not found"
+	if !strings.Contains(string(output), expected) {
+		t.Errorf("expected output to contain %q, got %q", expected, string(output))
+	}
+}
+func TestCLI_ShowCommand_NoAutoInit_FileExists(t *testing.T) {
+	tmp := t.TempDir()
+	writeVersionFile(t, tmp, "1.2.3")
+
+	output := captureStdout(func() {
+		runCLITest(t, []string{"semver", "show", "--no-auto-init"}, tmp)
+	})
+
+	if output != "1.2.3" {
+		t.Errorf("expected output '1.2.3', got %q", output)
+	}
+}
+
+func TestCLI_ShowCommand_InvalidVersionContent(t *testing.T) {
+	tmp := t.TempDir()
+	versionPath := filepath.Join(tmp, ".version")
+
+	// Write an invalid version string
+	if err := os.WriteFile(versionPath, []byte("not-a-semver\n"), 0644); err != nil {
+		t.Fatalf("failed to write invalid version: %v", err)
+	}
+
+	app := newCLI(versionPath)
+
+	err := app.Run(context.Background(), []string{"semver", "show"})
+	if err == nil {
+		t.Fatal("expected error due to invalid version, got nil")
+	}
+
+	if !strings.Contains(err.Error(), "failed to read version file at") {
+		t.Errorf("unexpected error message: %v", err)
+	}
+	if !strings.Contains(err.Error(), "invalid version format") {
+		t.Errorf("error does not mention 'invalid version format': %v", err)
 	}
 }
 

@@ -19,32 +19,35 @@ func TestInitializeVersionFileWithFeedback(t *testing.T) {
 	t.Run("file already exists and is valid", func(t *testing.T) {
 		path := writeTempVersion(t, "2.3.4")
 
-		created, version, err := InitializeVersionFileWithFeedback(path)
+		created, err := InitializeVersionFileWithFeedback(path)
 		if err != nil {
 			t.Fatalf("unexpected error: %v", err)
 		}
 		if created {
 			t.Errorf("expected created=false, got true")
 		}
-		if version.String() != "2.3.4" {
-			t.Errorf("expected version 2.3.4, got %q", version.String())
-		}
+
 	})
 
 	t.Run("file already exists and is invalid", func(t *testing.T) {
 		path := writeTempVersion(t, "not-a-version")
 
-		created, version, err := InitializeVersionFileWithFeedback(path)
-		if err == nil {
-			t.Fatal("expected error, got nil")
+		created, err := InitializeVersionFileWithFeedback(path)
+		if err != nil {
+			t.Fatalf("unexpected error from feedback function: %v", err)
 		}
 		if created {
 			t.Errorf("expected created=false for existing file, got true")
 		}
+
+		// Now test the actual parse failure
+		_, err = ReadVersion(path)
+		if err == nil {
+			t.Fatal("expected error from ReadVersion, got nil")
+		}
 		if !strings.Contains(err.Error(), "invalid version format") {
 			t.Errorf("unexpected error: %v", err)
 		}
-		_ = version // ignore since we expect it to be zero
 	})
 
 	t.Run("file does not exist, fallback to git tag", func(t *testing.T) {
@@ -54,16 +57,14 @@ func TestInitializeVersionFileWithFeedback(t *testing.T) {
 		execCommand = fakeExecCommand("v1.2.3\n")
 		defer func() { execCommand = originalExecCommand }()
 
-		created, version, err := InitializeVersionFileWithFeedback(path)
+		created, err := InitializeVersionFileWithFeedback(path)
 		if err != nil {
 			t.Fatalf("unexpected error: %v", err)
 		}
 		if !created {
 			t.Errorf("expected created=true, got false")
 		}
-		if version.String() != "1.2.3" {
-			t.Errorf("expected version 1.2.3, got %q", version.String())
-		}
+
 	})
 
 	t.Run("file does not exist, fallback to default 0.1.0", func(t *testing.T) {
@@ -73,15 +74,12 @@ func TestInitializeVersionFileWithFeedback(t *testing.T) {
 		execCommand = fakeExecCommand("invalid-tag\n")
 		defer func() { execCommand = originalExecCommand }()
 
-		created, version, err := InitializeVersionFileWithFeedback(path)
+		created, err := InitializeVersionFileWithFeedback(path)
 		if err != nil {
 			t.Fatalf("unexpected error: %v", err)
 		}
 		if !created {
 			t.Errorf("expected created=true, got false")
-		}
-		if version.String() != "0.1.0" {
-			t.Errorf("expected version 0.1.0, got %q", version.String())
 		}
 	})
 }
@@ -101,9 +99,9 @@ func TestParseAndString(t *testing.T) {
 	}
 
 	for _, tt := range tests {
-		v, err := parseVersion(tt.raw)
+		v, err := ParseVersion(tt.raw)
 		if err != nil {
-			t.Errorf("parseVersion(%q) failed: %v", tt.raw, err)
+			t.Errorf("ParseVersion(%q) failed: %v", tt.raw, err)
 			continue
 		}
 		if v.String() != tt.expected {
@@ -114,28 +112,28 @@ func TestParseAndString(t *testing.T) {
 
 func TestParseVersion_ErrorCases(t *testing.T) {
 	t.Run("invalid format (missing patch)", func(t *testing.T) {
-		_, err := parseVersion("1.2")
+		_, err := ParseVersion("1.2")
 		if err == nil || !errors.Is(err, errInvalidVersion) {
 			t.Errorf("expected ErrInvalidVersion, got %v", err)
 		}
 	})
 
 	t.Run("non-numeric major", func(t *testing.T) {
-		_, err := parseVersion("a.2.3")
+		_, err := ParseVersion("a.2.3")
 		if err == nil || !errors.Is(err, errInvalidVersion) {
 			t.Errorf("expected ErrInvalidVersion, got %v", err)
 		}
 	})
 
 	t.Run("non-numeric minor", func(t *testing.T) {
-		_, err := parseVersion("1.b.3")
+		_, err := ParseVersion("1.b.3")
 		if err == nil || !errors.Is(err, errInvalidVersion) {
 			t.Errorf("expected ErrInvalidVersion, got %v", err)
 		}
 	})
 
 	t.Run("non-numeric patch", func(t *testing.T) {
-		_, err := parseVersion("1.2.c")
+		_, err := ParseVersion("1.2.c")
 		if err == nil || !errors.Is(err, errInvalidVersion) {
 			t.Errorf("expected ErrInvalidVersion, got %v", err)
 		}
@@ -153,7 +151,7 @@ func TestParseVersion_InvalidFormat(t *testing.T) {
 	}
 
 	for _, raw := range invalidVersions {
-		_, err := parseVersion(raw)
+		_, err := ParseVersion(raw)
 		if err == nil {
 			t.Errorf("expected error for invalid version %q, got nil", raw)
 		}
@@ -172,7 +170,7 @@ func TestParseVersion_NumberConversionErrors(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.input, func(t *testing.T) {
-			_, err := parseVersion(tt.input)
+			_, err := ParseVersion(tt.input)
 			if err == nil {
 				t.Fatalf("expected error, got nil")
 			}
@@ -424,39 +422,40 @@ func TestInitializeVersionFileWithFeedback_InitializationFails(t *testing.T) {
 
 	versionPath := filepath.Join(noWrite, ".version")
 
-	created, version, err := InitializeVersionFileWithFeedback(versionPath)
+	created, err := InitializeVersionFileWithFeedback(versionPath)
 	if err == nil {
 		t.Fatal("expected error, got nil")
 	}
 	if created {
 		t.Errorf("expected created to be false, got true")
 	}
-	if version != (SemVersion{}) {
-		t.Errorf("expected empty version, got %+v", version)
-	}
 }
 
 func TestInitializeVersionFileWithFeedback_FileCreatedButInvalidContent(t *testing.T) {
 	tmp := t.TempDir()
-	versionPath := filepath.Join(tmp, ".version")
+	path := filepath.Join(tmp, ".version")
 
-	// Save original implementation and restore at the end
 	original := InitializeVersionFile
-	// Override to simulate corrupted file creation
 	InitializeVersionFile = func(path string) error {
 		return os.WriteFile(path, []byte("not-a-version\n"), 0600)
 	}
 	defer func() { InitializeVersionFile = original }()
 
-	created, version, err := InitializeVersionFileWithFeedback(versionPath)
-	if err == nil {
-		t.Fatal("expected error due to invalid version content, got nil")
+	created, err := InitializeVersionFileWithFeedback(path)
+	if err != nil {
+		t.Fatalf("unexpected error from init: %v", err)
 	}
 	if !created {
-		t.Error("expected created = true, got false")
+		t.Errorf("expected created=true, got false")
 	}
-	if version != (SemVersion{}) {
-		t.Errorf("expected empty version, got %+v", version)
+
+	// Must manually read and check failure
+	_, err = ReadVersion(path)
+	if err == nil {
+		t.Fatal("expected error from ReadVersion, got nil")
+	}
+	if !strings.Contains(err.Error(), "invalid version format") {
+		t.Errorf("unexpected error: %v", err)
 	}
 }
 

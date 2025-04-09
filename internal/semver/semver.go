@@ -66,25 +66,18 @@ func initializeVersionFile(path string) error {
 	return SaveVersion(path, version)
 }
 
-func InitializeVersionFileWithFeedback(path string) (created bool, version SemVersion, err error) {
+func InitializeVersionFileWithFeedback(path string) (created bool, err error) {
 	if _, err := os.Stat(path); err == nil {
-		// File exists → return parsed version, not created
-		v, readErr := ReadVersion(path)
-		return false, v, readErr
+		// File exists → not created; do NOT read or parse
+		return false, nil
 	}
 
-	// Call existing logic
 	err = InitializeVersionFile(path)
 	if err != nil {
-		return false, SemVersion{}, err
+		return false, err
 	}
 
-	v, err := ReadVersion(path) // re-read to show the actual result
-	if err != nil {
-		return true, SemVersion{}, err // file was created but content invalid
-	}
-
-	return true, v, nil
+	return true, nil
 }
 
 // ReadVersion reads a version string from the given file and parses it into a SemVersion.

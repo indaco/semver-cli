@@ -95,20 +95,21 @@ VERSION:
    v0.3.0
 
 COMMANDS:
-   init      Initialize a .version file (auto-detects Git tag or starts from 0.1.0)
+   show      Display current version
+   set       Set the version manually
    patch     Increment patch version
    minor     Increment minor version and reset patch
    major     Increment major version and reset minor and patch
    pre       Set pre-release label (e.g., alpha, beta.1)
-   show      Display current version
-   set       Set the version manually
    validate  Validate the .version file
+   init      Initialize a .version file (auto-detects Git tag or starts from 0.1.0)
    help, h   Shows a list of commands or help for one command
 
 GLOBAL OPTIONS:
-   --path value, -p value  Path to .version file (default: ".version")
-   --help, -h              show help
-   --version, -v           print the version
+   --path string, -p string  Path to .version file (default: ".version")
+   --no-auto-init            Disable auto-initialization of the .version file (default: false)
+   --help, -h                show help
+   --version, -v             print the version
 ```
 
 ## ⚙️ Configuration
@@ -159,21 +160,44 @@ You can also specify a custom path:
 semver init --path internal/version/.version
 ```
 
-## 🚀 Usage
+This behavior ensures your project always has a valid version starting point.
 
-**Initialize .version file**
+**To disable auto-initialization**, use the `--no-auto-init` flag.
+This is useful in CI/CD environments or stricter workflows where you want the command to fail if the file is missing:
 
 ```bash
-semver init
-# => Initialized .version with version 0.1.0
+semver patch --no-auto-init
+# => Error: .version file not found
 ```
 
-**Show the current version**
+## 🚀 Usage
+
+**Display current version**
 
 ```bash
 # .version = 1.2.3
 semver show
 # => 1.2.3
+```
+
+```bash
+# Fail if .version is missing (no auto-initialization)
+semver show --no-auto-init
+# => Error: failed to read version file at .version: no such file or directory
+```
+
+**Set version manually**
+
+```bash
+semver set 2.1.0
+# => .version is now 2.1.0
+```
+
+You can also set a pre-release version:
+
+```bash
+semver set 2.1.0 --pre beta.1
+# => .version is now 2.1.0-beta.1
 ```
 
 **Bump patch version**
@@ -200,21 +224,7 @@ semver major
 # => 2.0.0
 ```
 
-**Set a specific number**
-
-```bash
-semver set 2.1.0
-# => .version is now 2.1.0
-```
-
-You can also set a pre-release version:
-
-```bash
-semver set 2.1.0 --pre beta.1
-# => .version is now 2.1.0-beta.1
-```
-
-**Set a pre-release label**
+**Manage pre-release versions**
 
 ```bash
 # .version = 0.2.1
@@ -244,7 +254,7 @@ semver pre --label alpha --inc
 # => 1.2.3-alpha.1
 ```
 
-**Validate the version file**
+**Validate .version file**
 
 Check whether the `.version` file exists and contains a valid semantic version:
 
@@ -260,6 +270,13 @@ If the file is missing or contains an invalid value, an error is returned:
 # .version = invalid-content
 semver validate
 # => Error: invalid version format: ...
+```
+
+**Initialize .version file**
+
+```bash
+semver init
+# => Initialized .version with version 0.1.0
 ```
 
 ## 🤝 Contributing

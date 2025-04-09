@@ -21,13 +21,29 @@ func newCLI(defaultPath string) *cli.Command {
 				Usage:   "Path to .version file",
 				Value:   defaultPath,
 			},
+			&cli.BoolFlag{
+				Name:  "no-auto-init",
+				Usage: "Disable auto-initialization of the .version file",
+			},
 		},
 		Commands: []*cli.Command{
 			{
-				Name:      "init",
-				Usage:     "Initialize a .version file (auto-detects Git tag or starts from 0.1.0)",
-				UsageText: "semver init",
-				Action:    initVersion(),
+				Name:      "show",
+				Usage:     "Display current version",
+				UsageText: "semver show",
+				Action:    showVersion(),
+			},
+			{
+				Name:      "set",
+				Usage:     "Set the version manually",
+				UsageText: "semver set <version> [--pre label]",
+				Flags: []cli.Flag{
+					&cli.StringFlag{
+						Name:  "pre",
+						Usage: "Optional pre-release label",
+					},
+				},
+				Action: setVersion(),
 			},
 			{
 				Name:      "patch",
@@ -65,27 +81,15 @@ func newCLI(defaultPath string) *cli.Command {
 				Action: setPreRelease(),
 			},
 			{
-				Name:      "show",
-				Usage:     "Display current version",
-				UsageText: "semver show",
-				Action:    showVersion(),
-			},
-			{
-				Name:      "set",
-				Usage:     "Set the version manually",
-				UsageText: "semver set <version> [--pre label]",
-				Flags: []cli.Flag{
-					&cli.StringFlag{
-						Name:  "pre",
-						Usage: "Optional pre-release label",
-					},
-				},
-				Action: setVersion(),
-			},
-			{
 				Name:   "validate",
 				Usage:  "Validate the .version file",
 				Action: validateVersion(),
+			},
+			{
+				Name:      "init",
+				Usage:     "Initialize a .version file (auto-detects Git tag or starts from 0.1.0)",
+				UsageText: "semver init",
+				Action:    initVersion(),
 			},
 		},
 	}

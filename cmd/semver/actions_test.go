@@ -45,7 +45,7 @@ func TestCLI_BumpPatchCommand(t *testing.T) {
 	tmp := t.TempDir()
 	writeVersionFile(t, tmp, "1.2.3")
 
-	runCLITest(t, []string{"semver", "patch"}, tmp)
+	runCLITest(t, []string{"semver", "bump", "patch"}, tmp)
 
 	content, _ := os.ReadFile(filepath.Join(tmp, ".version"))
 	if got := strings.TrimSpace(string(content)); got != "1.2.4" {
@@ -57,7 +57,7 @@ func TestCLI_BumpPatchCommand_AutoInitFeedback(t *testing.T) {
 	tmp := t.TempDir()
 
 	output := captureStdout(func() {
-		runCLITest(t, []string{"semver", "patch"}, tmp)
+		runCLITest(t, []string{"semver", "bump", "patch"}, tmp)
 	})
 
 	expected := fmt.Sprintf("Auto-initialized %s with default version", filepath.Join(tmp, ".version"))
@@ -70,7 +70,7 @@ func TestCLI_BumpMinorCommand(t *testing.T) {
 	tmp := t.TempDir()
 	writeVersionFile(t, tmp, "1.2.3-alpha")
 
-	runCLITest(t, []string{"semver", "minor"}, tmp)
+	runCLITest(t, []string{"semver", "bump", "minor"}, tmp)
 
 	content, _ := os.ReadFile(filepath.Join(tmp, ".version"))
 	if got := strings.TrimSpace(string(content)); got != "1.3.0" {
@@ -82,7 +82,7 @@ func TestCLI_BumpMinorCommand_AutoInitFeedback(t *testing.T) {
 	tmp := t.TempDir()
 
 	output := captureStdout(func() {
-		runCLITest(t, []string{"semver", "minor"}, tmp)
+		runCLITest(t, []string{"semver", "bump", "minor"}, tmp)
 	})
 
 	expected := fmt.Sprintf("Auto-initialized %s with default version", filepath.Join(tmp, ".version"))
@@ -95,7 +95,7 @@ func TestCLI_BumpMajorCommand(t *testing.T) {
 	tmp := t.TempDir()
 	writeVersionFile(t, tmp, "1.2.3")
 
-	runCLITest(t, []string{"semver", "major"}, tmp)
+	runCLITest(t, []string{"semver", "bump", "major"}, tmp)
 
 	content, _ := os.ReadFile(filepath.Join(tmp, ".version"))
 	if got := strings.TrimSpace(string(content)); got != "2.0.0" {
@@ -107,7 +107,7 @@ func TestCLI_BumpMajorCommand_AutoInitFeedback(t *testing.T) {
 	tmp := t.TempDir()
 
 	output := captureStdout(func() {
-		runCLITest(t, []string{"semver", "major"}, tmp)
+		runCLITest(t, []string{"semver", "bump", "major"}, tmp)
 	})
 
 	expected := fmt.Sprintf("Auto-initialized %s with default version", filepath.Join(tmp, ".version"))
@@ -313,7 +313,7 @@ func TestCLI_BumpMinor_InitializeVersionFileError(t *testing.T) {
 	app := newCLI(defaultPath)
 
 	err := app.Run(context.Background(), []string{
-		"semver", "minor", "--path", protectedPath,
+		"semver", "bump", "minor", "--path", protectedPath,
 	})
 	if err == nil {
 		t.Fatal("expected error from InitializeVersionFile, got nil")
@@ -340,7 +340,7 @@ func TestCLI_BumpMajor_InitializeVersionFileError(t *testing.T) {
 	app := newCLI(defaultPath)
 
 	err := app.Run(context.Background(), []string{
-		"semver", "major", "--path", protectedPath,
+		"semver", "bump", "major", "--path", protectedPath,
 	})
 	if err == nil {
 		t.Fatal("expected error from InitializeVersionFile, got nil")

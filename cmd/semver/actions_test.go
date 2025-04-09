@@ -188,6 +188,20 @@ func TestCLI_SetVersion_WithPreRelease(t *testing.T) {
 	}
 }
 
+func TestCLI_ValidateCommand_ValidVersion(t *testing.T) {
+	tmp := t.TempDir()
+	writeVersionFile(t, tmp, "1.2.3")
+
+	output := captureStdout(func() {
+		runCLITest(t, []string{"semver", "validate"}, tmp)
+	})
+
+	expected := fmt.Sprintf("Valid version file at %s/.version", tmp)
+	if !strings.Contains(output, expected) {
+		t.Errorf("expected output to contain %q, got %q", expected, output)
+	}
+}
+
 /* ------------------------------------------------------------------------- */
 /* ERROR CASES                                                               */
 /* ------------------------------------------------------------------------- */
@@ -413,6 +427,34 @@ func TestCLI_SetVersion_SaveError(t *testing.T) {
 
 	if !strings.Contains(err.Error(), "failed to save version") {
 		t.Errorf("unexpected error message: %v", err)
+	}
+}
+
+func TestCLI_ValidateCommand_InvalidVersion(t *testing.T) {
+	tmp := t.TempDir()
+	path := writeVersionFile(t, tmp, "not-a-version")
+
+	app := newCLI(path)
+	err := app.Run(context.Background(), []string{"semver", "validate"})
+	if err == nil {
+		t.Fatal("expected error due to invalid version, got nil")
+	}
+	if !strings.Contains(err.Error(), "invalid version") {
+		t.Errorf("unexpected error message: %v", err)
+	}
+}
+
+func TestCLI_ValidateCommand_MissingFile(t *testing.T) {
+	tmp := t.TempDir()
+	path := filepath.Join(tmp, "missing.version")
+
+	app := newCLI(path)
+	err := app.Run(context.Background(), []string{"semver", "validate", "--path", path})
+	if err == nil {
+		t.Fatal("expected error due to missing version file, got nil")
+	}
+	if !strings.Contains(err.Error(), "no such file") {
+		t.Errorf("unexpected error: %v", err)
 	}
 }
 

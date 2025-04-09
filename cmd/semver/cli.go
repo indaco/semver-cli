@@ -82,6 +82,11 @@ func newCLI(defaultPath string) *cli.Command {
 				},
 				Action: setVersion(),
 			},
+			{
+				Name:   "validate",
+				Usage:  "Validate the .version file",
+				Action: validateVersion(),
+			},
 		},
 	}
 }

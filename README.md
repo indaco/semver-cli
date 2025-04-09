@@ -95,14 +95,15 @@ VERSION:
    v0.3.0
 
 COMMANDS:
-   init     Initialize a .version file (auto-detects Git tag or starts from 0.1.0)
-   patch    Increment patch version
-   minor    Increment minor version and reset patch
-   major    Increment major version and reset minor and patch
-   pre      Set pre-release label (e.g., alpha, beta.1)
-   show     Display current version
-   set      Set the version manually
-   help, h  Shows a list of commands or help for one command
+   init      Initialize a .version file (auto-detects Git tag or starts from 0.1.0)
+   patch     Increment patch version
+   minor     Increment minor version and reset patch
+   major     Increment major version and reset minor and patch
+   pre       Set pre-release label (e.g., alpha, beta.1)
+   show      Display current version
+   set       Set the version manually
+   validate  Validate the .version file
+   help, h   Shows a list of commands or help for one command
 
 GLOBAL OPTIONS:
    --path value, -p value  Path to .version file (default: ".version")
@@ -241,6 +242,24 @@ semver pre --label alpha --inc
 # .version = 1.2.3
 semver pre --label alpha --inc
 # => 1.2.3-alpha.1
+```
+
+**Validate the version file**
+
+Check whether the `.version` file exists and contains a valid semantic version:
+
+```bash
+# .version = 1.2.3
+semver validate
+# => Valid version file at ./<path>/.version
+```
+
+If the file is missing or contains an invalid value, an error is returned:
+
+```bash
+# .version = invalid-content
+semver validate
+# => Error: invalid version format: ...
 ```
 
 ## 🤝 Contributing

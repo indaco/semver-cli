@@ -145,3 +145,15 @@ func setVersion() func(ctx context.Context, cmd *cli.Command) error {
 		return nil
 	}
 }
+
+func validateVersion() func(ctx context.Context, cmd *cli.Command) error {
+	return func(ctx context.Context, cmd *cli.Command) error {
+		path := cmd.String("path")
+		_, err := semver.ReadVersion(path)
+		if err != nil {
+			return fmt.Errorf("invalid version file at %s: %w", path, err)
+		}
+		fmt.Printf("Valid version file at %s\n", path)
+		return nil
+	}
+}

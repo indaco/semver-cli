@@ -393,7 +393,9 @@ func TestCLI_PreCommand_SaveVersionFails(t *testing.T) {
 			fmt.Fprintln(os.Stderr, "failed to chmod .version file:", err)
 			os.Exit(1)
 		}
-		defer os.Chmod(versionPath, 0644) // cleanup
+		defer func() {
+			_ = os.Chmod(versionPath, 0644) // cleanup
+		}()
 
 		app := newCLI(versionPath)
 		err := app.Run(context.Background(), []string{

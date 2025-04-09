@@ -32,6 +32,7 @@
 ## 📖 Table of Contents
 
 - [✨ Features](#-features)
+- [❓ Why .version?](#-why-version)
 - [💻 Installation](#-installation)
 - [🛠️ CLI Commands & Options](#️-cli-commands--options)
 - [⚙️ Configuration](#️-configuration)
@@ -42,21 +43,41 @@
 
 ## ✨ Features
 
-- Initialize version file using `init` command
-- Bump patch, minor, or major versions
-- Add or update pre-release labels (`alpha`, `beta.1`, etc.)
-- Auto-increment pre-release versions
-- Show current version
+- [SemVer 2.0.0](https://semver.org/) compliant
+- **Lightweight .version file** to store and track version across environments
+- `init` command to bootstrap the .version file from Git or default to `0.1.0`
+- Bump versions with patch, minor, or major
+- Add or update **pre-release labels** like `alpha`, `beta.1`, `rc.2`, etc.
+- Auto-increment pre-releases (`--inc`)
+- `set` command for full manual control (including pre-release)
+- `show` current version — perfect for CI/CD build outputs
+- `validate` the `.version` file for correctness
+- `--no-auto-init` mode for strict CI/CD environments
+- Configurable via flag, environment, or `.semver.yaml`
+
+## ❓ Why .version?
+
+Many Go projects — especially CLIs and internal tools — need a simple way to track their version outside of `go.mod`.
+
+Using a `.version` file:
+
+- ✅ Keeps the version readable and accessible at the project root
+- ✅ Works with any language, not just Go
+- ✅ Is easy to diff and track in Git
+- ✅ Plays well with CI/CD pipelines (e.g., Docker labels, GitHub Actions)
+- ✅ Lets you embed the version with something like `getVersion()` in your app
+
+This project was built with that workflow in mind — it's not for every use case, but if you're managing your app version manually, `.version` is a clean and flexible choice.
 
 ## 💻 Installation
 
-#### Option 1: Install via `go install` (global)
+### Option 1: Install via `go install` (global)
 
 ```bash
 go install github.com/indaco/semver-cli/cmd/semver@latest
 ```
 
-#### Option 2: Install via `go install` (tool)
+### Option 2: Install via `go install` (tool)
 
 With Go 1.24 or greater installed, you can install `semver` locally in your project by running:
 
@@ -70,11 +91,11 @@ Once installed, use it with
 go tool semver
 ```
 
-#### Option 3: Prebuilt binaries
+### Option 3: Prebuilt binaries
 
 Download the pre-compiled binaries from the [releases page](https://github.com/indaco/semver/releases) and place the binary in your system’s PATH.
 
-#### Option 4: Clone and build manually
+### Option 4: Clone and build manually
 
 ```bash
 git clone https://github.com/indaco/semver-cli.git

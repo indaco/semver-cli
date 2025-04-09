@@ -118,9 +118,7 @@ VERSION:
 COMMANDS:
    show      Display current version
    set       Set the version manually
-   patch     Increment patch version
-   minor     Increment minor version and reset patch
-   major     Increment major version and reset minor and patch
+   bump      Bump semantic version (patch, minor, major)
    pre       Set pre-release label (e.g., alpha, beta.1)
    validate  Validate the .version file
    init      Initialize a .version file (auto-detects Git tag or starts from 0.1.0)
@@ -221,27 +219,19 @@ semver set 2.1.0 --pre beta.1
 # => .version is now 2.1.0-beta.1
 ```
 
-**Bump patch version**
+**Bump version**
 
 ```bash
-# .version = 1.2.3
-semver patch
+semver show
+# => 1.2.3
+
+semver bump patch
 # => 1.2.4
-```
 
-**Bump minor version (and reset patch to 0)**
-
-```bash
-# .version = 1.2.3
-semver minor
+semver bump minor
 # => 1.3.0
-```
 
-**Bump major version (and reset minor/patch to 0)**
-
-```bash
-# .version = 1.2.3
-semver major
+semver bump major
 # => 2.0.0
 ```
 

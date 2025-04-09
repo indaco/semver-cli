@@ -82,7 +82,7 @@ func TestRunMain_SetupCLIError(t *testing.T) {
 		}
 	})
 
-	err = runCLI([]string{"semver", "patch"})
+	err = runCLI([]string{"semver", "bump", "patch"})
 	if err == nil {
 		t.Fatal("expected error from setupCLI, got nil")
 	}
@@ -116,7 +116,7 @@ func TestRunMain_LoadConfigError(t *testing.T) {
 		}
 	})
 
-	err = runCLI([]string{"semver", "patch"})
+	err = runCLI([]string{"semver", "bump", "patch"})
 	if err == nil {
 		t.Fatal("expected error from LoadConfig, got nil")
 	}

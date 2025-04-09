@@ -46,22 +46,29 @@ func newCLI(defaultPath string) *cli.Command {
 				Action: setVersion(),
 			},
 			{
-				Name:      "patch",
-				Usage:     "Increment patch version",
-				UsageText: "semver patch",
-				Action:    bumpPatch(),
-			},
-			{
-				Name:      "minor",
-				Usage:     "Increment minor version and reset patch",
-				UsageText: "semver minor",
-				Action:    bumpMinor(),
-			},
-			{
-				Name:      "major",
-				Usage:     "Increment major version and reset minor and patch",
-				UsageText: "semver major",
-				Action:    bumpMajor(),
+				Name:      "bump",
+				Usage:     "Bump semantic version (patch, minor, major)",
+				UsageText: "semver bump <subcommand> [--flags]",
+				Commands: []*cli.Command{
+					{
+						Name:      "patch",
+						Usage:     "Increment patch version",
+						UsageText: "semver bump patch",
+						Action:    bumpPatch(),
+					},
+					{
+						Name:      "minor",
+						Usage:     "Increment minor version and reset patch",
+						UsageText: "semver bump minor",
+						Action:    bumpMinor(),
+					},
+					{
+						Name:      "major",
+						Usage:     "Increment major version and reset minor and patch",
+						UsageText: "semver bump major",
+						Action:    bumpMajor(),
+					},
+				},
 			},
 			{
 				Name:      "pre",

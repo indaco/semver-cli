@@ -118,3 +118,30 @@ func showVersion() func(ctx context.Context, cmd *cli.Command) error {
 		return nil
 	}
 }
+
+func setVersion() func(ctx context.Context, cmd *cli.Command) error {
+	return func(ctx context.Context, cmd *cli.Command) error {
+		path := cmd.String("path")
+		args := cmd.Args()
+
+		if args.Len() < 1 {
+			return cli.Exit("missing required version argument", 1)
+		}
+
+		raw := args.Get(0)
+		pre := cmd.String("pre")
+
+		version, err := semver.ParseVersion(raw)
+		if err != nil {
+			return fmt.Errorf("invalid version: %w", err)
+		}
+		version.PreRelease = pre
+
+		if err := semver.SaveVersion(path, version); err != nil {
+			return fmt.Errorf("failed to save version: %w", err)
+		}
+
+		fmt.Printf("Set version to %s in %s\n", version.String(), path)
+		return nil
+	}
+}

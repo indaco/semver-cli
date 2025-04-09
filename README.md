@@ -92,7 +92,7 @@ USAGE:
    semver [global options] [command [command options]]
 
 VERSION:
-   v0.2.0
+   v0.3.0
 
 COMMANDS:
    init     Initialize a .version file (auto-detects Git tag or starts from 0.1.0)
@@ -101,6 +101,7 @@ COMMANDS:
    major    Increment major version and reset minor and patch
    pre      Set pre-release label (e.g., alpha, beta.1)
    show     Display current version
+   set      Set the version manually
    help, h  Shows a list of commands or help for one command
 
 GLOBAL OPTIONS:
@@ -196,6 +197,20 @@ semver minor
 # .version = 1.2.3
 semver major
 # => 2.0.0
+```
+
+**Set a specific number**
+
+```bash
+semver set 2.1.0
+# => .version is now 2.1.0
+```
+
+You can also set a pre-release version:
+
+```bash
+semver set 2.1.0 --pre beta.1
+# => .version is now 2.1.0-beta.1
 ```
 
 **Set a pre-release label**

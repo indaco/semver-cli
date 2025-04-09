@@ -58,7 +58,7 @@ func initializeVersionFile(path string) error {
 		tag := strings.TrimSpace(string(output))
 		tag = strings.TrimPrefix(tag, "v")
 
-		if parsed, parseErr := parseVersion(tag); parseErr == nil {
+		if parsed, parseErr := ParseVersion(tag); parseErr == nil {
 			version = parsed
 		}
 	}
@@ -93,7 +93,7 @@ func ReadVersion(path string) (SemVersion, error) {
 	if err != nil {
 		return SemVersion{}, err
 	}
-	return parseVersion(string(data))
+	return ParseVersion(string(data))
 }
 
 // SaveVersion writes a SemVersion to the given file path.
@@ -157,9 +157,9 @@ func IncrementPreRelease(current, base string) string {
 	return formatPreRelease(base, 1)
 }
 
-// parseVersion parses a semantic version string and returns a SemVersion.
+// ParseVersion parses a semantic version string and returns a SemVersion.
 // Returns an error if the version format is invalid.
-func parseVersion(s string) (SemVersion, error) {
+func ParseVersion(s string) (SemVersion, error) {
 	matches := versionRegex.FindStringSubmatch(strings.TrimSpace(s))
 	if len(matches) < 4 {
 		return SemVersion{}, errInvalidVersion

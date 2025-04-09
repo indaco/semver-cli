@@ -8,6 +8,23 @@ import (
 	"github.com/urfave/cli/v3"
 )
 
+func initVersion() func(ctx context.Context, cmd *cli.Command) error {
+	return func(ctx context.Context, cmd *cli.Command) error {
+		path := cmd.String("path")
+		created, version, err := semver.InitializeVersionFileWithFeedback(path)
+		if err != nil {
+			return err
+		}
+
+		if created {
+			fmt.Printf("Initialized %s with version %s\n", path, version.String())
+		} else {
+			fmt.Printf("Version file already exists at %s\n", path)
+		}
+		return nil
+	}
+}
+
 // bumpPatch increments the patch version of the .version file.
 func bumpPatch() func(ctx context.Context, cmd *cli.Command) error {
 	return func(ctx context.Context, cmd *cli.Command) error {

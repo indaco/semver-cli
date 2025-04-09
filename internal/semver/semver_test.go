@@ -10,6 +10,81 @@ import (
 )
 
 /* ------------------------------------------------------------------------- */
+/* VERSION FILE INITIALIZATION                                               */
+/* ------------------------------------------------------------------------- */
+
+func TestInitializeVersionFileWithFeedback(t *testing.T) {
+	t.Run("file already exists and is valid", func(t *testing.T) {
+		path := writeTempVersion(t, "2.3.4")
+
+		created, version, err := InitializeVersionFileWithFeedback(path)
+		if err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
+		if created {
+			t.Errorf("expected created=false, got true")
+		}
+		if version.String() != "2.3.4" {
+			t.Errorf("expected version 2.3.4, got %q", version.String())
+		}
+	})
+
+	t.Run("file already exists and is invalid", func(t *testing.T) {
+		path := writeTempVersion(t, "not-a-version")
+
+		created, version, err := InitializeVersionFileWithFeedback(path)
+		if err == nil {
+			t.Fatal("expected error, got nil")
+		}
+		if created {
+			t.Errorf("expected created=false for existing file, got true")
+		}
+		if !strings.Contains(err.Error(), "invalid version format") {
+			t.Errorf("unexpected error: %v", err)
+		}
+		_ = version // ignore since we expect it to be zero
+	})
+
+	t.Run("file does not exist, fallback to git tag", func(t *testing.T) {
+		tmp := t.TempDir()
+		path := filepath.Join(tmp, ".version")
+
+		execCommand = fakeExecCommand("v1.2.3\n")
+		defer func() { execCommand = originalExecCommand }()
+
+		created, version, err := InitializeVersionFileWithFeedback(path)
+		if err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
+		if !created {
+			t.Errorf("expected created=true, got false")
+		}
+		if version.String() != "1.2.3" {
+			t.Errorf("expected version 1.2.3, got %q", version.String())
+		}
+	})
+
+	t.Run("file does not exist, fallback to default 0.1.0", func(t *testing.T) {
+		tmp := t.TempDir()
+		path := filepath.Join(tmp, ".version")
+
+		execCommand = fakeExecCommand("invalid-tag\n")
+		defer func() { execCommand = originalExecCommand }()
+
+		created, version, err := InitializeVersionFileWithFeedback(path)
+		if err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
+		if !created {
+			t.Errorf("expected created=true, got false")
+		}
+		if version.String() != "0.1.0" {
+			t.Errorf("expected version 0.1.0, got %q", version.String())
+		}
+	})
+}
+
+/* ------------------------------------------------------------------------- */
 /* VERSION PARSING                                                           */
 /* ------------------------------------------------------------------------- */
 
@@ -293,6 +368,27 @@ func TestInitializeVersionFile_ExistingFile(t *testing.T) {
 	}
 }
 
+func TestSaveVersion_MkdirAllFails(t *testing.T) {
+	tmpDir := t.TempDir()
+
+	// Create a file where the directory is expected
+	conflictPath := filepath.Join(tmpDir, "conflict")
+	if err := os.WriteFile(conflictPath, []byte("not a dir"), 0644); err != nil {
+		t.Fatal(err)
+	}
+
+	versionFile := filepath.Join(conflictPath, ".version") // invalid: parent is a file
+
+	err := SaveVersion(versionFile, SemVersion{1, 2, 3, ""})
+	if err == nil {
+		t.Fatal("expected error due to mkdir on a file, got nil")
+	}
+
+	if !strings.Contains(err.Error(), "not a directory") && !strings.Contains(err.Error(), "is a file") {
+		t.Errorf("unexpected error: %v", err)
+	}
+}
+
 func TestInitializeVersionFile_InvalidGitTagFormat(t *testing.T) {
 	tmpDir := t.TempDir()
 	versionPath := filepath.Join(tmpDir, ".version")
@@ -311,6 +407,54 @@ func TestInitializeVersionFile_InvalidGitTagFormat(t *testing.T) {
 
 	if got != want {
 		t.Errorf("expected fallback version %q, got %q", want, got)
+	}
+}
+
+func TestInitializeVersionFileWithFeedback_InitializationFails(t *testing.T) {
+	tmp := t.TempDir()
+	noWrite := filepath.Join(tmp, "nowrite")
+	if err := os.Mkdir(noWrite, 0555); err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() {
+		_ = os.Chmod(noWrite, 0755)
+	})
+
+	versionPath := filepath.Join(noWrite, ".version")
+
+	created, version, err := InitializeVersionFileWithFeedback(versionPath)
+	if err == nil {
+		t.Fatal("expected error, got nil")
+	}
+	if created {
+		t.Errorf("expected created to be false, got true")
+	}
+	if version != (SemVersion{}) {
+		t.Errorf("expected empty version, got %+v", version)
+	}
+}
+
+func TestInitializeVersionFileWithFeedback_FileCreatedButInvalidContent(t *testing.T) {
+	tmp := t.TempDir()
+	versionPath := filepath.Join(tmp, ".version")
+
+	// Save original implementation and restore at the end
+	original := InitializeVersionFile
+	// Override to simulate corrupted file creation
+	InitializeVersionFile = func(path string) error {
+		return os.WriteFile(path, []byte("not-a-version\n"), 0600)
+	}
+	defer func() { InitializeVersionFile = original }()
+
+	created, version, err := InitializeVersionFileWithFeedback(versionPath)
+	if err == nil {
+		t.Fatal("expected error due to invalid version content, got nil")
+	}
+	if !created {
+		t.Error("expected created = true, got false")
+	}
+	if version != (SemVersion{}) {
+		t.Errorf("expected empty version, got %+v", version)
 	}
 }
 

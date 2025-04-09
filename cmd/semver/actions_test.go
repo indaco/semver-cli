@@ -3,6 +3,7 @@ package main
 import (
 	"bytes"
 	"context"
+	"fmt"
 	"os"
 	"path/filepath"
 	"strings"
@@ -12,62 +13,33 @@ import (
 )
 
 /* ------------------------------------------------------------------------- */
-/* HELPERS                                                                   */
-/* ------------------------------------------------------------------------- */
-func writeVersionFile(t *testing.T, dir, version string) string {
-	t.Helper()
-	path := filepath.Join(dir, ".version")
-	if err := os.WriteFile(path, []byte(version+"\n"), semver.VersionFilePerm); err != nil {
-		t.Fatal(err)
-	}
-	return path
-}
-
-func captureStdout(f func()) string {
-	old := os.Stdout
-	r, w, _ := os.Pipe()
-	os.Stdout = w
-
-	f()
-
-	w.Close()
-	os.Stdout = old
-
-	var buf bytes.Buffer
-	_, _ = buf.ReadFrom(r)
-	return strings.TrimSpace(buf.String())
-}
-
-func runCLITest(t *testing.T, args []string, workdir string) {
-	t.Helper()
-
-	origDir, err := os.Getwd()
-	if err != nil {
-		t.Fatalf("failed to get working directory: %v", err)
-	}
-
-	if err := os.Chdir(workdir); err != nil {
-		t.Fatalf("failed to change to workdir: %v", err)
-	}
-	t.Cleanup(func() {
-		if err := os.Chdir(origDir); err != nil {
-			t.Fatalf("failed to restore working directory: %v", err)
-		}
-	})
-
-	versionPath := filepath.Join(workdir, ".version")
-
-	app := newCLI(versionPath)
-
-	err = app.Run(context.Background(), args)
-	if err != nil {
-		t.Fatalf("app.Run failed: %v", err)
-	}
-}
-
-/* ------------------------------------------------------------------------- */
 /* SUCCESS CASES                                                             */
 /* ------------------------------------------------------------------------- */
+
+func TestCLI_InitCommand_CreatesFile(t *testing.T) {
+	tmp := t.TempDir()
+	versionPath := filepath.Join(tmp, ".version")
+
+	output := captureStdout(func() {
+		runCLITest(t, []string{"semver", "init"}, tmp)
+	})
+
+	data, err := os.ReadFile(versionPath)
+	if err != nil {
+		t.Fatalf("expected .version file to be created, got error: %v", err)
+	}
+
+	got := strings.TrimSpace(string(data))
+	if got != "0.1.0" {
+		t.Errorf("expected version '0.1.0', got %q", got)
+	}
+
+	expectedOutput := fmt.Sprintf("Initialized %s with version 0.1.0", versionPath)
+	if strings.TrimSpace(output) != expectedOutput {
+		t.Errorf("unexpected output.\nExpected: %q\nGot:      %q", expectedOutput, output)
+	}
+}
+
 func TestCLI_BumpPatchCommand(t *testing.T) {
 	tmp := t.TempDir()
 	writeVersionFile(t, tmp, "1.2.3")
@@ -144,6 +116,47 @@ func TestCLI_ShowCommand(t *testing.T) {
 /* ------------------------------------------------------------------------- */
 /* ERROR CASES                                                               */
 /* ------------------------------------------------------------------------- */
+
+func TestCLI_InitCommand_InitializationError(t *testing.T) {
+	tmp := t.TempDir()
+	noWrite := filepath.Join(tmp, "nowrite")
+	if err := os.Mkdir(noWrite, 0555); err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() {
+		_ = os.Chmod(noWrite, 0755)
+	})
+
+	versionPath := filepath.Join(noWrite, ".version")
+
+	app := newCLI(versionPath)
+
+	err := app.Run(context.Background(), []string{"semver", "init"})
+	if err == nil {
+		t.Fatal("expected initialization error, got nil")
+	}
+	if !strings.Contains(err.Error(), "permission denied") {
+		t.Errorf("unexpected error: %v", err)
+	}
+}
+
+func TestCLI_InitCommand_FileAlreadyExists(t *testing.T) {
+	tmp := t.TempDir()
+	versionPath := filepath.Join(tmp, ".version")
+	if err := os.WriteFile(versionPath, []byte("1.2.3\n"), 0600); err != nil {
+		t.Fatal(err)
+	}
+
+	output := captureStdout(func() {
+		runCLITest(t, []string{"semver", "init"}, tmp)
+	})
+
+	expected := fmt.Sprintf("Version file already exists at %s", versionPath)
+	if !strings.Contains(output, expected) {
+		t.Errorf("expected output to contain %q, got %q", expected, output)
+	}
+}
+
 func TestCLI_ShowCommand_FileNotFound(t *testing.T) {
 	tmp := t.TempDir()
 	defaultPath := filepath.Join(tmp, ".version")
@@ -260,5 +273,59 @@ func TestCLI_PreCommand_InitializeVersionFileError(t *testing.T) {
 	}
 	if !strings.Contains(err.Error(), "permission denied") {
 		t.Errorf("unexpected error: %v", err)
+	}
+}
+
+/* ------------------------------------------------------------------------- */
+/* HELPERS                                                                   */
+/* ------------------------------------------------------------------------- */
+func writeVersionFile(t *testing.T, dir, version string) string {
+	t.Helper()
+	path := filepath.Join(dir, ".version")
+	if err := os.WriteFile(path, []byte(version+"\n"), semver.VersionFilePerm); err != nil {
+		t.Fatal(err)
+	}
+	return path
+}
+
+func captureStdout(f func()) string {
+	old := os.Stdout
+	r, w, _ := os.Pipe()
+	os.Stdout = w
+
+	f()
+
+	w.Close()
+	os.Stdout = old
+
+	var buf bytes.Buffer
+	_, _ = buf.ReadFrom(r)
+	return strings.TrimSpace(buf.String())
+}
+
+func runCLITest(t *testing.T, args []string, workdir string) {
+	t.Helper()
+
+	origDir, err := os.Getwd()
+	if err != nil {
+		t.Fatalf("failed to get working directory: %v", err)
+	}
+
+	if err := os.Chdir(workdir); err != nil {
+		t.Fatalf("failed to change to workdir: %v", err)
+	}
+	t.Cleanup(func() {
+		if err := os.Chdir(origDir); err != nil {
+			t.Fatalf("failed to restore working directory: %v", err)
+		}
+	})
+
+	versionPath := filepath.Join(workdir, ".version")
+
+	app := newCLI(versionPath)
+
+	err = app.Run(context.Background(), args)
+	if err != nil {
+		t.Fatalf("app.Run failed: %v", err)
 	}
 }

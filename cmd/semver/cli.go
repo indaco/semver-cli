@@ -24,6 +24,11 @@ func newCLI(defaultPath string) *cli.Command {
 		},
 		Commands: []*cli.Command{
 			{
+				Name:   "init",
+				Usage:  "Initialize a .version file (auto-detects Git tag or starts from 0.1.0)",
+				Action: initVersion(),
+			},
+			{
 				Name:   "patch",
 				Usage:  "Increment patch version",
 				Action: bumpPatch(),

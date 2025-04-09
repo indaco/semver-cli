@@ -17,13 +17,18 @@ type SemVersion struct {
 	Minor      int
 	Patch      int
 	PreRelease string
+	Build      string
 }
 
 const VersionFilePerm = 0600
 
 var (
 	// versionRegex matches semantic version strings with optional pre-release.
-	versionRegex = regexp.MustCompile(`^([^.]+)\.([^.]+)\.([^-]+)(?:-([\w.-]+))?$`)
+	versionRegex = regexp.MustCompile(
+		`^v?([^\.\-+]+)\.([^\.\-+]+)\.([^\.\-+]+)` + // capture major, minor, patch loosely
+			`(?:-([0-9A-Za-z\-\.]+))?` + // optional pre-release
+			`(?:\+([0-9A-Za-z\-\.]+))?$`, // optional build metadata
+	)
 
 	// execCommand is used to run external commands (e.g., git).
 	// It can be overridden in tests.
@@ -36,10 +41,14 @@ var (
 
 // String returns the string representation of the semantic version.
 func (v SemVersion) String() string {
+	s := fmt.Sprintf("%d.%d.%d", v.Major, v.Minor, v.Patch)
 	if v.PreRelease != "" {
-		return fmt.Sprintf("%d.%d.%d-%s", v.Major, v.Minor, v.Patch, v.PreRelease)
+		s += "-" + v.PreRelease
 	}
-	return fmt.Sprintf("%d.%d.%d", v.Major, v.Minor, v.Patch)
+	if v.Build != "" {
+		s += "+" + v.Build
+	}
+	return s
 }
 
 // InitializeVersionFile initializes a .version file at the given path.
@@ -158,7 +167,6 @@ func ParseVersion(s string) (SemVersion, error) {
 		return SemVersion{}, errInvalidVersion
 	}
 
-	// The regex ensures these will always be digits, but parse defensively
 	major, err := strconv.Atoi(matches[1])
 	if err != nil {
 		return SemVersion{}, fmt.Errorf("%w: invalid major version: %v", errInvalidVersion, err)
@@ -171,9 +179,11 @@ func ParseVersion(s string) (SemVersion, error) {
 	if err != nil {
 		return SemVersion{}, fmt.Errorf("%w: invalid patch version: %v", errInvalidVersion, err)
 	}
-	pre := matches[4]
 
-	return SemVersion{major, minor, patch, pre}, nil
+	pre := matches[4]
+	build := matches[5]
+
+	return SemVersion{Major: major, Minor: minor, Patch: patch, PreRelease: pre, Build: build}, nil
 }
 
 func formatPreRelease(base string, num int) string {

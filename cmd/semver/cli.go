@@ -42,6 +42,10 @@ func newCLI(defaultPath string) *cli.Command {
 						Name:  "pre",
 						Usage: "Optional pre-release label",
 					},
+					&cli.StringFlag{
+						Name:  "meta",
+						Usage: "Optional build metadata",
+					},
 				},
 				Action: setVersion(),
 			},

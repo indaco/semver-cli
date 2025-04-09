@@ -188,9 +188,45 @@ func TestCLI_SetVersion_WithPreRelease(t *testing.T) {
 	}
 }
 
+func TestCLI_SetVersion_WithBuildMetadata(t *testing.T) {
+	tmp := t.TempDir()
+
+	runCLITest(t, []string{"semver", "set", "1.0.0", "--meta", "001"}, tmp)
+
+	content, _ := os.ReadFile(filepath.Join(tmp, ".version"))
+	if got := strings.TrimSpace(string(content)); got != "1.0.0+001" {
+		t.Errorf("expected 1.0.0+001, got %q", got)
+	}
+}
+
+func TestCLI_SetVersion_WithPreReleaseAndBuildMetadata(t *testing.T) {
+	tmp := t.TempDir()
+
+	runCLITest(t, []string{"semver", "set", "1.0.0", "--pre", "alpha.1", "--meta", "exp.sha.5114f85"}, tmp)
+
+	content, _ := os.ReadFile(filepath.Join(tmp, ".version"))
+	if got := strings.TrimSpace(string(content)); got != "1.0.0-alpha.1+exp.sha.5114f85" {
+		t.Errorf("expected 1.0.0-alpha.1+exp.sha.5114f85, got %q", got)
+	}
+}
+
 func TestCLI_ValidateCommand_ValidVersion(t *testing.T) {
 	tmp := t.TempDir()
 	writeVersionFile(t, tmp, "1.2.3")
+
+	output := captureStdout(func() {
+		runCLITest(t, []string{"semver", "validate"}, tmp)
+	})
+
+	expected := fmt.Sprintf("Valid version file at %s/.version", tmp)
+	if !strings.Contains(output, expected) {
+		t.Errorf("expected output to contain %q, got %q", expected, output)
+	}
+}
+
+func TestCLI_ValidateCommand_WithMetadata(t *testing.T) {
+	tmp := t.TempDir()
+	writeVersionFile(t, tmp, "1.2.3+exp.sha.5114f85")
 
 	output := captureStdout(func() {
 		runCLITest(t, []string{"semver", "validate"}, tmp)
@@ -511,6 +547,21 @@ func TestCLI_ValidateCommand_MissingFile(t *testing.T) {
 	}
 	if !strings.Contains(err.Error(), "no such file") {
 		t.Errorf("unexpected error: %v", err)
+	}
+}
+
+func TestCLI_ValidateCommand_InvalidMetadata(t *testing.T) {
+	tmp := t.TempDir()
+	writeVersionFile(t, tmp, "1.0.0+inv@lid-meta")
+
+	app := newCLI(filepath.Join(tmp, ".version"))
+	err := app.Run(context.Background(), []string{"semver", "validate"})
+
+	if err == nil {
+		t.Fatal("expected error due to invalid metadata, got nil")
+	}
+	if !strings.Contains(err.Error(), "invalid version") {
+		t.Errorf("expected error about invalid version, got %v", err)
 	}
 }
 

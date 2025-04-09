@@ -11,6 +11,22 @@ import (
 
 var originalExecCommand = execCommand
 
+func TestSemVersion_String_WithBuildOnly(t *testing.T) {
+	v := SemVersion{
+		Major: 1,
+		Minor: 0,
+		Patch: 0,
+		Build: "exp.sha.5114f85",
+	}
+
+	got := v.String()
+	want := "1.0.0+exp.sha.5114f85"
+
+	if got != want {
+		t.Errorf("expected %q, got %q", want, got)
+	}
+}
+
 /* ------------------------------------------------------------------------- */
 /* VERSION FILE INITIALIZATION                                               */
 /* ------------------------------------------------------------------------- */
@@ -110,6 +126,16 @@ func TestParseAndString(t *testing.T) {
 	}
 }
 
+func TestParseVersion_ValidWithVPrefix(t *testing.T) {
+	v, err := ParseVersion("v1.2.3")
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if v.Major != 1 || v.Minor != 2 || v.Patch != 3 {
+		t.Errorf("unexpected version parsed: %+v", v)
+	}
+}
+
 func TestParseVersion_ErrorCases(t *testing.T) {
 	t.Run("invalid format (missing patch)", func(t *testing.T) {
 		_, err := ParseVersion("1.2")
@@ -146,8 +172,7 @@ func TestParseVersion_InvalidFormat(t *testing.T) {
 		"1",
 		"1.2",
 		"abc.def.ghi",
-		"v1.2.3",
-		"1.2.3.4",
+		"1.2.3.4", // too many parts
 	}
 
 	for _, raw := range invalidVersions {
@@ -379,7 +404,7 @@ func TestSaveVersion_MkdirAllFails(t *testing.T) {
 
 	versionFile := filepath.Join(conflictPath, ".version") // invalid: parent is a file
 
-	err := SaveVersion(versionFile, SemVersion{1, 2, 3, ""})
+	err := SaveVersion(versionFile, SemVersion{1, 2, 3, "", ""})
 	if err == nil {
 		t.Fatal("expected error due to mkdir on a file, got nil")
 	}

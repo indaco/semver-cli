@@ -75,6 +75,22 @@ func TestLoadConfig_MissingFile(t *testing.T) {
 	}
 }
 
+func TestNormalizeVersionPath(t *testing.T) {
+	// Case 1: path is a file
+	got := NormalizeVersionPath("foo/.version")
+	if got != "foo/.version" {
+		t.Errorf("expected unchanged path, got %q", got)
+	}
+
+	// Case 2: path is a directory
+	tmp := t.TempDir()
+	got = NormalizeVersionPath(tmp)
+	expected := filepath.Join(tmp, ".version")
+	if got != expected {
+		t.Errorf("expected %q, got %q", expected, got)
+	}
+}
+
 /* ------------------------------------------------------------------------- */
 /* ERROR CASES                                                               */
 /* ------------------------------------------------------------------------- */

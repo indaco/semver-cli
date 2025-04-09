@@ -3,6 +3,7 @@ package config
 import (
 	"errors"
 	"os"
+	"path/filepath"
 
 	"gopkg.in/yaml.v3"
 )
@@ -37,4 +38,15 @@ func LoadConfig() (*Config, error) {
 	}
 
 	return &cfg, nil
+}
+
+// NormalizeVersionPath ensures the path is a file, not just a directory.
+func NormalizeVersionPath(path string) string {
+	info, err := os.Stat(path)
+	if err == nil && info.IsDir() {
+		return filepath.Join(path, ".version")
+	}
+
+	// If it doesn't exist or is already a file, return as-is
+	return path
 }

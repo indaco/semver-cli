@@ -9,6 +9,8 @@ import (
 	"testing"
 )
 
+var originalExecCommand = execCommand
+
 /* ------------------------------------------------------------------------- */
 /* VERSION FILE INITIALIZATION                                               */
 /* ------------------------------------------------------------------------- */
@@ -484,12 +486,6 @@ func readFile(t *testing.T, path string) string {
 	}
 	return string(data)
 }
-
-/* ------------------------------------------------------------------------- */
-/* GIT MOCKING                                                               */
-/* ------------------------------------------------------------------------- */
-
-var originalExecCommand = execCommand
 
 func fakeExecCommand(output string) func(string, ...string) *exec.Cmd {
 	return func(command string, args ...string) *exec.Cmd {

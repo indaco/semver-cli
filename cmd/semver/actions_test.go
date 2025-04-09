@@ -52,6 +52,19 @@ func TestCLI_BumpPatchCommand(t *testing.T) {
 	}
 }
 
+func TestCLI_BumpPatchCommand_AutoInitFeedback(t *testing.T) {
+	tmp := t.TempDir()
+
+	output := captureStdout(func() {
+		runCLITest(t, []string{"semver", "patch"}, tmp)
+	})
+
+	expected := fmt.Sprintf("Auto-initialized %s with default version", filepath.Join(tmp, ".version"))
+	if !strings.Contains(output, expected) {
+		t.Errorf("expected feedback %q, got %q", expected, output)
+	}
+}
+
 func TestCLI_BumpMinorCommand(t *testing.T) {
 	tmp := t.TempDir()
 	writeVersionFile(t, tmp, "1.2.3-alpha")
@@ -64,6 +77,19 @@ func TestCLI_BumpMinorCommand(t *testing.T) {
 	}
 }
 
+func TestCLI_BumpMinorCommand_AutoInitFeedback(t *testing.T) {
+	tmp := t.TempDir()
+
+	output := captureStdout(func() {
+		runCLITest(t, []string{"semver", "minor"}, tmp)
+	})
+
+	expected := fmt.Sprintf("Auto-initialized %s with default version", filepath.Join(tmp, ".version"))
+	if !strings.Contains(output, expected) {
+		t.Errorf("expected feedback %q, got %q", expected, output)
+	}
+}
+
 func TestCLI_BumpMajorCommand(t *testing.T) {
 	tmp := t.TempDir()
 	writeVersionFile(t, tmp, "1.2.3")
@@ -73,6 +99,19 @@ func TestCLI_BumpMajorCommand(t *testing.T) {
 	content, _ := os.ReadFile(filepath.Join(tmp, ".version"))
 	if got := strings.TrimSpace(string(content)); got != "2.0.0" {
 		t.Errorf("expected 2.0.0, got %q", got)
+	}
+}
+
+func TestCLI_BumpMajorCommand_AutoInitFeedback(t *testing.T) {
+	tmp := t.TempDir()
+
+	output := captureStdout(func() {
+		runCLITest(t, []string{"semver", "major"}, tmp)
+	})
+
+	expected := fmt.Sprintf("Auto-initialized %s with default version", filepath.Join(tmp, ".version"))
+	if !strings.Contains(output, expected) {
+		t.Errorf("expected feedback %q, got %q", expected, output)
 	}
 }
 
@@ -97,6 +136,19 @@ func TestCLI_PreCommand_Increment(t *testing.T) {
 	content, _ := os.ReadFile(filepath.Join(tmp, ".version"))
 	if got := strings.TrimSpace(string(content)); got != "1.2.3-beta.4" {
 		t.Errorf("expected 1.2.3-beta.4, got %q", got)
+	}
+}
+
+func TestCLI_PreCommand_AutoInitFeedback(t *testing.T) {
+	tmp := t.TempDir()
+
+	output := captureStdout(func() {
+		runCLITest(t, []string{"semver", "pre", "--label", "alpha"}, tmp)
+	})
+
+	expected := fmt.Sprintf("Auto-initialized %s with default version", filepath.Join(tmp, ".version"))
+	if !strings.Contains(output, expected) {
+		t.Errorf("expected feedback %q, got %q", expected, output)
 	}
 }
 

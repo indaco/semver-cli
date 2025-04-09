@@ -29,9 +29,15 @@ func initVersion() func(ctx context.Context, cmd *cli.Command) error {
 func bumpPatch() func(ctx context.Context, cmd *cli.Command) error {
 	return func(ctx context.Context, cmd *cli.Command) error {
 		path := cmd.String("path")
-		if err := semver.InitializeVersionFile(path); err != nil {
+
+		created, _, err := semver.InitializeVersionFileWithFeedback(path)
+		if err != nil {
 			return err
 		}
+		if created {
+			fmt.Printf("Auto-initialized %s with default version\n", path)
+		}
+
 		return semver.UpdateVersion(path, "patch")
 	}
 }
@@ -40,9 +46,15 @@ func bumpPatch() func(ctx context.Context, cmd *cli.Command) error {
 func bumpMinor() func(ctx context.Context, cmd *cli.Command) error {
 	return func(ctx context.Context, cmd *cli.Command) error {
 		path := cmd.String("path")
-		if err := semver.InitializeVersionFile(path); err != nil {
+
+		created, _, err := semver.InitializeVersionFileWithFeedback(path)
+		if err != nil {
 			return err
 		}
+		if created {
+			fmt.Printf("Auto-initialized %s with default version\n", path)
+		}
+
 		return semver.UpdateVersion(path, "minor")
 	}
 }
@@ -51,9 +63,15 @@ func bumpMinor() func(ctx context.Context, cmd *cli.Command) error {
 func bumpMajor() func(ctx context.Context, cmd *cli.Command) error {
 	return func(ctx context.Context, cmd *cli.Command) error {
 		path := cmd.String("path")
-		if err := semver.InitializeVersionFile(path); err != nil {
+
+		created, _, err := semver.InitializeVersionFileWithFeedback(path)
+		if err != nil {
 			return err
 		}
+		if created {
+			fmt.Printf("Auto-initialized %s with default version\n", path)
+		}
+
 		return semver.UpdateVersion(path, "major")
 	}
 }
@@ -65,13 +83,12 @@ func setPreRelease() func(ctx context.Context, cmd *cli.Command) error {
 		label := cmd.String("label")
 		inc := cmd.Bool("inc")
 
-		if err := semver.InitializeVersionFile(path); err != nil {
-			return err
-		}
-
-		version, err := semver.ReadVersion(path)
+		created, version, err := semver.InitializeVersionFileWithFeedback(path)
 		if err != nil {
 			return err
+		}
+		if created {
+			fmt.Printf("Auto-initialized %s with default version\n", path)
 		}
 
 		if inc {
@@ -94,7 +111,7 @@ func showVersion() func(ctx context.Context, cmd *cli.Command) error {
 
 		version, err := semver.ReadVersion(path)
 		if err != nil {
-			return err // do not fallback or initialize
+			return fmt.Errorf("failed to read version file at %s: %w", path, err)
 		}
 
 		fmt.Println(version.String())

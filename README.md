@@ -247,6 +247,10 @@ semver bump minor
 
 semver bump major
 # => 2.0.0
+
+# .version = 1.3.0-alpha.1+build.123
+semver bump release
+# => 1.3.0
 ```
 
 You can also pass `--pre` and/or `--meta` flags to any bump:

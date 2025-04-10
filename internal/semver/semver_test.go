@@ -7,6 +7,8 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
+
+	"github.com/indaco/semver-cli/internal/testutils"
 )
 
 var originalExecCommand = execCommand
@@ -32,8 +34,9 @@ func TestSemVersion_String_WithBuildOnly(t *testing.T) {
 /* ------------------------------------------------------------------------- */
 
 func TestInitializeVersionFileWithFeedback(t *testing.T) {
+	tmpDir := t.TempDir()
 	t.Run("file already exists and is valid", func(t *testing.T) {
-		path := writeTempVersion(t, "2.3.4")
+		path := testutils.WriteTempVersionFile(t, tmpDir, "2.3.4")
 
 		created, err := InitializeVersionFileWithFeedback(path)
 		if err != nil {
@@ -46,7 +49,7 @@ func TestInitializeVersionFileWithFeedback(t *testing.T) {
 	})
 
 	t.Run("file already exists and is invalid", func(t *testing.T) {
-		path := writeTempVersion(t, "not-a-version")
+		path := testutils.WriteTempVersionFile(t, tmpDir, "not-a-version")
 
 		created, err := InitializeVersionFileWithFeedback(path)
 		if err != nil {
@@ -211,6 +214,7 @@ func TestParseVersion_NumberConversionErrors(t *testing.T) {
 /* ------------------------------------------------------------------------- */
 
 func TestUpdateVersion_Scenarios(t *testing.T) {
+	tmpDir := os.TempDir()
 	tests := []struct {
 		name        string
 		initial     string
@@ -237,7 +241,7 @@ func TestUpdateVersion_Scenarios(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			path := writeTempVersion(t, tt.initial)
+			path := testutils.WriteTempVersionFile(t, tmpDir, tt.initial)
 			defer os.Remove(path)
 
 			err := UpdateVersion(path, tt.level, tt.pre, tt.meta, tt.preserve)
@@ -256,7 +260,7 @@ func TestUpdateVersion_Scenarios(t *testing.T) {
 				t.Fatalf("unexpected error: %v", err)
 			}
 
-			got := strings.TrimSpace(readFile(t, path))
+			got := strings.TrimSpace(testutils.ReadFile(t, path))
 			if got != tt.expected {
 				t.Errorf("expected version %q, got %q", tt.expected, got)
 			}
@@ -282,7 +286,8 @@ func TestReadVersion_FileDoesNotExist(t *testing.T) {
 }
 
 func TestSetPreRelease(t *testing.T) {
-	path := writeTempVersion(t, "1.2.3")
+	tmpDir := os.TempDir()
+	path := testutils.WriteTempVersionFile(t, tmpDir, "1.2.3")
 	defer os.Remove(path)
 
 	version, _ := ReadVersion(path)
@@ -291,7 +296,7 @@ func TestSetPreRelease(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	got := strings.TrimSpace(readFile(t, path))
+	got := strings.TrimSpace(testutils.ReadFile(t, path))
 	want := "1.2.3-rc.1"
 	if got != want {
 		t.Errorf("expected %q, got %q", want, got)
@@ -574,29 +579,6 @@ func TestBumpByLabel(t *testing.T) {
 /* ------------------------------------------------------------------------- */
 /* HELPERS                                                                   */
 /* ------------------------------------------------------------------------- */
-
-func writeTempVersion(t *testing.T, content string) string {
-	t.Helper()
-	tmpFile, err := os.CreateTemp("", ".version")
-	if err != nil {
-		t.Fatal(err)
-	}
-	defer tmpFile.Close()
-
-	if _, err := tmpFile.WriteString(content); err != nil {
-		t.Fatal(err)
-	}
-	return tmpFile.Name()
-}
-
-func readFile(t *testing.T, path string) string {
-	t.Helper()
-	data, err := os.ReadFile(path)
-	if err != nil {
-		t.Fatal(err)
-	}
-	return string(data)
-}
 
 func fakeExecCommand(output string) func(string, ...string) *exec.Cmd {
 	return func(command string, args ...string) *exec.Cmd {

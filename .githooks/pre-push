@@ -15,4 +15,4 @@ golangci-lint run ./...
 
 echo ""
 echo '* Run: all tests and generate coverage report'
-go test ./... -covermode=atomic
+go test $(go list ./... | grep -Ev 'internal/testutils') -covermode=atomic

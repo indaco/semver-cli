@@ -1,7 +1,6 @@
 package main
 
 import (
-	"bytes"
 	"context"
 	"fmt"
 	"os"
@@ -11,6 +10,7 @@ import (
 	"testing"
 
 	"github.com/indaco/semver-cli/internal/semver"
+	"github.com/indaco/semver-cli/internal/testutils"
 )
 
 /* ------------------------------------------------------------------------- */
@@ -21,11 +21,11 @@ func TestCLI_InitCommand_CreatesFile(t *testing.T) {
 	tmp := t.TempDir()
 	versionPath := filepath.Join(tmp, ".version")
 
-	output := captureStdout(func() {
+	output := testutils.CaptureStdout(func() {
 		runCLITest(t, []string{"semver", "init"}, tmp)
 	})
 
-	got := readVersionFile(t, tmp)
+	got := testutils.ReadTempVersionFile(t, tmp)
 	if got != "0.1.0" {
 		t.Errorf("expected version '0.1.0', got %q", got)
 	}
@@ -52,11 +52,11 @@ func TestCLI_BumpCommand_Variants(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			tmp := t.TempDir()
-			writeVersionFile(t, tmp, tt.initial)
+			testutils.WriteTempVersionFile(t, tmp, tt.initial)
 
 			runCLITest(t, tt.args, tmp)
 
-			got := readVersionFile(t, tmp)
+			got := testutils.ReadTempVersionFile(t, tmp)
 			if got != tt.expected {
 				t.Errorf("expected %q, got %q", tt.expected, got)
 			}
@@ -79,7 +79,7 @@ func TestCLI_BumpCommand_AutoInitFeedback(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			tmp := t.TempDir()
-			output := captureStdout(func() {
+			output := testutils.CaptureStdout(func() {
 				runCLITest(t, tt.args, tmp)
 			})
 
@@ -121,11 +121,11 @@ func TestCLI_BumpReleaseCmd(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			tmp := t.TempDir()
-			writeVersionFile(t, tmp, tt.initialVersion)
+			testutils.WriteTempVersionFile(t, tmp, tt.initialVersion)
 
 			runCLITest(t, tt.args, tmp)
 
-			got := readVersionFile(t, tmp)
+			got := testutils.ReadTempVersionFile(t, tmp)
 			if got != tt.expected {
 				t.Errorf("expected %q, got %q", tt.expected, got)
 			}
@@ -187,11 +187,11 @@ func TestCLI_BumpNextCmd(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			tmp := t.TempDir()
-			writeVersionFile(t, tmp, tt.initial)
+			testutils.WriteTempVersionFile(t, tmp, tt.initial)
 
 			runCLITest(t, tt.args, tmp)
 
-			got := readVersionFile(t, tmp)
+			got := testutils.ReadTempVersionFile(t, tmp)
 			if got != tt.expected {
 				t.Errorf("expected version %q, got %q", tt.expected, got)
 			}
@@ -247,11 +247,11 @@ func TestCLI_BumpNextCommand_WithLabelAndMeta(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			tmp := t.TempDir()
-			writeVersionFile(t, tmp, tt.initial)
+			testutils.WriteTempVersionFile(t, tmp, tt.initial)
 
 			runCLITest(t, tt.args, tmp)
 
-			got := readVersionFile(t, tmp)
+			got := testutils.ReadTempVersionFile(t, tmp)
 			if got != tt.want {
 				t.Errorf("expected %q, got %q", tt.want, got)
 			}
@@ -261,11 +261,11 @@ func TestCLI_BumpNextCommand_WithLabelAndMeta(t *testing.T) {
 
 func TestCLI_PreCommand_StaticLabel(t *testing.T) {
 	tmp := t.TempDir()
-	writeVersionFile(t, tmp, "1.2.3")
+	testutils.WriteTempVersionFile(t, tmp, "1.2.3")
 
 	runCLITest(t, []string{"semver", "pre", "--label", "beta.1"}, tmp)
 
-	content := readVersionFile(t, tmp)
+	content := testutils.ReadTempVersionFile(t, tmp)
 	if got := content; got != "1.2.4-beta.1" {
 		t.Errorf("expected 1.2.4-beta.1, got %q", got)
 	}
@@ -273,11 +273,11 @@ func TestCLI_PreCommand_StaticLabel(t *testing.T) {
 
 func TestCLI_PreCommand_Increment(t *testing.T) {
 	tmp := t.TempDir()
-	writeVersionFile(t, tmp, "1.2.3-beta.3")
+	testutils.WriteTempVersionFile(t, tmp, "1.2.3-beta.3")
 
 	runCLITest(t, []string{"semver", "pre", "--label", "beta", "--inc"}, tmp)
 
-	content := readVersionFile(t, tmp)
+	content := testutils.ReadTempVersionFile(t, tmp)
 	if got := content; got != "1.2.3-beta.4" {
 		t.Errorf("expected 1.2.3-beta.4, got %q", got)
 	}
@@ -286,7 +286,7 @@ func TestCLI_PreCommand_Increment(t *testing.T) {
 func TestCLI_PreCommand_AutoInitFeedback(t *testing.T) {
 	tmp := t.TempDir()
 
-	output := captureStdout(func() {
+	output := testutils.CaptureStdout(func() {
 		runCLITest(t, []string{"semver", "pre", "--label", "alpha"}, tmp)
 	})
 
@@ -298,9 +298,9 @@ func TestCLI_PreCommand_AutoInitFeedback(t *testing.T) {
 
 func TestCLI_ShowCommand(t *testing.T) {
 	tmp := t.TempDir()
-	writeVersionFile(t, tmp, "9.8.7")
+	testutils.WriteTempVersionFile(t, tmp, "9.8.7")
 
-	output := captureStdout(func() {
+	output := testutils.CaptureStdout(func() {
 		runCLITest(t, []string{"semver", "show"}, tmp)
 	})
 
@@ -327,7 +327,7 @@ func TestCLI_SetVersionCommandVariants(t *testing.T) {
 
 			runCLITest(t, tt.args, tmp)
 
-			got := readVersionFile(t, tmp)
+			got := testutils.ReadTempVersionFile(t, tmp)
 			if got != tt.expected {
 				t.Errorf("expected %q, got %q", tt.expected, got)
 			}
@@ -354,9 +354,9 @@ func TestCLI_ValidateCommand_ValidCases(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			tmp := t.TempDir()
-			writeVersionFile(t, tmp, tt.version)
+			testutils.WriteTempVersionFile(t, tmp, tt.version)
 
-			output := captureStdout(func() {
+			output := testutils.CaptureStdout(func() {
 				runCLITest(t, []string{"semver", "validate"}, tmp)
 			})
 
@@ -402,7 +402,7 @@ func TestCLI_InitCommand_FileAlreadyExists(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	output := captureStdout(func() {
+	output := testutils.CaptureStdout(func() {
 		runCLITest(t, []string{"semver", "init"}, tmp)
 	})
 
@@ -613,7 +613,7 @@ func TestCLI_ValidateCommand_Errors(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			tmp := t.TempDir()
-			writeVersionFile(t, tmp, tt.version)
+			testutils.WriteTempVersionFile(t, tmp, tt.version)
 			app := newCLI(filepath.Join(tmp, ".version"))
 			err := app.Run(context.Background(), []string{"semver", "validate"})
 			if err == nil || !strings.Contains(err.Error(), tt.expectedError) {
@@ -651,9 +651,9 @@ func TestCLI_ShowCommand_NoAutoInit_MissingFile(t *testing.T) {
 }
 func TestCLI_ShowCommand_NoAutoInit_FileExists(t *testing.T) {
 	tmp := t.TempDir()
-	writeVersionFile(t, tmp, "1.2.3")
+	testutils.WriteTempVersionFile(t, tmp, "1.2.3")
 
-	output := captureStdout(func() {
+	output := testutils.CaptureStdout(func() {
 		runCLITest(t, []string{"semver", "show", "--no-auto-init"}, tmp)
 	})
 
@@ -708,7 +708,7 @@ func TestBumpReleaseCmd_ErrorOnInitVersionFile(t *testing.T) {
 
 func TestBumpReleaseCmd_ErrorOnReadVersion(t *testing.T) {
 	tmp := t.TempDir()
-	versionPath := writeVersionFile(t, tmp, "invalid-version")
+	versionPath := testutils.WriteTempVersionFile(t, tmp, "invalid-version")
 
 	app := newCLI(versionPath)
 
@@ -778,7 +778,7 @@ func TestCLI_BumpNextCmd_Errors(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			if tt.skipOnWindows && isWindows() {
+			if tt.skipOnWindows && testutils.IsWindows() {
 				t.Skip("skipping test on Windows")
 			}
 
@@ -819,7 +819,7 @@ func TestCLI_BumpNextCmd_InitVersionFileFails(t *testing.T) {
 
 func TestCLI_BumpNextCmd_BumpNextFails(t *testing.T) {
 	tmp := t.TempDir()
-	versionPath := writeVersionFile(t, tmp, "1.2.3")
+	versionPath := testutils.WriteTempVersionFile(t, tmp, "1.2.3")
 
 	original := semver.BumpNextFunc
 	semver.BumpNextFunc = func(v semver.SemVersion) (semver.SemVersion, error) {
@@ -867,7 +867,7 @@ func TestCLI_BumpNextCmd_SaveVersionFails(t *testing.T) {
 func TestCLI_BumpNextCommand_InvalidLabel(t *testing.T) {
 	if os.Getenv("TEST_SEMVER_BUMP_NEXT_INVALID_LABEL") == "1" {
 		tmp := t.TempDir()
-		versionPath := writeVersionFile(t, tmp, "1.2.3")
+		versionPath := testutils.WriteTempVersionFile(t, tmp, "1.2.3")
 
 		app := newCLI(versionPath)
 		err := app.Run(context.Background(), []string{
@@ -896,7 +896,7 @@ func TestCLI_BumpNextCommand_InvalidLabel(t *testing.T) {
 
 func TestCLI_BumpNextCmd_BumpByLabelFails(t *testing.T) {
 	tmp := t.TempDir()
-	versionPath := writeVersionFile(t, tmp, "1.2.3")
+	versionPath := testutils.WriteTempVersionFile(t, tmp, "1.2.3")
 
 	original := semver.BumpByLabelFunc
 	semver.BumpByLabelFunc = func(v semver.SemVersion, label string) (semver.SemVersion, error) {
@@ -919,42 +919,6 @@ func TestCLI_BumpNextCmd_BumpByLabelFails(t *testing.T) {
 /* ------------------------------------------------------------------------- */
 /* HELPERS                                                                   */
 /* ------------------------------------------------------------------------- */
-func writeVersionFile(t *testing.T, dir, version string) string {
-	t.Helper()
-	path := filepath.Join(dir, ".version")
-	if err := os.WriteFile(path, []byte(version+"\n"), semver.VersionFilePerm); err != nil {
-		t.Fatal(err)
-	}
-	return path
-}
-
-func readVersionFile(t *testing.T, dir string) string {
-	t.Helper()
-	data, err := os.ReadFile(filepath.Join(dir, ".version"))
-	if err != nil {
-		t.Fatalf("failed to read .version file: %v", err)
-	}
-	return strings.TrimSpace(string(data))
-}
-
-func captureStdout(f func()) string {
-	old := os.Stdout
-	r, w, _ := os.Pipe()
-	os.Stdout = w
-
-	f()
-
-	w.Close()
-	os.Stdout = old
-
-	var buf bytes.Buffer
-	_, _ = buf.ReadFrom(r)
-	return strings.TrimSpace(buf.String())
-}
-
-func isWindows() bool {
-	return strings.Contains(strings.ToLower(os.Getenv("OS")), "windows")
-}
 
 func runCLITest(t *testing.T, args []string, workdir string) {
 	t.Helper()

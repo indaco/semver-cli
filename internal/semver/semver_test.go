@@ -210,125 +210,57 @@ func TestParseVersion_NumberConversionErrors(t *testing.T) {
 /* VERSION UPDATES                                                           */
 /* ------------------------------------------------------------------------- */
 
-func TestUpdateVersionWithPreRelease(t *testing.T) {
-	path := writeTempVersion(t, "1.2.3-alpha")
-	defer os.Remove(path)
-
-	if err := UpdateVersion(path, "minor", "", ""); err != nil {
-		t.Fatal(err)
-	}
-	got := strings.TrimSpace(readFile(t, path))
-	expected := "1.3.0"
-	if got != expected {
-		t.Errorf("expected %q, got %q", expected, got)
-	}
-}
-
-func TestUpdateVersion_Patch(t *testing.T) {
-	path := writeTempVersion(t, "1.2.3-beta")
-	defer os.Remove(path)
-
-	err := UpdateVersion(path, "patch", "", "")
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	got := strings.TrimSpace(readFile(t, path))
-	expected := "1.2.4"
-	if got != expected {
-		t.Errorf("expected %q, got %q", expected, got)
-	}
-}
-
-func TestUpdateVersion_Major(t *testing.T) {
-	path := writeTempVersion(t, "1.2.3-beta.1")
-	defer os.Remove(path)
-
-	err := UpdateVersion(path, "major", "", "")
-	if err != nil {
-		t.Fatal(err)
+func TestUpdateVersion_Scenarios(t *testing.T) {
+	tests := []struct {
+		name        string
+		initial     string
+		level       string
+		pre         string
+		meta        string
+		preserve    bool
+		expected    string
+		expectErr   bool
+		expectedErr string
+	}{
+		{"patch bump", "1.2.3", "patch", "", "", false, "1.2.4", false, ""},
+		{"minor bump", "1.2.3", "minor", "", "", false, "1.3.0", false, ""},
+		{"major bump", "1.2.3", "major", "", "", false, "2.0.0", false, ""},
+		{"with pre-release", "1.2.3", "patch", "alpha.1", "", false, "1.2.4-alpha.1", false, ""},
+		{"with metadata", "1.2.3", "patch", "", "ci.123", false, "1.2.4+ci.123", false, ""},
+		{"with pre + metadata", "1.2.3", "patch", "rc.1", "ci.456", false, "1.2.4-rc.1+ci.456", false, ""},
+		{"preserve metadata", "1.2.3+build.789", "patch", "", "", true, "1.2.4+build.789", false, ""},
+		{"clear metadata", "1.2.3+build.789", "patch", "", "", false, "1.2.4", false, ""},
+		{"preserve metadata but override", "1.2.3+build.789", "patch", "", "custom.1", true, "1.2.4+custom.1", false, ""},
+		{"invalid bump level", "1.2.3", "banana", "", "", false, "", true, "invalid bump type"},
+		{"invalid initial version", "not-a-version", "patch", "", "", false, "", true, "invalid version format"},
 	}
 
-	got := strings.TrimSpace(readFile(t, path))
-	expected := "2.0.0"
-	if got != expected {
-		t.Errorf("expected %q, got %q", expected, got)
-	}
-}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			path := writeTempVersion(t, tt.initial)
+			defer os.Remove(path)
 
-func TestUpdateVersion_WithPreRelease(t *testing.T) {
-	path := writeTempVersion(t, "1.2.3")
-	defer os.Remove(path)
+			err := UpdateVersion(path, tt.level, tt.pre, tt.meta, tt.preserve)
 
-	err := UpdateVersion(path, "patch", "rc.1", "")
-	if err != nil {
-		t.Fatal(err)
-	}
+			if tt.expectErr {
+				if err == nil {
+					t.Fatal("expected error, got nil")
+				}
+				if !strings.Contains(err.Error(), tt.expectedErr) {
+					t.Errorf("expected error to contain %q, got %v", tt.expectedErr, err)
+				}
+				return
+			}
 
-	got := strings.TrimSpace(readFile(t, path))
-	expected := "1.2.4-rc.1"
-	if got != expected {
-		t.Errorf("expected %q, got %q", expected, got)
-	}
-}
+			if err != nil {
+				t.Fatalf("unexpected error: %v", err)
+			}
 
-func TestUpdateVersion_WithPreReleaseAndBuild(t *testing.T) {
-	path := writeTempVersion(t, "1.2.3")
-	defer os.Remove(path)
-
-	err := UpdateVersion(path, "patch", "rc.2", "ci.456")
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	got := strings.TrimSpace(readFile(t, path))
-	expected := "1.2.4-rc.2+ci.456"
-	if got != expected {
-		t.Errorf("expected %q, got %q", expected, got)
-	}
-}
-
-func TestUpdateVersion_WithBuildMetadataOnly(t *testing.T) {
-	path := writeTempVersion(t, "1.2.3")
-	defer os.Remove(path)
-
-	err := UpdateVersion(path, "patch", "", "build.789")
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	got := strings.TrimSpace(readFile(t, path))
-	expected := "1.2.4+build.789"
-	if got != expected {
-		t.Errorf("expected %q, got %q", expected, got)
-	}
-}
-
-func TestUpdateVersion_UnknownLevel(t *testing.T) {
-	path := writeTempVersion(t, "1.2.3")
-	defer os.Remove(path)
-
-	err := UpdateVersion(path, "invalid", "", "")
-	if err == nil {
-		t.Fatal("expected error for unknown level, got nil")
-	}
-
-	if !strings.Contains(err.Error(), "invalid bump type") {
-		t.Errorf("expected 'unknown level' error, got %v", err)
-	}
-}
-
-func TestUpdateVersion_InvalidVersionFile(t *testing.T) {
-	path := writeTempVersion(t, "not-a-version")
-	defer os.Remove(path)
-
-	err := UpdateVersion(path, "patch", "", "")
-	if err == nil {
-		t.Fatal("expected error due to invalid version, got nil")
-	}
-
-	if !strings.Contains(err.Error(), "invalid version format") {
-		t.Errorf("unexpected error: %v", err)
+			got := strings.TrimSpace(readFile(t, path))
+			if got != tt.expected {
+				t.Errorf("expected version %q, got %q", tt.expected, got)
+			}
+		})
 	}
 }
 

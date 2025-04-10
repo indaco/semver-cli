@@ -62,6 +62,10 @@ func newCLI(defaultPath string) *cli.Command {
 						Name:  "meta",
 						Usage: "Optional build metadata",
 					},
+					&cli.BoolFlag{
+						Name:  "preserve-meta",
+						Usage: "Preserve existing build metadata when bumping",
+					},
 				},
 				Commands: []*cli.Command{
 					{

@@ -38,12 +38,13 @@ func bumpPatch() func(ctx context.Context, cmd *cli.Command) error {
 		path := cmd.String("path")
 		pre := cmd.String("pre")
 		meta := cmd.String("meta")
+		preserve := cmd.Bool("preserve-meta")
 
 		if _, err := getOrInitVersionFile(cmd); err != nil {
 			return err
 		}
 
-		return semver.UpdateVersion(path, "patch", pre, meta)
+		return semver.UpdateVersion(path, "patch", pre, meta, preserve)
 	}
 }
 
@@ -53,12 +54,13 @@ func bumpMinor() func(ctx context.Context, cmd *cli.Command) error {
 		path := cmd.String("path")
 		pre := cmd.String("pre")
 		meta := cmd.String("meta")
+		preserve := cmd.Bool("preserve-meta")
 
 		if _, err := getOrInitVersionFile(cmd); err != nil {
 			return err
 		}
 
-		return semver.UpdateVersion(path, "minor", pre, meta)
+		return semver.UpdateVersion(path, "minor", pre, meta, preserve)
 	}
 }
 
@@ -68,12 +70,13 @@ func bumpMajor() func(ctx context.Context, cmd *cli.Command) error {
 		path := cmd.String("path")
 		pre := cmd.String("pre")
 		meta := cmd.String("meta")
+		preserve := cmd.Bool("preserve-meta")
 
 		if _, err := getOrInitVersionFile(cmd); err != nil {
 			return err
 		}
 
-		return semver.UpdateVersion(path, "major", pre, meta)
+		return semver.UpdateVersion(path, "major", pre, meta, preserve)
 	}
 }
 

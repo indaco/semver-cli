@@ -262,6 +262,21 @@ semver bump major --pre rc.1 --meta build.7
 # => 2.0.0-rc.1+build.7
 ```
 
+> [!NOTE]
+> By default, any existing build metadata (the part after `+`) is **cleared** when bumping the version.
+
+To **preserve** existing metadata, pass the `--preserve-meta` flag:
+
+```bash
+# .version = 1.2.3+build.789
+semver bump patch --preserve-meta
+# => 1.2.4+build.789
+
+# .version = 1.2.3+build.789
+semver bump patch --meta new.build
+# => 1.2.4+new.build (overrides existing metadata)
+```
+
 **Manage pre-release versions**
 
 ```bash

@@ -118,9 +118,10 @@ func SaveVersion(path string, version SemVersion) error {
 	return os.WriteFile(path, []byte(version.String()+"\n"), VersionFilePerm)
 }
 
-// UpdateVersion bumps the version at the given file path by the specified level:
-// "patch", "minor", or "major". It resets any pre-release identifiers.
-func UpdateVersion(path, bumpType, pre, meta string) error {
+// UpdateVersion updates the semantic version in the given file based on the bump type (patch, minor, major),
+// and optionally sets the pre-release and build metadata strings.
+// If preserve is true and meta is empty, existing build metadata is retained.
+func UpdateVersion(path string, bumpType string, pre string, meta string, preserve bool) error {
 	version, err := ReadVersion(path)
 	if err != nil {
 		return err
@@ -140,8 +141,15 @@ func UpdateVersion(path, bumpType, pre, meta string) error {
 		return fmt.Errorf("invalid bump type: %s", bumpType)
 	}
 
+	// Always reset pre-release when bumping
 	version.PreRelease = pre
-	version.Build = meta
+
+	// Handle build metadata
+	if meta != "" {
+		version.Build = meta
+	} else if !preserve {
+		version.Build = ""
+	}
 
 	return SaveVersion(path, version)
 }

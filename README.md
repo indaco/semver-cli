@@ -43,31 +43,24 @@
 
 ## ✨ Features
 
-- [SemVer 2.0.0](https://semver.org/) compliant
-- **Lightweight .version file** to store and track version across environments
-- `init` command to bootstrap the .version file from Git or default to `0.1.0`
-- Bump versions with patch, minor, or major
-- Add or update **pre-release labels** like `alpha`, `beta.1`, `rc.2`, etc.
-- Auto-increment pre-releases (`--inc`)
-- `set` command for full manual control (including pre-release)
-- `show` current version — perfect for CI/CD build outputs
-- `validate` the `.version` file for correctness
-- `--no-auto-init` mode for strict CI/CD environments
-- Configurable via flag, environment, or `.semver.yaml`
+- ⚙️  Lightweight `.version` file — SemVer 2.0.0 compliant
+- 🚀  `init`, `bump`, `set`, `show`, `validate` — intuitive version control
+- 🔁  Pre-release support with auto-increment (`alpha`, `beta.1`, `rc.2`, `--inc`)
+- 🛠️  Works standalone or in CI — `--no-auto-init` for strict mode
+- ⚡  Configurable via flags, env vars, or `.semver.yaml`
 
 ## ❓ Why .version?
 
-Many Go projects — especially CLIs and internal tools — need a simple way to track their version outside of `go.mod`.
+Most projects — especially CLIs, scripts, and internal tools — need a clean way to manage versioning outside of `go.mod` or `package.json`.
 
-Using a `.version` file:
+The `.version` file:
 
-- ✅ Keeps the version readable and accessible at the project root
-- ✅ Works with any language, not just Go
-- ✅ Is easy to diff and track in Git
-- ✅ Plays well with CI/CD pipelines (e.g., Docker labels, GitHub Actions)
-- ✅ Lets you embed the version with something like `getVersion()` in your app
+- ✅ Works in **any language**, not just Go
+- ✅ Fits seamlessly into CI/CD (e.g., Docker labels, GitHub Actions)
+- ✅ Pairs with `getVersion()` or env injection in your app
+- ✅ Keeps versioning simple, manual, and under your control
 
-This project was built with that workflow in mind — it's not for every use case, but if you're managing your app version manually, `.version` is a clean and flexible choice.
+It’s not trying to replace `git tag` or build tools — just making versioning predictable and portable.
 
 ## 💻 Installation
 

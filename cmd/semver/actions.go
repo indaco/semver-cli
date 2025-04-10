@@ -80,6 +80,34 @@ func bumpMajor() func(ctx context.Context, cmd *cli.Command) error {
 	}
 }
 
+func bumpRelease() func(ctx context.Context, cmd *cli.Command) error {
+	return func(ctx context.Context, cmd *cli.Command) error {
+		path := cmd.String("path")
+		preserveMeta := cmd.Bool("preserve-meta")
+
+		if _, err := getOrInitVersionFile(cmd); err != nil {
+			return err
+		}
+
+		version, err := semver.ReadVersion(path)
+		if err != nil {
+			return fmt.Errorf("failed to read version: %w", err)
+		}
+
+		version.PreRelease = ""
+		if !preserveMeta {
+			version.Build = ""
+		}
+
+		if err := semver.SaveVersion(path, version); err != nil {
+			return fmt.Errorf("failed to save version: %w", err)
+		}
+
+		fmt.Printf("Promoted to release version: %s\n", version.String())
+		return nil
+	}
+}
+
 // setPreRelease sets or increments the pre-release label.
 func setPreRelease() func(ctx context.Context, cmd *cli.Command) error {
 	return func(ctx context.Context, cmd *cli.Command) error {

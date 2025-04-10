@@ -1,0 +1,38 @@
+run:
+  timeout: 2m
+  tests: true
+
+linters:
+  default: all
+  enable:
+    - govet # builtin static analysis
+    - revive # stylistic linting (lightweight alternative to golint)
+    - errcheck # check for ignored errors
+    - staticcheck # powerful general-purpose linter
+    - gofmt # formatting
+    - goimports # import cleanup
+    - typecheck # catch type issues
+    - unused # detect unused variables/functions
+    - ineffassign # catch ineffective assignments
+    - bodyclose # ensure response bodies are closed
+    - gocritic # catch subtle issues
+    - asasalint # detects redundant assignments (like `a = a`)
+
+linters-settings:
+  revive:
+    ignore-generated-header: true
+    severity: warning
+    rules:
+      - name: dot-imports
+        severity: error
+      - name: var-naming
+      - name: indent-error-flow
+
+issues:
+  exclude-rules:
+    - path: _test\.go
+      text: 'should have comment' # ignore missing doc comments in test helpers
+
+output:
+  sort-results: true
+  formats: colored-line-number

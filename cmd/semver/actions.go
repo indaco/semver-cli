@@ -36,12 +36,15 @@ func initVersion() func(ctx context.Context, cmd *cli.Command) error {
 func bumpPatch() func(ctx context.Context, cmd *cli.Command) error {
 	return func(ctx context.Context, cmd *cli.Command) error {
 		path := cmd.String("path")
+		pre := cmd.String("pre")
+		meta := cmd.String("meta")
+		preserve := cmd.Bool("preserve-meta")
 
 		if _, err := getOrInitVersionFile(cmd); err != nil {
 			return err
 		}
 
-		return semver.UpdateVersion(path, "patch")
+		return semver.UpdateVersion(path, "patch", pre, meta, preserve)
 	}
 }
 
@@ -49,12 +52,15 @@ func bumpPatch() func(ctx context.Context, cmd *cli.Command) error {
 func bumpMinor() func(ctx context.Context, cmd *cli.Command) error {
 	return func(ctx context.Context, cmd *cli.Command) error {
 		path := cmd.String("path")
+		pre := cmd.String("pre")
+		meta := cmd.String("meta")
+		preserve := cmd.Bool("preserve-meta")
 
 		if _, err := getOrInitVersionFile(cmd); err != nil {
 			return err
 		}
 
-		return semver.UpdateVersion(path, "minor")
+		return semver.UpdateVersion(path, "minor", pre, meta, preserve)
 	}
 }
 
@@ -62,12 +68,15 @@ func bumpMinor() func(ctx context.Context, cmd *cli.Command) error {
 func bumpMajor() func(ctx context.Context, cmd *cli.Command) error {
 	return func(ctx context.Context, cmd *cli.Command) error {
 		path := cmd.String("path")
+		pre := cmd.String("pre")
+		meta := cmd.String("meta")
+		preserve := cmd.Bool("preserve-meta")
 
 		if _, err := getOrInitVersionFile(cmd); err != nil {
 			return err
 		}
 
-		return semver.UpdateVersion(path, "major")
+		return semver.UpdateVersion(path, "major", pre, meta, preserve)
 	}
 }
 
@@ -133,12 +142,14 @@ func setVersion() func(ctx context.Context, cmd *cli.Command) error {
 
 		raw := args.Get(0)
 		pre := cmd.String("pre")
+		meta := cmd.String("meta")
 
 		version, err := semver.ParseVersion(raw)
 		if err != nil {
 			return fmt.Errorf("invalid version: %w", err)
 		}
 		version.PreRelease = pre
+		version.Build = meta
 
 		if err := semver.SaveVersion(path, version); err != nil {
 			return fmt.Errorf("failed to save version: %w", err)

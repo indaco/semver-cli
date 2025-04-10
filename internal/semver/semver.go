@@ -17,29 +17,49 @@ type SemVersion struct {
 	Minor      int
 	Patch      int
 	PreRelease string
+	Build      string
 }
 
 const VersionFilePerm = 0600
 
 var (
-	// versionRegex matches semantic version strings with optional pre-release.
-	versionRegex = regexp.MustCompile(`^([^.]+)\.([^.]+)\.([^-]+)(?:-([\w.-]+))?$`)
+	// versionRegex matches semantic version strings with optional "v" prefix,
+	// optional pre-release (e.g., "-beta.1"), and optional build metadata (e.g., "+build.123").
+	// It captures:
+	//   1. Major version
+	//   2. Minor version
+	//   3. Patch version
+	//   4. (optional) Pre-release identifier
+	//   5. (optional) Build metadata
+	versionRegex = regexp.MustCompile(
+		`^v?([^\.\-+]+)\.([^\.\-+]+)\.([^\.\-+]+)` + // major.minor.patch
+			`(?:-([0-9A-Za-z\-\.]+))?` + // optional pre-release
+			`(?:\+([0-9A-Za-z\-\.]+))?$`, // optional build metadata
+	)
 
-	// execCommand is used to run external commands (e.g., git).
-	// It can be overridden in tests.
-	execCommand = exec.Command
-
+	// errInvalidVersion is returned when a version string does not conform
+	// to the expected semantic version format.
 	errInvalidVersion = errors.New("invalid version format")
 
+	// execCommand is a wrapper for exec.Command used to run external commands (e.g., git).
+	// It can be overridden in tests for mocking behavior.
+	execCommand = exec.Command
+
+	// InitializeVersionFile is an alias for the internal initializeVersionFile function.
+	// It can be overridden in tests for mocking behavior.
 	InitializeVersionFile = initializeVersionFile
 )
 
 // String returns the string representation of the semantic version.
 func (v SemVersion) String() string {
+	s := fmt.Sprintf("%d.%d.%d", v.Major, v.Minor, v.Patch)
 	if v.PreRelease != "" {
-		return fmt.Sprintf("%d.%d.%d-%s", v.Major, v.Minor, v.Patch, v.PreRelease)
+		s += "-" + v.PreRelease
 	}
-	return fmt.Sprintf("%d.%d.%d", v.Major, v.Minor, v.Patch)
+	if v.Build != "" {
+		s += "+" + v.Build
+	}
+	return s
 }
 
 // InitializeVersionFile initializes a .version file at the given path.
@@ -98,29 +118,37 @@ func SaveVersion(path string, version SemVersion) error {
 	return os.WriteFile(path, []byte(version.String()+"\n"), VersionFilePerm)
 }
 
-// UpdateVersion bumps the version at the given file path by the specified level:
-// "patch", "minor", or "major". It resets any pre-release identifiers.
-func UpdateVersion(path, level string) error {
+// UpdateVersion updates the semantic version in the given file based on the bump type (patch, minor, major),
+// and optionally sets the pre-release and build metadata strings.
+// If preserve is true and meta is empty, existing build metadata is retained.
+func UpdateVersion(path string, bumpType string, pre string, meta string, preserve bool) error {
 	version, err := ReadVersion(path)
 	if err != nil {
 		return err
 	}
 
-	switch level {
+	switch bumpType {
 	case "patch":
 		version.Patch++
-		version.PreRelease = ""
 	case "minor":
 		version.Minor++
 		version.Patch = 0
-		version.PreRelease = ""
 	case "major":
 		version.Major++
 		version.Minor = 0
 		version.Patch = 0
-		version.PreRelease = ""
 	default:
-		return errors.New("unknown level: " + level)
+		return fmt.Errorf("invalid bump type: %s", bumpType)
+	}
+
+	// Always reset pre-release when bumping
+	version.PreRelease = pre
+
+	// Handle build metadata
+	if meta != "" {
+		version.Build = meta
+	} else if !preserve {
+		version.Build = ""
 	}
 
 	return SaveVersion(path, version)
@@ -158,7 +186,6 @@ func ParseVersion(s string) (SemVersion, error) {
 		return SemVersion{}, errInvalidVersion
 	}
 
-	// The regex ensures these will always be digits, but parse defensively
 	major, err := strconv.Atoi(matches[1])
 	if err != nil {
 		return SemVersion{}, fmt.Errorf("%w: invalid major version: %v", errInvalidVersion, err)
@@ -171,9 +198,11 @@ func ParseVersion(s string) (SemVersion, error) {
 	if err != nil {
 		return SemVersion{}, fmt.Errorf("%w: invalid patch version: %v", errInvalidVersion, err)
 	}
-	pre := matches[4]
 
-	return SemVersion{major, minor, patch, pre}, nil
+	pre := matches[4]
+	build := matches[5]
+
+	return SemVersion{Major: major, Minor: minor, Patch: patch, PreRelease: pre, Build: build}, nil
 }
 
 func formatPreRelease(base string, num int) string {

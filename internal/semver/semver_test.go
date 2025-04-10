@@ -214,7 +214,7 @@ func TestUpdateVersionWithPreRelease(t *testing.T) {
 	path := writeTempVersion(t, "1.2.3-alpha")
 	defer os.Remove(path)
 
-	if err := UpdateVersion(path, "minor"); err != nil {
+	if err := UpdateVersion(path, "minor", "", ""); err != nil {
 		t.Fatal(err)
 	}
 	got := strings.TrimSpace(readFile(t, path))
@@ -228,7 +228,7 @@ func TestUpdateVersion_Patch(t *testing.T) {
 	path := writeTempVersion(t, "1.2.3-beta")
 	defer os.Remove(path)
 
-	err := UpdateVersion(path, "patch")
+	err := UpdateVersion(path, "patch", "", "")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -244,7 +244,7 @@ func TestUpdateVersion_Major(t *testing.T) {
 	path := writeTempVersion(t, "1.2.3-beta.1")
 	defer os.Remove(path)
 
-	err := UpdateVersion(path, "major")
+	err := UpdateVersion(path, "major", "", "")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -256,16 +256,64 @@ func TestUpdateVersion_Major(t *testing.T) {
 	}
 }
 
+func TestUpdateVersion_WithPreRelease(t *testing.T) {
+	path := writeTempVersion(t, "1.2.3")
+	defer os.Remove(path)
+
+	err := UpdateVersion(path, "patch", "rc.1", "")
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	got := strings.TrimSpace(readFile(t, path))
+	expected := "1.2.4-rc.1"
+	if got != expected {
+		t.Errorf("expected %q, got %q", expected, got)
+	}
+}
+
+func TestUpdateVersion_WithPreReleaseAndBuild(t *testing.T) {
+	path := writeTempVersion(t, "1.2.3")
+	defer os.Remove(path)
+
+	err := UpdateVersion(path, "patch", "rc.2", "ci.456")
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	got := strings.TrimSpace(readFile(t, path))
+	expected := "1.2.4-rc.2+ci.456"
+	if got != expected {
+		t.Errorf("expected %q, got %q", expected, got)
+	}
+}
+
+func TestUpdateVersion_WithBuildMetadataOnly(t *testing.T) {
+	path := writeTempVersion(t, "1.2.3")
+	defer os.Remove(path)
+
+	err := UpdateVersion(path, "patch", "", "build.789")
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	got := strings.TrimSpace(readFile(t, path))
+	expected := "1.2.4+build.789"
+	if got != expected {
+		t.Errorf("expected %q, got %q", expected, got)
+	}
+}
+
 func TestUpdateVersion_UnknownLevel(t *testing.T) {
 	path := writeTempVersion(t, "1.2.3")
 	defer os.Remove(path)
 
-	err := UpdateVersion(path, "invalid")
+	err := UpdateVersion(path, "invalid", "", "")
 	if err == nil {
 		t.Fatal("expected error for unknown level, got nil")
 	}
 
-	if !strings.Contains(err.Error(), "unknown level") {
+	if !strings.Contains(err.Error(), "invalid bump type") {
 		t.Errorf("expected 'unknown level' error, got %v", err)
 	}
 }
@@ -274,7 +322,7 @@ func TestUpdateVersion_InvalidVersionFile(t *testing.T) {
 	path := writeTempVersion(t, "not-a-version")
 	defer os.Remove(path)
 
-	err := UpdateVersion(path, "patch")
+	err := UpdateVersion(path, "patch", "", "")
 	if err == nil {
 		t.Fatal("expected error due to invalid version, got nil")
 	}

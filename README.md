@@ -16,7 +16,7 @@
     <img src="https://goreportcard.com/badge/github.com/indaco/semver-cli" alt="Go Report Card" />
   </a>
   <a href="https://github.com/indaco/semver-cli/releases/latest">
-    <img src="https://img.shields.io/github/v/tag/indaco/semver-cli?label=version&sort=semver&color=4c1" alt="version" height="18">
+    <img src="https://img.shields.io/github/v/tag/indaco/semver-cli?label=version&sort=semver&color=4c1" alt="version">
   </a>
   <a href="https://pkg.go.dev/github.com/indaco/semver-cli" target="_blank">
     <img src="https://pkg.go.dev/badge/github.com/indaco/semver-cli.svg" alt="Go Reference" />
@@ -219,6 +219,20 @@ semver set 2.1.0 --pre beta.1
 # => .version is now 2.1.0-beta.1
 ```
 
+You can also attach build metadata:
+
+```bash
+semver set 1.0.0 --meta ci.001
+# => .version is now 1.0.0+ci.001
+```
+
+Or combine both:
+
+```bash
+semver set 1.0.0 --pre alpha --meta build.42
+# => .version is now 1.0.0-alpha+build.42
+```
+
 **Bump version**
 
 ```bash
@@ -233,6 +247,19 @@ semver bump minor
 
 semver bump major
 # => 2.0.0
+```
+
+You can also pass `--pre` and/or `--meta` flags to any bump:
+
+```bash
+semver bump patch --pre beta.1
+# => 1.2.4-beta.1
+
+semver bump minor --meta ci.123
+# => 1.3.0+ci.123
+
+semver bump major --pre rc.1 --meta build.7
+# => 2.0.0-rc.1+build.7
 ```
 
 **Manage pre-release versions**
@@ -254,15 +281,15 @@ semver pre --label alpha
 **Auto-increment pre-release label**
 
 ```bash
-# .version = 1.2.3-alpha.1
-semver pre --label alpha --inc
-# => 1.2.3-alpha.2
-```
-
-```bash
 # .version = 1.2.3
 semver pre --label alpha --inc
 # => 1.2.3-alpha.1
+```
+
+```bash
+# .version = 1.2.3-alpha.1
+semver pre --label alpha --inc
+# => 1.2.3-alpha.2
 ```
 
 **Validate .version file**

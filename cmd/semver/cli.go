@@ -53,6 +53,16 @@ func newCLI(defaultPath string) *cli.Command {
 				Name:      "bump",
 				Usage:     "Bump semantic version (patch, minor, major)",
 				UsageText: "semver bump <subcommand> [--flags]",
+				Flags: []cli.Flag{
+					&cli.StringFlag{
+						Name:  "pre",
+						Usage: "Optional pre-release label",
+					},
+					&cli.StringFlag{
+						Name:  "meta",
+						Usage: "Optional build metadata",
+					},
+				},
 				Commands: []*cli.Command{
 					{
 						Name:      "patch",

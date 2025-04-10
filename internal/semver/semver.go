@@ -23,19 +23,30 @@ type SemVersion struct {
 const VersionFilePerm = 0600
 
 var (
-	// versionRegex matches semantic version strings with optional pre-release.
+	// versionRegex matches semantic version strings with optional "v" prefix,
+	// optional pre-release (e.g., "-beta.1"), and optional build metadata (e.g., "+build.123").
+	// It captures:
+	//   1. Major version
+	//   2. Minor version
+	//   3. Patch version
+	//   4. (optional) Pre-release identifier
+	//   5. (optional) Build metadata
 	versionRegex = regexp.MustCompile(
-		`^v?([^\.\-+]+)\.([^\.\-+]+)\.([^\.\-+]+)` + // capture major, minor, patch loosely
+		`^v?([^\.\-+]+)\.([^\.\-+]+)\.([^\.\-+]+)` + // major.minor.patch
 			`(?:-([0-9A-Za-z\-\.]+))?` + // optional pre-release
 			`(?:\+([0-9A-Za-z\-\.]+))?$`, // optional build metadata
 	)
 
-	// execCommand is used to run external commands (e.g., git).
-	// It can be overridden in tests.
-	execCommand = exec.Command
-
+	// errInvalidVersion is returned when a version string does not conform
+	// to the expected semantic version format.
 	errInvalidVersion = errors.New("invalid version format")
 
+	// execCommand is a wrapper for exec.Command used to run external commands (e.g., git).
+	// It can be overridden in tests for mocking behavior.
+	execCommand = exec.Command
+
+	// InitializeVersionFile is an alias for the internal initializeVersionFile function.
+	// It can be overridden in tests for mocking behavior.
 	InitializeVersionFile = initializeVersionFile
 )
 
@@ -109,28 +120,28 @@ func SaveVersion(path string, version SemVersion) error {
 
 // UpdateVersion bumps the version at the given file path by the specified level:
 // "patch", "minor", or "major". It resets any pre-release identifiers.
-func UpdateVersion(path, level string) error {
+func UpdateVersion(path, bumpType, pre, meta string) error {
 	version, err := ReadVersion(path)
 	if err != nil {
 		return err
 	}
 
-	switch level {
+	switch bumpType {
 	case "patch":
 		version.Patch++
-		version.PreRelease = ""
 	case "minor":
 		version.Minor++
 		version.Patch = 0
-		version.PreRelease = ""
 	case "major":
 		version.Major++
 		version.Minor = 0
 		version.Patch = 0
-		version.PreRelease = ""
 	default:
-		return errors.New("unknown level: " + level)
+		return fmt.Errorf("invalid bump type: %s", bumpType)
 	}
+
+	version.PreRelease = pre
+	version.Build = meta
 
 	return SaveVersion(path, version)
 }

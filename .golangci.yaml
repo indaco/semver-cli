@@ -1,0 +1,46 @@
+version: '2'
+run:
+  tests: true
+linters:
+  enable:
+    - asasalint
+    - bodyclose
+    - gocritic
+    - revive
+  settings:
+    revive:
+      severity: warning
+      rules:
+        - name: dot-imports
+          severity: error
+        - name: var-naming
+        - name: indent-error-flow
+  exclusions:
+    generated: lax
+    presets:
+      - comments
+      - common-false-positives
+      - legacy
+      - std-error-handling
+    rules:
+      - path: _test\.go
+        text: should have comment
+    paths:
+      - third_party$
+      - builtin$
+      - examples$
+formatters:
+  enable:
+    - gofmt
+    - goimports
+  exclusions:
+    generated: lax
+    paths:
+      - third_party$
+      - builtin$
+      - examples$
+output:
+  formats:
+    text:
+      path: stdout
+      colors: true

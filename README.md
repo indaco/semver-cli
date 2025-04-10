@@ -274,6 +274,35 @@ semver bump patch --meta new.build
 # => 1.2.4+new.build (overrides existing metadata)
 ```
 
+**Smart bump logic (`bump next`)**
+
+Automatically determine the next version:
+
+```bash
+# .version = 1.2.3-alpha.1
+semver bump next
+# => 1.2.3
+
+# .version = 1.2.3
+semver bump next
+# => 1.2.4
+```
+
+Override bump with `--label`:
+
+```bash
+semver bump next --label minor
+# => 1.3.0
+
+semver bump next --label major --meta ci.9
+# => 2.0.0+ci.9
+
+semver bump next --label patch --preserve-meta
+# => bumps patch and keeps build metadata
+```
+
+Valid `--label` values: `patch`, `minor`, `major`.
+
 **Manage pre-release versions**
 
 ```bash

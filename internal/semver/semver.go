@@ -45,9 +45,17 @@ var (
 	// It can be overridden in tests for mocking behavior.
 	execCommand = exec.Command
 
-	// InitializeVersionFile is an alias for the internal initializeVersionFile function.
-	// It can be overridden in tests for mocking behavior.
-	InitializeVersionFile = initializeVersionFile
+	// InitializeVersionFileFunc is a function variable that initializes the version file.
+	// It points to the default initializeVersionFile implementation but can be overridden in tests.
+	InitializeVersionFileFunc = initializeVersionFile
+
+	// BumpNextFunc is a function variable for performing heuristic-based version bumps.
+	// It defaults to BumpNext but can be overridden in tests to simulate errors.
+	BumpNextFunc = BumpNext
+
+	// BumpByLabelFunc is a function variable for bumping a version using an explicit label (patch, minor, major).
+	// It defaults to BumpByLabel but can be overridden in tests to simulate errors.
+	BumpByLabelFunc = BumpByLabel
 )
 
 // String returns the string representation of the semantic version.
@@ -92,7 +100,7 @@ func InitializeVersionFileWithFeedback(path string) (created bool, err error) {
 		return false, nil
 	}
 
-	err = InitializeVersionFile(path)
+	err = InitializeVersionFileFunc(path)
 	if err != nil {
 		return false, err
 	}
@@ -203,6 +211,38 @@ func ParseVersion(s string) (SemVersion, error) {
 	build := matches[5]
 
 	return SemVersion{Major: major, Minor: minor, Patch: patch, PreRelease: pre, Build: build}, nil
+}
+
+// BumpNext applies heuristic-based smart bump logic.
+// - If it's a pre-release (e.g., alpha.1, rc.1), it promotes to final version.
+// - If it's a final release, it bumps patch by default.
+func BumpNext(v SemVersion) (SemVersion, error) {
+	// If the version has a pre-release label, strip it (promote to final)
+	if v.PreRelease != "" {
+		promoted := v
+		promoted.PreRelease = ""
+		return promoted, nil
+	}
+
+	if v.Major == 0 && v.Minor == 9 && v.Patch == 0 {
+		return SemVersion{Major: v.Major, Minor: v.Minor + 1, Patch: 0}, nil
+	}
+
+	// Default case: bump patch
+	return SemVersion{Major: v.Major, Minor: v.Minor, Patch: v.Patch + 1}, nil
+}
+
+func BumpByLabel(v SemVersion, label string) (SemVersion, error) {
+	switch label {
+	case "patch":
+		return SemVersion{Major: v.Major, Minor: v.Minor, Patch: v.Patch + 1}, nil
+	case "minor":
+		return SemVersion{Major: v.Major, Minor: v.Minor + 1, Patch: 0}, nil
+	case "major":
+		return SemVersion{Major: v.Major + 1, Minor: 0, Patch: 0}, nil
+	default:
+		return SemVersion{}, fmt.Errorf("invalid bump label: %s", label)
+	}
 }
 
 func formatPreRelease(base string, num int) string {

@@ -9,7 +9,7 @@ import (
 	"github.com/urfave/cli/v3"
 )
 
-func initVersion() func(ctx context.Context, cmd *cli.Command) error {
+func initVersionCmd() func(ctx context.Context, cmd *cli.Command) error {
 	return func(ctx context.Context, cmd *cli.Command) error {
 		path := cmd.String("path")
 
@@ -33,7 +33,7 @@ func initVersion() func(ctx context.Context, cmd *cli.Command) error {
 }
 
 // bumpPatch increments the patch version of the .version file.
-func bumpPatch() func(ctx context.Context, cmd *cli.Command) error {
+func bumpPatchCmd() func(ctx context.Context, cmd *cli.Command) error {
 	return func(ctx context.Context, cmd *cli.Command) error {
 		path := cmd.String("path")
 		pre := cmd.String("pre")
@@ -49,7 +49,7 @@ func bumpPatch() func(ctx context.Context, cmd *cli.Command) error {
 }
 
 // bumpMinor increments the minor version and resets patch.
-func bumpMinor() func(ctx context.Context, cmd *cli.Command) error {
+func bumpMinorCmd() func(ctx context.Context, cmd *cli.Command) error {
 	return func(ctx context.Context, cmd *cli.Command) error {
 		path := cmd.String("path")
 		pre := cmd.String("pre")
@@ -65,7 +65,7 @@ func bumpMinor() func(ctx context.Context, cmd *cli.Command) error {
 }
 
 // bumpMajor increments the major version and resets minor/patch.
-func bumpMajor() func(ctx context.Context, cmd *cli.Command) error {
+func bumpMajorCmd() func(ctx context.Context, cmd *cli.Command) error {
 	return func(ctx context.Context, cmd *cli.Command) error {
 		path := cmd.String("path")
 		pre := cmd.String("pre")
@@ -80,7 +80,7 @@ func bumpMajor() func(ctx context.Context, cmd *cli.Command) error {
 	}
 }
 
-func bumpRelease() func(ctx context.Context, cmd *cli.Command) error {
+func bumpReleaseCmd() func(ctx context.Context, cmd *cli.Command) error {
 	return func(ctx context.Context, cmd *cli.Command) error {
 		path := cmd.String("path")
 		preserveMeta := cmd.Bool("preserve-meta")
@@ -108,8 +108,59 @@ func bumpRelease() func(ctx context.Context, cmd *cli.Command) error {
 	}
 }
 
+func bumpNextCmd() func(ctx context.Context, cmd *cli.Command) error {
+	return func(ctx context.Context, cmd *cli.Command) error {
+		path := cmd.String("path")
+		label := cmd.String("label")
+		meta := cmd.String("meta")
+		preserveMeta := cmd.Bool("preserve-meta")
+
+		if _, err := getOrInitVersionFile(cmd); err != nil {
+			return err
+		}
+
+		current, err := semver.ReadVersion(path)
+		if err != nil {
+			return fmt.Errorf("failed to read version: %w", err)
+		}
+
+		var next semver.SemVersion
+
+		switch label {
+		case "patch", "minor", "major":
+			next, err = semver.BumpByLabelFunc(current, label)
+			if err != nil {
+				return fmt.Errorf("failed to bump version with label: %w", err)
+			}
+		case "":
+			next, err = semver.BumpNextFunc(current)
+			if err != nil {
+				return fmt.Errorf("failed to determine next version: %w", err)
+			}
+		default:
+			return cli.Exit("invalid --label: must be 'patch', 'minor', or 'major'", 1)
+		}
+
+		switch {
+		case meta != "":
+			next.Build = meta
+		case preserveMeta:
+			next.Build = current.Build
+		default:
+			next.Build = ""
+		}
+
+		if err := semver.SaveVersion(path, next); err != nil {
+			return fmt.Errorf("failed to save version: %w", err)
+		}
+
+		fmt.Printf("Bumped version from %s to %s\n", current.String(), next.String())
+		return nil
+	}
+}
+
 // setPreRelease sets or increments the pre-release label.
-func setPreRelease() func(ctx context.Context, cmd *cli.Command) error {
+func setPreReleaseCmd() func(ctx context.Context, cmd *cli.Command) error {
 	return func(ctx context.Context, cmd *cli.Command) error {
 		path := cmd.String("path")
 		label := cmd.String("label")
@@ -141,7 +192,7 @@ func setPreRelease() func(ctx context.Context, cmd *cli.Command) error {
 	}
 }
 
-func showVersion() func(ctx context.Context, cmd *cli.Command) error {
+func showVersionCmd() func(ctx context.Context, cmd *cli.Command) error {
 	return func(ctx context.Context, cmd *cli.Command) error {
 		_, err := getOrInitVersionFile(cmd)
 		if err != nil {
@@ -159,7 +210,7 @@ func showVersion() func(ctx context.Context, cmd *cli.Command) error {
 	}
 }
 
-func setVersion() func(ctx context.Context, cmd *cli.Command) error {
+func setVersionCmd() func(ctx context.Context, cmd *cli.Command) error {
 	return func(ctx context.Context, cmd *cli.Command) error {
 		path := cmd.String("path")
 		args := cmd.Args()
@@ -188,7 +239,7 @@ func setVersion() func(ctx context.Context, cmd *cli.Command) error {
 	}
 }
 
-func validateVersion() func(ctx context.Context, cmd *cli.Command) error {
+func validateVersionCmd() func(ctx context.Context, cmd *cli.Command) error {
 	return func(ctx context.Context, cmd *cli.Command) error {
 		path := cmd.String("path")
 		_, err := semver.ReadVersion(path)

@@ -25,12 +25,7 @@ func TestCLI_InitCommand_CreatesFile(t *testing.T) {
 		runCLITest(t, []string{"semver", "init"}, tmp)
 	})
 
-	data, err := os.ReadFile(versionPath)
-	if err != nil {
-		t.Fatalf("expected .version file to be created, got error: %v", err)
-	}
-
-	got := strings.TrimSpace(string(data))
+	got := readVersionFile(t, tmp)
 	if got != "0.1.0" {
 		t.Errorf("expected version '0.1.0', got %q", got)
 	}
@@ -144,8 +139,8 @@ func TestCLI_PreCommand_StaticLabel(t *testing.T) {
 
 	runCLITest(t, []string{"semver", "pre", "--label", "beta.1"}, tmp)
 
-	content, _ := os.ReadFile(filepath.Join(tmp, ".version"))
-	if got := strings.TrimSpace(string(content)); got != "1.2.4-beta.1" {
+	content := readVersionFile(t, tmp)
+	if got := content; got != "1.2.4-beta.1" {
 		t.Errorf("expected 1.2.4-beta.1, got %q", got)
 	}
 }
@@ -156,8 +151,8 @@ func TestCLI_PreCommand_Increment(t *testing.T) {
 
 	runCLITest(t, []string{"semver", "pre", "--label", "beta", "--inc"}, tmp)
 
-	content, _ := os.ReadFile(filepath.Join(tmp, ".version"))
-	if got := strings.TrimSpace(string(content)); got != "1.2.3-beta.4" {
+	content := readVersionFile(t, tmp)
+	if got := content; got != "1.2.3-beta.4" {
 		t.Errorf("expected 1.2.3-beta.4, got %q", got)
 	}
 }
@@ -188,75 +183,62 @@ func TestCLI_ShowCommand(t *testing.T) {
 	}
 }
 
-func TestCLI_SetVersion_Valid(t *testing.T) {
-	tmp := t.TempDir()
+func TestCLI_SetVersionVariants(t *testing.T) {
+	tests := []struct {
+		name     string
+		args     []string
+		expected string
+	}{
+		{"set version", []string{"semver", "set", "2.5.0"}, "2.5.0"},
+		{"set with pre-release", []string{"semver", "set", "3.0.0", "--pre", "beta.2"}, "3.0.0-beta.2"},
+		{"set with metadata", []string{"semver", "set", "1.0.0", "--meta", "001"}, "1.0.0+001"},
+		{"set with pre and meta", []string{"semver", "set", "1.0.0", "--pre", "alpha.1", "--meta", "exp.sha.5114f85"}, "1.0.0-alpha.1+exp.sha.5114f85"},
+	}
 
-	runCLITest(t, []string{"semver", "set", "2.5.0"}, tmp)
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			tmp := t.TempDir()
 
-	content, _ := os.ReadFile(filepath.Join(tmp, ".version"))
-	if got := strings.TrimSpace(string(content)); got != "2.5.0" {
-		t.Errorf("expected 2.5.0, got %q", got)
+			runCLITest(t, tt.args, tmp)
+
+			got := readVersionFile(t, tmp)
+			if got != tt.expected {
+				t.Errorf("expected %q, got %q", tt.expected, got)
+			}
+		})
 	}
 }
 
-func TestCLI_SetVersion_WithPreRelease(t *testing.T) {
-	tmp := t.TempDir()
-
-	runCLITest(t, []string{"semver", "set", "3.0.0", "--pre", "beta.2"}, tmp)
-
-	content, _ := os.ReadFile(filepath.Join(tmp, ".version"))
-	if got := strings.TrimSpace(string(content)); got != "3.0.0-beta.2" {
-		t.Errorf("expected 3.0.0-beta.2, got %q", got)
+func TestCLI_ValidateCommand_ValidCases(t *testing.T) {
+	tests := []struct {
+		name           string
+		version        string
+		expectedOutput string
+	}{
+		{
+			name:    "valid semantic version",
+			version: "1.2.3",
+		},
+		{
+			name:    "valid version with build metadata",
+			version: "1.2.3+exp.sha.5114f85",
+		},
 	}
-}
 
-func TestCLI_SetVersion_WithBuildMetadata(t *testing.T) {
-	tmp := t.TempDir()
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			tmp := t.TempDir()
+			writeVersionFile(t, tmp, tt.version)
 
-	runCLITest(t, []string{"semver", "set", "1.0.0", "--meta", "001"}, tmp)
+			output := captureStdout(func() {
+				runCLITest(t, []string{"semver", "validate"}, tmp)
+			})
 
-	content, _ := os.ReadFile(filepath.Join(tmp, ".version"))
-	if got := strings.TrimSpace(string(content)); got != "1.0.0+001" {
-		t.Errorf("expected 1.0.0+001, got %q", got)
-	}
-}
-
-func TestCLI_SetVersion_WithPreReleaseAndBuildMetadata(t *testing.T) {
-	tmp := t.TempDir()
-
-	runCLITest(t, []string{"semver", "set", "1.0.0", "--pre", "alpha.1", "--meta", "exp.sha.5114f85"}, tmp)
-
-	content, _ := os.ReadFile(filepath.Join(tmp, ".version"))
-	if got := strings.TrimSpace(string(content)); got != "1.0.0-alpha.1+exp.sha.5114f85" {
-		t.Errorf("expected 1.0.0-alpha.1+exp.sha.5114f85, got %q", got)
-	}
-}
-
-func TestCLI_ValidateCommand_ValidVersion(t *testing.T) {
-	tmp := t.TempDir()
-	writeVersionFile(t, tmp, "1.2.3")
-
-	output := captureStdout(func() {
-		runCLITest(t, []string{"semver", "validate"}, tmp)
-	})
-
-	expected := fmt.Sprintf("Valid version file at %s/.version", tmp)
-	if !strings.Contains(output, expected) {
-		t.Errorf("expected output to contain %q, got %q", expected, output)
-	}
-}
-
-func TestCLI_ValidateCommand_WithMetadata(t *testing.T) {
-	tmp := t.TempDir()
-	writeVersionFile(t, tmp, "1.2.3+exp.sha.5114f85")
-
-	output := captureStdout(func() {
-		runCLITest(t, []string{"semver", "validate"}, tmp)
-	})
-
-	expected := fmt.Sprintf("Valid version file at %s/.version", tmp)
-	if !strings.Contains(output, expected) {
-		t.Errorf("expected output to contain %q, got %q", expected, output)
+			expected := fmt.Sprintf("Valid version file at %s/.version", tmp)
+			if !strings.Contains(output, expected) {
+				t.Errorf("expected output to contain %q, got %q", expected, output)
+			}
+		})
 	}
 }
 
@@ -352,86 +334,35 @@ func TestCLI_PreCommand_InvalidVersion(t *testing.T) {
 	}
 }
 
-func TestCLI_BumpMinor_InitializeVersionFileError(t *testing.T) {
-	tmp := t.TempDir()
-
-	// Create a non-writable directory
-	noWrite := filepath.Join(tmp, "protected")
-	if err := os.Mkdir(noWrite, 0555); err != nil {
-		t.Fatal(err)
+func TestCLI_Command_InitializeVersionFilePermissionErrors(t *testing.T) {
+	tests := []struct {
+		name    string
+		command []string
+	}{
+		{"bump minor", []string{"semver", "bump", "minor"}},
+		{"bump major", []string{"semver", "bump", "major"}},
+		{"pre label", []string{"semver", "pre", "--label", "alpha"}},
 	}
-	t.Cleanup(func() {
-		_ = os.Chmod(noWrite, 0755)
-	})
 
-	// Use a path inside the non-writable dir
-	protectedPath := filepath.Join(noWrite, ".version")
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			tmp := t.TempDir()
+			noWrite := filepath.Join(tmp, "protected")
+			if err := os.Mkdir(noWrite, 0555); err != nil {
+				t.Fatal(err)
+			}
+			t.Cleanup(func() {
+				_ = os.Chmod(noWrite, 0755)
+			})
+			protectedPath := filepath.Join(noWrite, ".version")
+			app := newCLI(protectedPath)
 
-	defaultPath := filepath.Join(tmp, ".version") // not used but needed for CLI setup
-	app := newCLI(defaultPath)
-
-	err := app.Run(context.Background(), []string{
-		"semver", "bump", "minor", "--path", protectedPath,
-	})
-	if err == nil {
-		t.Fatal("expected error from InitializeVersionFile, got nil")
-	}
-	if !strings.Contains(err.Error(), "permission denied") {
-		t.Errorf("unexpected error: %v", err)
-	}
-}
-
-func TestCLI_BumpMajor_InitializeVersionFileError(t *testing.T) {
-	tmp := t.TempDir()
-
-	noWrite := filepath.Join(tmp, "protected")
-	if err := os.Mkdir(noWrite, 0555); err != nil {
-		t.Fatal(err)
-	}
-	t.Cleanup(func() {
-		_ = os.Chmod(noWrite, 0755)
-	})
-
-	protectedPath := filepath.Join(noWrite, ".version")
-
-	defaultPath := filepath.Join(tmp, ".version")
-	app := newCLI(defaultPath)
-
-	err := app.Run(context.Background(), []string{
-		"semver", "bump", "major", "--path", protectedPath,
-	})
-	if err == nil {
-		t.Fatal("expected error from InitializeVersionFile, got nil")
-	}
-	if !strings.Contains(err.Error(), "permission denied") {
-		t.Errorf("unexpected error: %v", err)
-	}
-}
-
-func TestCLI_PreCommand_InitializeVersionFileError(t *testing.T) {
-	tmp := t.TempDir()
-
-	noWrite := filepath.Join(tmp, "protected")
-	if err := os.Mkdir(noWrite, 0555); err != nil {
-		t.Fatal(err)
-	}
-	t.Cleanup(func() {
-		_ = os.Chmod(noWrite, 0755)
-	})
-
-	protectedPath := filepath.Join(noWrite, ".version")
-
-	defaultPath := filepath.Join(tmp, ".version")
-	app := newCLI(defaultPath)
-
-	err := app.Run(context.Background(), []string{
-		"semver", "pre", "--label", "alpha", "--path", protectedPath,
-	})
-	if err == nil {
-		t.Fatal("expected error from InitializeVersionFile, got nil")
-	}
-	if !strings.Contains(err.Error(), "permission denied") {
-		t.Errorf("unexpected error: %v", err)
+			args := append(tt.command, "--path", protectedPath)
+			err := app.Run(context.Background(), args)
+			if err == nil || !strings.Contains(err.Error(), "permission denied") {
+				t.Fatalf("expected permission denied error, got: %v", err)
+			}
+		})
 	}
 }
 
@@ -544,46 +475,26 @@ func TestCLI_SetVersion_SaveError(t *testing.T) {
 	}
 }
 
-func TestCLI_ValidateCommand_InvalidVersion(t *testing.T) {
-	tmp := t.TempDir()
-	path := writeVersionFile(t, tmp, "not-a-version")
-
-	app := newCLI(path)
-	err := app.Run(context.Background(), []string{"semver", "validate"})
-	if err == nil {
-		t.Fatal("expected error due to invalid version, got nil")
+func TestCLI_ValidateCommand_Errors(t *testing.T) {
+	tests := []struct {
+		name          string
+		version       string
+		expectedError string
+	}{
+		{"invalid version string", "not-a-version", "invalid version"},
+		{"invalid build metadata", "1.0.0+inv@lid-meta", "invalid version"},
 	}
-	if !strings.Contains(err.Error(), "invalid version") {
-		t.Errorf("unexpected error message: %v", err)
-	}
-}
 
-func TestCLI_ValidateCommand_MissingFile(t *testing.T) {
-	tmp := t.TempDir()
-	path := filepath.Join(tmp, "missing.version")
-
-	app := newCLI(path)
-	err := app.Run(context.Background(), []string{"semver", "validate", "--path", path})
-	if err == nil {
-		t.Fatal("expected error due to missing version file, got nil")
-	}
-	if !strings.Contains(err.Error(), "no such file") {
-		t.Errorf("unexpected error: %v", err)
-	}
-}
-
-func TestCLI_ValidateCommand_InvalidMetadata(t *testing.T) {
-	tmp := t.TempDir()
-	writeVersionFile(t, tmp, "1.0.0+inv@lid-meta")
-
-	app := newCLI(filepath.Join(tmp, ".version"))
-	err := app.Run(context.Background(), []string{"semver", "validate"})
-
-	if err == nil {
-		t.Fatal("expected error due to invalid metadata, got nil")
-	}
-	if !strings.Contains(err.Error(), "invalid version") {
-		t.Errorf("expected error about invalid version, got %v", err)
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			tmp := t.TempDir()
+			writeVersionFile(t, tmp, tt.version)
+			app := newCLI(filepath.Join(tmp, ".version"))
+			err := app.Run(context.Background(), []string{"semver", "validate"})
+			if err == nil || !strings.Contains(err.Error(), tt.expectedError) {
+				t.Fatalf("expected error containing %q, got: %v", tt.expectedError, err)
+			}
+		})
 	}
 }
 

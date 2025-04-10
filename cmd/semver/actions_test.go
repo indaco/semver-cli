@@ -91,7 +91,7 @@ func TestCLI_BumpCommand_AutoInitFeedback(t *testing.T) {
 	}
 }
 
-func TestCLI_BumpReleaseCommand(t *testing.T) {
+func TestCLI_BumpReleaseCmd(t *testing.T) {
 	tests := []struct {
 		name           string
 		initialVersion string
@@ -128,6 +128,72 @@ func TestCLI_BumpReleaseCommand(t *testing.T) {
 			got := readVersionFile(t, tmp)
 			if got != tt.expected {
 				t.Errorf("expected %q, got %q", tt.expected, got)
+			}
+		})
+	}
+}
+
+func TestCLI_BumpNextCmd(t *testing.T) {
+	tests := []struct {
+		name     string
+		initial  string
+		args     []string
+		expected string
+	}{
+		{
+			name:     "promotes alpha to release",
+			initial:  "1.2.3-alpha.1",
+			args:     []string{"semver", "bump", "next"},
+			expected: "1.2.3",
+		},
+		{
+			name:     "promotes rc to release",
+			initial:  "1.2.3-rc.1",
+			args:     []string{"semver", "bump", "next"},
+			expected: "1.2.3",
+		},
+		{
+			name:     "default patch bump",
+			initial:  "1.2.3",
+			args:     []string{"semver", "bump", "next"},
+			expected: "1.2.4",
+		},
+		{
+			name:     "promotes pre-release in 0.x series",
+			initial:  "0.9.0-alpha.1",
+			args:     []string{"semver", "bump", "next"},
+			expected: "0.9.0",
+		},
+		{
+			name:     "bump minor from 0.9.0 as a special case",
+			initial:  "0.9.0",
+			args:     []string{"semver", "bump", "next"},
+			expected: "0.10.0",
+		},
+		{
+			name:     "preserve build metadata",
+			initial:  "1.2.3-alpha.1+meta.123",
+			args:     []string{"semver", "bump", "next", "--preserve-meta"},
+			expected: "1.2.3+meta.123",
+		},
+		{
+			name:     "strip build metadata by default",
+			initial:  "1.2.3-alpha.1+meta.123",
+			args:     []string{"semver", "bump", "next"},
+			expected: "1.2.3",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			tmp := t.TempDir()
+			writeVersionFile(t, tmp, tt.initial)
+
+			runCLITest(t, tt.args, tmp)
+
+			got := readVersionFile(t, tmp)
+			if got != tt.expected {
+				t.Errorf("expected version %q, got %q", tt.expected, got)
 			}
 		})
 	}
@@ -183,7 +249,7 @@ func TestCLI_ShowCommand(t *testing.T) {
 	}
 }
 
-func TestCLI_SetVersionVariants(t *testing.T) {
+func TestCLI_SetVersionCommandVariants(t *testing.T) {
 	tests := []struct {
 		name     string
 		args     []string
@@ -291,11 +357,11 @@ func TestCLI_InitCommand_ReadVersionFails(t *testing.T) {
 	path := filepath.Join(tmp, ".version")
 
 	// Override InitializeVersionFile to write invalid content
-	original := semver.InitializeVersionFile
-	semver.InitializeVersionFile = func(p string) error {
+	original := semver.InitializeVersionFileFunc
+	semver.InitializeVersionFileFunc = func(p string) error {
 		return os.WriteFile(p, []byte("not-a-version\n"), 0600)
 	}
-	t.Cleanup(func() { semver.InitializeVersionFile = original })
+	t.Cleanup(func() { semver.InitializeVersionFileFunc = original })
 
 	app := newCLI(path)
 
@@ -410,7 +476,7 @@ func TestCLI_PreCommand_SaveVersionFails(t *testing.T) {
 	}
 }
 
-func TestCLI_SetVersion_InvalidFormat(t *testing.T) {
+func TestCLI_SetVersionCommand_InvalidFormat(t *testing.T) {
 	tmp := t.TempDir()
 	app := newCLI(filepath.Join(tmp, ".version"))
 
@@ -423,20 +489,22 @@ func TestCLI_SetVersion_InvalidFormat(t *testing.T) {
 	}
 }
 
-func TestCLI_SetVersion_MissingArgument(t *testing.T) {
-	if os.Getenv("TEST_SEMVER_MISSING_ARG") == "1" {
+func TestCLI_SetVersionCommand_MissingArgument(t *testing.T) {
+	if os.Getenv("TEST_SEMVER_SET_MISSING_ARG") == "1" {
 		tmp := t.TempDir()
 		versionPath := filepath.Join(tmp, ".version")
 		app := newCLI(versionPath)
-		err := app.Run(context.Background(), []string{"semver", "set"})
+
+		err := app.Run(context.Background(), []string{"semver", "set", "--path", versionPath})
 		if err != nil {
 			fmt.Fprintln(os.Stderr, err)
+			os.Exit(1) // expected non-zero exit
 		}
-		return
+		os.Exit(0) // ❌ should not happen
 	}
 
-	cmd := exec.Command(os.Args[0], "-test.run=TestCLI_SetVersion_MissingArgument")
-	cmd.Env = append(os.Environ(), "TEST_SEMVER_MISSING_ARG=1")
+	cmd := exec.Command(os.Args[0], "-test.run=TestCLI_SetVersionCommand_MissingArgument")
+	cmd.Env = append(os.Environ(), "TEST_SEMVER_SET_MISSING_ARG=1")
 	output, err := cmd.CombinedOutput()
 
 	if err == nil {
@@ -449,7 +517,7 @@ func TestCLI_SetVersion_MissingArgument(t *testing.T) {
 	}
 }
 
-func TestCLI_SetVersion_SaveError(t *testing.T) {
+func TestCLI_SetVersionCommand_SaveError(t *testing.T) {
 	tmp := t.TempDir()
 
 	protectedDir := filepath.Join(tmp, "protected")
@@ -561,7 +629,7 @@ func TestCLI_ShowCommand_InvalidVersionContent(t *testing.T) {
 	}
 }
 
-func TestBumpRelease_ErrorOnInitVersionFile(t *testing.T) {
+func TestBumpReleaseCmd_ErrorOnInitVersionFile(t *testing.T) {
 	tmp := t.TempDir()
 	protectedDir := filepath.Join(tmp, "protected")
 	if err := os.Mkdir(protectedDir, 0555); err != nil {
@@ -581,7 +649,7 @@ func TestBumpRelease_ErrorOnInitVersionFile(t *testing.T) {
 	}
 }
 
-func TestBumpRelease_ErrorOnReadVersion(t *testing.T) {
+func TestBumpReleaseCmd_ErrorOnReadVersion(t *testing.T) {
 	tmp := t.TempDir()
 	versionPath := writeVersionFile(t, tmp, "invalid-version")
 
@@ -596,38 +664,146 @@ func TestBumpRelease_ErrorOnReadVersion(t *testing.T) {
 	}
 }
 
-func TestBumpRelease_ErrorOnSaveVersion(t *testing.T) {
-	if os.Getenv("TEST_SEMVER_BUMP_RELEASE_SAVE_FAIL") == "1" {
-		tmp := t.TempDir()
-		versionPath := filepath.Join(tmp, ".version")
+func TestCLI_BumpReleaseCommand_SaveVersionFails(t *testing.T) {
+	tmp := t.TempDir()
+	versionPath := filepath.Join(tmp, ".version")
 
-		_ = os.WriteFile(versionPath, []byte("1.2.3-alpha\n"), 0444)
-		_ = os.Chmod(versionPath, 0444)
-		defer func() {
-			_ = os.Chmod(versionPath, 0644)
-		}()
-
-		app := newCLI(versionPath)
-		err := app.Run(context.Background(), []string{
-			"semver", "bump", "release", "--path", versionPath,
-		})
-
-		if err != nil {
-			fmt.Fprintln(os.Stderr, err)
-			os.Exit(1)
-		}
-		os.Exit(0)
+	// Write valid pre-release content
+	if err := os.WriteFile(versionPath, []byte("1.2.3-alpha\n"), 0444); err != nil {
+		t.Fatalf("failed to write read-only version file: %v", err)
 	}
+	t.Cleanup(func() {
+		_ = os.Chmod(versionPath, 0644)
+	})
 
-	cmd := exec.Command(os.Args[0], "-test.run=TestBumpRelease_ErrorOnSaveVersion")
-	cmd.Env = append(os.Environ(), "TEST_SEMVER_BUMP_RELEASE_SAVE_FAIL=1")
-	output, err := cmd.CombinedOutput()
+	app := newCLI(versionPath)
+	err := app.Run(context.Background(), []string{
+		"semver", "bump", "release", "--path", versionPath, "--no-auto-init",
+	})
 
 	if err == nil {
 		t.Fatal("expected error due to save failure, got nil")
 	}
-	if !strings.Contains(string(output), "failed to save version") {
-		t.Errorf("expected save error, got: %q", string(output))
+
+	if !strings.Contains(err.Error(), "failed to save version") {
+		t.Errorf("expected error message to contain 'failed to save version', got: %v", err)
+	}
+}
+
+func TestCLI_BumpNextCmd_Errors(t *testing.T) {
+	tests := []struct {
+		name          string
+		setup         func(dir string)
+		args          []string
+		expectedErr   string
+		skipOnWindows bool
+	}{
+		{
+			name: "fails if version file is invalid",
+			setup: func(dir string) {
+				_ = os.WriteFile(filepath.Join(dir, ".version"), []byte("not-a-version\n"), 0600)
+			},
+			args:        []string{"semver", "bump", "next"},
+			expectedErr: "failed to read version",
+		},
+		{
+			name: "fails if version file is not writable",
+			setup: func(dir string) {
+				path := filepath.Join(dir, ".version")
+				_ = os.WriteFile(path, []byte("1.2.3-alpha\n"), 0444)
+				_ = os.Chmod(path, 0444)
+			},
+			args:          []string{"semver", "bump", "next"},
+			expectedErr:   "failed to save version",
+			skipOnWindows: true, // permission simulation less reliable on Windows
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if tt.skipOnWindows && isWindows() {
+				t.Skip("skipping test on Windows")
+			}
+
+			tmp := t.TempDir()
+			tt.setup(tmp)
+
+			versionPath := filepath.Join(tmp, ".version")
+			app := newCLI(versionPath)
+
+			err := app.Run(context.Background(), tt.args)
+			if err == nil || !strings.Contains(err.Error(), tt.expectedErr) {
+				t.Fatalf("expected error to contain %q, got: %v", tt.expectedErr, err)
+			}
+		})
+	}
+}
+
+func TestCLI_BumpNextCmd_InitVersionFileFails(t *testing.T) {
+	tmp := t.TempDir()
+	protected := filepath.Join(tmp, "protected")
+
+	// Make directory not writable
+	if err := os.Mkdir(protected, 0555); err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = os.Chmod(protected, 0755) })
+
+	versionPath := filepath.Join(protected, ".version")
+	app := newCLI(versionPath)
+
+	err := app.Run(context.Background(), []string{
+		"semver", "bump", "next", "--path", versionPath,
+	})
+	if err == nil || !strings.Contains(err.Error(), "permission denied") {
+		t.Fatalf("expected permission denied error, got: %v", err)
+	}
+}
+
+func TestCLI_BumpNextCmd_BumpNextFails(t *testing.T) {
+	tmp := t.TempDir()
+	versionPath := writeVersionFile(t, tmp, "1.2.3")
+
+	original := semver.BumpNextFunc
+	semver.BumpNextFunc = func(v semver.SemVersion) (semver.SemVersion, error) {
+		return semver.SemVersion{}, fmt.Errorf("forced BumpNext failure")
+	}
+	t.Cleanup(func() {
+		semver.BumpNextFunc = original
+	})
+
+	app := newCLI(versionPath)
+	err := app.Run(context.Background(), []string{
+		"semver", "bump", "next", "--path", versionPath,
+	})
+
+	if err == nil || !strings.Contains(err.Error(), "failed to determine next version") {
+		t.Fatalf("expected BumpNext failure, got: %v", err)
+	}
+}
+
+func TestCLI_BumpNextCmd_SaveVersionFails(t *testing.T) {
+	tmp := t.TempDir()
+	versionPath := filepath.Join(tmp, ".version")
+
+	// Write valid content
+	if err := os.WriteFile(versionPath, []byte("1.2.3-alpha\n"), 0644); err != nil {
+		t.Fatalf("failed to write version: %v", err)
+	}
+
+	// Make file read-only
+	if err := os.Chmod(versionPath, 0444); err != nil {
+		t.Fatalf("failed to chmod version file: %v", err)
+	}
+	t.Cleanup(func() { _ = os.Chmod(versionPath, 0644) }) // ensure cleanup
+
+	app := newCLI(versionPath)
+	err := app.Run(context.Background(), []string{
+		"semver", "bump", "next", "--path", versionPath, "--no-auto-init",
+	})
+
+	if err == nil || !strings.Contains(err.Error(), "failed to save version") {
+		t.Fatalf("expected error containing 'failed to save version', got: %v", err)
 	}
 }
 
@@ -665,6 +841,10 @@ func captureStdout(f func()) string {
 	var buf bytes.Buffer
 	_, _ = buf.ReadFrom(r)
 	return strings.TrimSpace(buf.String())
+}
+
+func isWindows() bool {
+	return strings.Contains(strings.ToLower(os.Getenv("OS")), "windows")
 }
 
 func runCLITest(t *testing.T, args []string, workdir string) {

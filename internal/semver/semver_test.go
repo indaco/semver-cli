@@ -335,7 +335,7 @@ func TestInitializeVersionFile_NewFile_WithValidGitTag(t *testing.T) {
 	execCommand = fakeExecCommand("v1.2.3\n")
 	defer func() { execCommand = originalExecCommand }()
 
-	err := InitializeVersionFile(versionPath)
+	err := InitializeVersionFileFunc(versionPath)
 	if err != nil {
 		t.Fatalf("expected no error, got %v", err)
 	}
@@ -361,7 +361,7 @@ func TestInitializeVersionFile_ExistingFile(t *testing.T) {
 	execCommand = fakeExecCommand("v9.9.9\n")
 	defer func() { execCommand = exec.Command }()
 
-	err = InitializeVersionFile(versionPath)
+	err = InitializeVersionFileFunc(versionPath)
 	if err != nil {
 		t.Fatalf("expected no error, got %v", err)
 	}
@@ -401,7 +401,7 @@ func TestInitializeVersionFile_InvalidGitTagFormat(t *testing.T) {
 	execCommand = fakeExecCommand("invalid-tag\n")
 	defer func() { execCommand = exec.Command }()
 
-	err := InitializeVersionFile(versionPath)
+	err := InitializeVersionFileFunc(versionPath)
 	if err != nil {
 		t.Fatalf("expected no error, got %v", err)
 	}
@@ -440,11 +440,11 @@ func TestInitializeVersionFileWithFeedback_FileCreatedButInvalidContent(t *testi
 	tmp := t.TempDir()
 	path := filepath.Join(tmp, ".version")
 
-	original := InitializeVersionFile
-	InitializeVersionFile = func(path string) error {
+	original := InitializeVersionFileFunc
+	InitializeVersionFileFunc = func(path string) error {
 		return os.WriteFile(path, []byte("not-a-version\n"), 0600)
 	}
-	defer func() { InitializeVersionFile = original }()
+	defer func() { InitializeVersionFileFunc = original }()
 
 	created, err := InitializeVersionFileWithFeedback(path)
 	if err != nil {
@@ -461,6 +461,76 @@ func TestInitializeVersionFileWithFeedback_FileCreatedButInvalidContent(t *testi
 	}
 	if !strings.Contains(err.Error(), "invalid version format") {
 		t.Errorf("unexpected error: %v", err)
+	}
+}
+
+/* ------------------------------------------------------------------------- */
+/* BUMP NEXT                                                                 */
+/* ------------------------------------------------------------------------- */
+
+func TestBumpNext(t *testing.T) {
+	tests := []struct {
+		name     string
+		current  SemVersion
+		expected SemVersion
+	}{
+		{
+			name: "promote alpha pre-release",
+			current: SemVersion{
+				Major: 1, Minor: 2, Patch: 3, PreRelease: "alpha.1",
+			},
+			expected: SemVersion{
+				Major: 1, Minor: 2, Patch: 3,
+			},
+		},
+		{
+			name: "promote rc pre-release",
+			current: SemVersion{
+				Major: 1, Minor: 2, Patch: 3, PreRelease: "rc.1",
+			},
+			expected: SemVersion{
+				Major: 1, Minor: 2, Patch: 3,
+			},
+		},
+		{
+			name: "default patch bump",
+			current: SemVersion{
+				Major: 1, Minor: 2, Patch: 3,
+			},
+			expected: SemVersion{
+				Major: 1, Minor: 2, Patch: 4,
+			},
+		},
+		{
+			name: "promote 0.x alpha to final",
+			current: SemVersion{
+				Major: 0, Minor: 9, Patch: 0, PreRelease: "alpha.1",
+			},
+			expected: SemVersion{
+				Major: 0, Minor: 9, Patch: 0,
+			},
+		},
+		{
+			name: "optional heuristic bump from 0.9.0 to 0.10.0",
+			current: SemVersion{
+				Major: 0, Minor: 9, Patch: 0,
+			},
+			expected: SemVersion{
+				Major: 0, Minor: 10, Patch: 0,
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got, err := BumpNext(tt.current)
+			if err != nil {
+				t.Fatalf("unexpected error: %v", err)
+			}
+			if got != tt.expected {
+				t.Errorf("expected %s, got %s", tt.expected.String(), got.String())
+			}
+		})
 	}
 }
 

@@ -8,7 +8,7 @@ import (
 )
 
 // newCLI builds and returns the root CLI command,
-// configuring all subcommands and flags for the semver tool.
+// configuring all subcommands and flags for the semver cli.
 func newCLI(defaultPath string) *cli.Command {
 	return &cli.Command{
 		Name:    "semver",
@@ -31,7 +31,7 @@ func newCLI(defaultPath string) *cli.Command {
 				Name:      "show",
 				Usage:     "Display current version",
 				UsageText: "semver show",
-				Action:    showVersion(),
+				Action:    showVersionCmd(),
 			},
 			{
 				Name:      "set",
@@ -47,7 +47,7 @@ func newCLI(defaultPath string) *cli.Command {
 						Usage: "Optional build metadata",
 					},
 				},
-				Action: setVersion(),
+				Action: setVersionCmd(),
 			},
 			{
 				Name:      "bump",
@@ -72,25 +72,31 @@ func newCLI(defaultPath string) *cli.Command {
 						Name:      "patch",
 						Usage:     "Increment patch version",
 						UsageText: "semver bump patch [--pre label] [--meta data] [--preserve-meta]",
-						Action:    bumpPatch(),
+						Action:    bumpPatchCmd(),
 					},
 					{
 						Name:      "minor",
 						Usage:     "Increment minor version and reset patch",
 						UsageText: "semver bump minor [--pre label] [--meta data] [--preserve-meta]",
-						Action:    bumpMinor(),
+						Action:    bumpMinorCmd(),
 					},
 					{
 						Name:      "major",
 						Usage:     "Increment major version and reset minor and patch",
 						UsageText: "semver bump major [--pre label] [--meta data] [--preserve-meta]",
-						Action:    bumpMajor(),
+						Action:    bumpMajorCmd(),
 					},
 					{
 						Name:      "release",
 						Usage:     "Promote pre-release to final version (e.g. 1.2.3-alpha → 1.2.3)",
 						UsageText: "semver bump release [--preserve-meta]",
-						Action:    bumpRelease(),
+						Action:    bumpReleaseCmd(),
+					},
+					{
+						Name:      "next",
+						Usage:     "Smart bump to the next version based on current state",
+						UsageText: "semver bump next [--preserve-meta]",
+						Action:    bumpNextCmd(),
 					},
 				},
 			},
@@ -109,18 +115,18 @@ func newCLI(defaultPath string) *cli.Command {
 						Usage: "Increment numeric suffix if it exists or add '.1'",
 					},
 				},
-				Action: setPreRelease(),
+				Action: setPreReleaseCmd(),
 			},
 			{
 				Name:   "validate",
 				Usage:  "Validate the .version file",
-				Action: validateVersion(),
+				Action: validateVersionCmd(),
 			},
 			{
 				Name:      "init",
 				Usage:     "Initialize a .version file (auto-detects Git tag or starts from 0.1.0)",
 				UsageText: "semver init",
-				Action:    initVersion(),
+				Action:    initVersionCmd(),
 			},
 		},
 	}

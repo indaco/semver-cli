@@ -93,7 +93,7 @@ go tool semver
 
 ### Option 3: Prebuilt binaries
 
-Download the pre-compiled binaries from the [releases page](https://github.com/indaco/semver/releases) and place the binary in your system’s PATH.
+Download the pre-compiled binaries from the [releases page](https://github.com/indaco/semver-cli/releases) and place the binary in your system’s PATH.
 
 ### Option 4: Clone and build manually
 

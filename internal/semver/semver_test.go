@@ -535,6 +535,43 @@ func TestBumpNext(t *testing.T) {
 }
 
 /* ------------------------------------------------------------------------- */
+/* BUMP BY LABEL                                                             */
+/* ------------------------------------------------------------------------- */
+
+func TestBumpByLabel(t *testing.T) {
+	tests := []struct {
+		name     string
+		current  SemVersion
+		label    string
+		expected string
+		wantErr  bool
+	}{
+		{"patch bump", SemVersion{1, 2, 3, "", ""}, "patch", "1.2.4", false},
+		{"minor bump", SemVersion{1, 2, 3, "", ""}, "minor", "1.3.0", false},
+		{"major bump", SemVersion{1, 2, 3, "", ""}, "major", "2.0.0", false},
+		{"invalid label", SemVersion{1, 2, 3, "", ""}, "foobar", "", true},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got, err := BumpByLabel(tt.current, tt.label)
+			if tt.wantErr {
+				if err == nil {
+					t.Fatal("expected error, got nil")
+				}
+				return
+			}
+			if err != nil {
+				t.Fatalf("unexpected error: %v", err)
+			}
+			if got.String() != tt.expected {
+				t.Errorf("expected %q, got %q", tt.expected, got.String())
+			}
+		})
+	}
+}
+
+/* ------------------------------------------------------------------------- */
 /* HELPERS                                                                   */
 /* ------------------------------------------------------------------------- */
 

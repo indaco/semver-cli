@@ -199,6 +199,66 @@ func TestCLI_BumpNextCmd(t *testing.T) {
 	}
 }
 
+func TestCLI_BumpNextCommand_WithLabelAndMeta(t *testing.T) {
+	tests := []struct {
+		name    string
+		initial string
+		args    []string
+		want    string
+	}{
+		{
+			name:    "label=patch",
+			initial: "1.2.3",
+			args:    []string{"semver", "bump", "next", "--label", "patch"},
+			want:    "1.2.4",
+		},
+		{
+			name:    "label=minor",
+			initial: "1.2.3",
+			args:    []string{"semver", "bump", "next", "--label", "minor"},
+			want:    "1.3.0",
+		},
+		{
+			name:    "label=major",
+			initial: "1.2.3",
+			args:    []string{"semver", "bump", "next", "--label", "major"},
+			want:    "2.0.0",
+		},
+		{
+			name:    "label=minor with metadata",
+			initial: "1.2.3",
+			args:    []string{"semver", "bump", "next", "--label", "minor", "--meta", "build.42"},
+			want:    "1.3.0+build.42",
+		},
+		{
+			name:    "preserve existing metadata",
+			initial: "1.2.3+ci.88",
+			args:    []string{"semver", "bump", "next", "--label", "patch", "--preserve-meta"},
+			want:    "1.2.4+ci.88",
+		},
+		{
+			name:    "override existing metadata",
+			initial: "1.2.3+ci.88",
+			args:    []string{"semver", "bump", "next", "--label", "patch", "--meta", "ci.99"},
+			want:    "1.2.4+ci.99",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			tmp := t.TempDir()
+			writeVersionFile(t, tmp, tt.initial)
+
+			runCLITest(t, tt.args, tmp)
+
+			got := readVersionFile(t, tmp)
+			if got != tt.want {
+				t.Errorf("expected %q, got %q", tt.want, got)
+			}
+		})
+	}
+}
+
 func TestCLI_PreCommand_StaticLabel(t *testing.T) {
 	tmp := t.TempDir()
 	writeVersionFile(t, tmp, "1.2.3")
@@ -423,8 +483,7 @@ func TestCLI_Command_InitializeVersionFilePermissionErrors(t *testing.T) {
 			protectedPath := filepath.Join(noWrite, ".version")
 			app := newCLI(protectedPath)
 
-			args := append(tt.command, "--path", protectedPath)
-			err := app.Run(context.Background(), args)
+			err := app.Run(context.Background(), append(tt.command, "--path", protectedPath))
 			if err == nil || !strings.Contains(err.Error(), "permission denied") {
 				t.Fatalf("expected permission denied error, got: %v", err)
 			}
@@ -437,29 +496,27 @@ func TestCLI_PreCommand_SaveVersionFails(t *testing.T) {
 		tmp := t.TempDir()
 		versionPath := filepath.Join(tmp, ".version")
 
-		// Write a valid version
 		if err := os.WriteFile(versionPath, []byte("1.2.3\n"), 0444); err != nil {
 			fmt.Fprintln(os.Stderr, "failed to write .version file:", err)
 			os.Exit(1)
 		}
 
-		// Ensure the file itself is read-only
 		if err := os.Chmod(versionPath, 0444); err != nil {
 			fmt.Fprintln(os.Stderr, "failed to chmod .version file:", err)
 			os.Exit(1)
 		}
-		defer func() {
-			_ = os.Chmod(versionPath, 0644) // cleanup
-		}()
 
 		app := newCLI(versionPath)
 		err := app.Run(context.Background(), []string{
 			"semver", "pre", "--label", "rc", "--path", versionPath,
 		})
+
+		_ = os.Chmod(versionPath, 0644)
 		if err != nil {
 			fmt.Fprintln(os.Stderr, err)
 			os.Exit(1)
 		}
+
 		os.Exit(0) // Unexpected success
 	}
 
@@ -804,6 +861,58 @@ func TestCLI_BumpNextCmd_SaveVersionFails(t *testing.T) {
 
 	if err == nil || !strings.Contains(err.Error(), "failed to save version") {
 		t.Fatalf("expected error containing 'failed to save version', got: %v", err)
+	}
+}
+
+func TestCLI_BumpNextCommand_InvalidLabel(t *testing.T) {
+	if os.Getenv("TEST_SEMVER_BUMP_NEXT_INVALID_LABEL") == "1" {
+		tmp := t.TempDir()
+		versionPath := writeVersionFile(t, tmp, "1.2.3")
+
+		app := newCLI(versionPath)
+		err := app.Run(context.Background(), []string{
+			"semver", "bump", "next", "--label", "banana", "--path", versionPath,
+		})
+		if err != nil {
+			fmt.Fprintln(os.Stderr, err)
+			os.Exit(1)
+		}
+		os.Exit(0) // ❌ shouldn't happen
+	}
+
+	cmd := exec.Command(os.Args[0], "-test.run=TestCLI_BumpNextCommand_InvalidLabel")
+	cmd.Env = append(os.Environ(), "TEST_SEMVER_BUMP_NEXT_INVALID_LABEL=1")
+	output, err := cmd.CombinedOutput()
+
+	if err == nil {
+		t.Fatal("expected non-zero exit status")
+	}
+
+	expected := "invalid --label: must be 'patch', 'minor', or 'major'"
+	if !strings.Contains(string(output), expected) {
+		t.Errorf("expected output to contain %q, got: %q", expected, string(output))
+	}
+}
+
+func TestCLI_BumpNextCmd_BumpByLabelFails(t *testing.T) {
+	tmp := t.TempDir()
+	versionPath := writeVersionFile(t, tmp, "1.2.3")
+
+	original := semver.BumpByLabelFunc
+	semver.BumpByLabelFunc = func(v semver.SemVersion, label string) (semver.SemVersion, error) {
+		return semver.SemVersion{}, fmt.Errorf("boom")
+	}
+	t.Cleanup(func() {
+		semver.BumpByLabelFunc = original
+	})
+
+	app := newCLI(versionPath)
+	err := app.Run(context.Background(), []string{
+		"semver", "bump", "next", "--label", "patch", "--path", versionPath,
+	})
+
+	if err == nil || !strings.Contains(err.Error(), "failed to bump version with label") {
+		t.Fatalf("expected error due to label bump failure, got: %v", err)
 	}
 }
 

@@ -111,6 +111,8 @@ func bumpReleaseCmd() func(ctx context.Context, cmd *cli.Command) error {
 func bumpNextCmd() func(ctx context.Context, cmd *cli.Command) error {
 	return func(ctx context.Context, cmd *cli.Command) error {
 		path := cmd.String("path")
+		label := cmd.String("label")
+		meta := cmd.String("meta")
 		preserveMeta := cmd.Bool("preserve-meta")
 
 		if _, err := getOrInitVersionFile(cmd); err != nil {
@@ -122,12 +124,29 @@ func bumpNextCmd() func(ctx context.Context, cmd *cli.Command) error {
 			return fmt.Errorf("failed to read version: %w", err)
 		}
 
-		next, err := semver.BumpNextFunc(current)
-		if err != nil {
-			return fmt.Errorf("failed to determine next version: %w", err)
+		var next semver.SemVersion
+
+		switch label {
+		case "patch", "minor", "major":
+			next, err = semver.BumpByLabelFunc(current, label)
+			if err != nil {
+				return fmt.Errorf("failed to bump version with label: %w", err)
+			}
+		case "":
+			next, err = semver.BumpNextFunc(current)
+			if err != nil {
+				return fmt.Errorf("failed to determine next version: %w", err)
+			}
+		default:
+			return cli.Exit("invalid --label: must be 'patch', 'minor', or 'major'", 1)
 		}
 
-		if !preserveMeta {
+		switch {
+		case meta != "":
+			next.Build = meta
+		case preserveMeta:
+			next.Build = current.Build
+		default:
 			next.Build = ""
 		}
 

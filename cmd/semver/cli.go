@@ -94,9 +94,15 @@ func newCLI(defaultPath string) *cli.Command {
 					},
 					{
 						Name:      "next",
-						Usage:     "Smart bump to the next version based on current state",
-						UsageText: "semver bump next [--preserve-meta]",
-						Action:    bumpNextCmd(),
+						Usage:     "Smart bump logic (e.g. promote pre-release or bump patch)",
+						UsageText: "semver bump next [--label patch|minor|major] [--meta data] [--preserve-meta]",
+						Flags: []cli.Flag{
+							&cli.StringFlag{
+								Name:  "label",
+								Usage: "Optional bump label override (patch, minor, major)",
+							},
+						},
+						Action: bumpNextCmd(),
 					},
 				},
 			},

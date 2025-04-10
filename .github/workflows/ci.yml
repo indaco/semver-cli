@@ -54,4 +54,4 @@ jobs:
         run: go mod verify
 
       - name: Run tests
-        run: go test ./... -covermode=atomic
+        run: go test $(go list ./... | grep -Ev 'internal/testutils') -covermode=atomic

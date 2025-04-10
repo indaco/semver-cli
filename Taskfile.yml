@@ -22,7 +22,7 @@ tasks:
     desc: Run all tests and generate coverage report.
     silent: false
     cmds:
-      - go test ./... -coverprofile=coverage.txt
+      - go test $(go list ./... | grep -Ev 'internal/testutils') -coverprofile=coverage.txt
       - task: test/view-total-coverage
 
   test/view-total-coverage:

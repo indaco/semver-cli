@@ -1,19 +1,6 @@
 # Regular colors
-color_red     := $(shell printf "\e[31m")  # Red color
 color_green   := $(shell printf "\e[32m")  # Green color
-color_yellow  := $(shell printf "\e[33m")  # Yellow color
-color_blue    := $(shell printf "\e[34m")  # Blue color
-color_magenta := $(shell printf "\e[35m")  # Magenta color
-color_cyan    := $(shell printf "\e[36m")  # Cyan color
-
-# Bold variants
-color_bold_red     := $(shell printf "\e[1;31m")  # Bold red color
-color_bold_green   := $(shell printf "\e[1;32m")  # Bold green color
-color_bold_yellow  := $(shell printf "\e[1;33m")  # Bold yellow color
-color_bold_blue    := $(shell printf "\e[1;34m")  # Bold blue color
-color_bold_magenta := $(shell printf "\e[1;35m")  # Bold magenta color
-color_bold_cyan    := $(shell printf "\e[1;36m")  # Bold cyan color
-color_reset        := $(shell printf "\e[0m")     # Reset to default color
+color_reset   := $(shell printf "\e[0m")   # Reset to default color
 
 # Go commands
 GO := go
@@ -56,7 +43,7 @@ clean: ## Clean the build directory and Go cache
 .PHONY: test
 test: ## Run all tests and generate coverage report.
 	@echo "$(color_bold_cyan)* Run all tests and generate coverage report.$(color_reset)"
-	@$(GO) test ./... -coverprofile=coverage.txt
+	@$(GO) test $(go list ./... | grep -Ev 'internal/testutils') -coverprofile=coverage.txt
 	@echo "$(color_bold_cyan)* Total Coverage$(color_reset)"
 	@$(GO) tool cover -func=coverage.txt | grep total | awk '{print $$3}'
 

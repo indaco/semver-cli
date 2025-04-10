@@ -25,7 +25,7 @@ jobs:
         run: go mod verify
 
       - name: Run go test
-        run: go test -count=1 -timeout 30s ./... -covermode=atomic -coverprofile=coverage.txt
+        run: go test -count=1 -timeout 30s $(go list ./... | grep -Ev 'internal/testutils') -covermode=atomic -coverprofile=coverage.txt
 
       - name: Upload coverage reports to Codecov
         uses: codecov/codecov-action@v5

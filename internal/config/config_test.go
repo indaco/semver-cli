@@ -4,22 +4,9 @@ import (
 	"os"
 	"path/filepath"
 	"testing"
+
+	"github.com/indaco/semver-cli/internal/testutils"
 )
-
-/* ------------------------------------------------------------------------- */
-/* HELPERS                                                                   */
-/* ------------------------------------------------------------------------- */
-func writeTempConfig(t *testing.T, content string) string {
-	t.Helper()
-	tmpDir := t.TempDir()
-	tmpPath := filepath.Join(tmpDir, ".semver.yaml")
-
-	if err := os.WriteFile(tmpPath, []byte(content), 0644); err != nil {
-		t.Fatal(err)
-	}
-
-	return tmpPath
-}
 
 /* ------------------------------------------------------------------------- */
 /* SUCCESS CASES                                                             */
@@ -39,7 +26,7 @@ func TestLoadConfig_FromEnv(t *testing.T) {
 
 func TestLoadConfig_ValidFile(t *testing.T) {
 	content := "path: ./my-folder/.version\n"
-	tmpPath := writeTempConfig(t, content)
+	tmpPath := testutils.WriteTempConfig(t, content)
 	tmpDir := filepath.Dir(tmpPath)
 
 	origDir, err := os.Getwd()
@@ -96,7 +83,7 @@ func TestNormalizeVersionPath(t *testing.T) {
 /* ------------------------------------------------------------------------- */
 func TestLoadConfig_InvalidYAML(t *testing.T) {
 	content := "not_yaml::: true" // this won't populate `path`
-	tmpPath := writeTempConfig(t, content)
+	tmpPath := testutils.WriteTempConfig(t, content)
 	tmpDir := filepath.Dir(tmpPath)
 
 	origDir, err := os.Getwd()
@@ -124,7 +111,7 @@ func TestLoadConfig_InvalidYAML(t *testing.T) {
 
 func TestLoadConfig_UnmarshalError(t *testing.T) {
 	content := ": this is invalid" // invalid YAML syntax
-	tmpPath := writeTempConfig(t, content)
+	tmpPath := testutils.WriteTempConfig(t, content)
 
 	origDir, err := os.Getwd()
 	if err != nil {

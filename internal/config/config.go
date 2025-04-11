@@ -5,7 +5,7 @@ import (
 	"os"
 	"path/filepath"
 
-	"gopkg.in/yaml.v3"
+	"github.com/goccy/go-yaml"
 )
 
 type PluginConfig struct {
@@ -35,9 +35,7 @@ func LoadConfig() (*Config, error) {
 	}
 
 	var cfg Config
-	decoder := yaml.NewDecoder(bytes.NewReader(data))
-	decoder.KnownFields(true) // Enable strict key checking
-
+	decoder := yaml.NewDecoder(bytes.NewReader(data), yaml.Strict())
 	if err := decoder.Decode(&cfg); err != nil {
 		return nil, err
 	}

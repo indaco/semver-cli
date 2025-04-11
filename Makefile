@@ -67,7 +67,7 @@ lint: ## Run golangci-lint
 build: ## Build the binary with development metadata
 	@echo "$(color_bold_cyan)* Building the binary...$(color_reset)"
 	@mkdir -p $(BUILD_DIR)
-	$(GOBUILD) -o $(BUILD_DIR)/$(APP_NAME) $(CMD_DIR)/main.go
+	$(GOBUILD) -o $(BUILD_DIR)/$(APP_NAME) ./$(CMD_DIR)
 
 .PHONY: install
 install: ## Install the binary using Go install

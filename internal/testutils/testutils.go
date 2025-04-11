@@ -2,11 +2,14 @@ package testutils
 
 import (
 	"bytes"
+	"context"
 	"io/fs"
 	"os"
 	"path/filepath"
 	"strings"
 	"testing"
+
+	"github.com/urfave/cli/v3"
 )
 
 func ReadFile(t *testing.T, path string) string {
@@ -68,4 +71,27 @@ func CaptureStdout(f func()) string {
 
 func IsWindows() bool {
 	return strings.Contains(strings.ToLower(os.Getenv("OS")), "windows")
+}
+
+func RunCLITest(t *testing.T, appCli *cli.Command, args []string, workdir string) {
+	t.Helper()
+
+	origDir, err := os.Getwd()
+	if err != nil {
+		t.Fatalf("failed to get working directory: %v", err)
+	}
+
+	if err := os.Chdir(workdir); err != nil {
+		t.Fatalf("failed to change to workdir: %v", err)
+	}
+	t.Cleanup(func() {
+		if err := os.Chdir(origDir); err != nil {
+			t.Fatalf("failed to restore working directory: %v", err)
+		}
+	})
+
+	err = appCli.Run(context.Background(), args)
+	if err != nil {
+		t.Fatalf("app.Run failed: %v", err)
+	}
 }

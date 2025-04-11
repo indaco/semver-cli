@@ -71,9 +71,7 @@ tasks:
   build:
     desc: 'Building the binary...'
     cmds:
-      - |
-        mkdir -p {{.BUILD_DIR}}
-        go build -o {{.BUILD_DIR}}/{{.APP_NAME}} {{.CMD_DIR}}/main.go
+      - go build -o {{.BUILD_DIR}}/{{.APP_NAME}} ./{{.CMD_DIR}}
 
   install:
     desc: 'Install the binary using Go install'

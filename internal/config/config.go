@@ -1,15 +1,22 @@
 package config
 
 import (
-	"errors"
+	"bytes"
 	"os"
 	"path/filepath"
 
 	"gopkg.in/yaml.v3"
 )
 
+type PluginConfig struct {
+	Name    string `yaml:"name"`
+	Path    string `yaml:"path"`
+	Enabled bool   `yaml:"enabled"`
+}
+
 type Config struct {
-	Path string `yaml:"path"`
+	Path    string         `yaml:"path"`
+	Plugins []PluginConfig `yaml:"plugins,omitempty"`
 }
 
 func LoadConfig() (*Config, error) {
@@ -28,13 +35,15 @@ func LoadConfig() (*Config, error) {
 	}
 
 	var cfg Config
-	if err := yaml.Unmarshal(data, &cfg); err != nil {
+	decoder := yaml.NewDecoder(bytes.NewReader(data))
+	decoder.KnownFields(true) // Enable strict key checking
+
+	if err := decoder.Decode(&cfg); err != nil {
 		return nil, err
 	}
 
-	// Extra safety: ensure the `path` key was present
 	if cfg.Path == "" {
-		return nil, errors.New("invalid config: missing or empty 'path'")
+		cfg.Path = ".version"
 	}
 
 	return &cfg, nil

@@ -251,6 +251,18 @@ func validateVersionCmd() func(ctx context.Context, cmd *cli.Command) error {
 	}
 }
 
+func pluginRegisterCmd() func(ctx context.Context, cmd *cli.Command) error {
+	return func(ctx context.Context, cmd *cli.Command) error {
+		return nil
+	}
+}
+
+func pluginListCmd() func(ctx context.Context, cmd *cli.Command) error {
+	return func(ctx context.Context, cmd *cli.Command) error {
+		return nil
+	}
+}
+
 // getOrInitVersionFile handles .version file initialization or returns an error
 // if auto-init is disabled and the file is missing.
 func getOrInitVersionFile(cmd *cli.Command) (created bool, err error) {

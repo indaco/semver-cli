@@ -134,6 +134,26 @@ func newCLI(defaultPath string) *cli.Command {
 				UsageText: "semver init",
 				Action:    initVersionCmd(),
 			},
+			{
+				Name:  "plugin",
+				Usage: "Manage plugins for semver-cli",
+				Commands: []*cli.Command{
+					{
+						Name:  "register",
+						Usage: "Register a plugin from a remote repo or local path",
+						Flags: []cli.Flag{
+							&cli.StringFlag{Name: "url", Usage: "Git URL to clone"},
+							&cli.StringFlag{Name: "path", Usage: "Local path to copy from"},
+						},
+						Action: pluginRegisterCmd(),
+					},
+					{
+						Name:   "list",
+						Usage:  "List installed plugins",
+						Action: pluginListCmd(),
+					},
+				},
+			},
 		},
 	}
 }

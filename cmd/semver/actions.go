@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"os"
 
+	"github.com/indaco/semver-cli/internal/pluginmanager"
 	"github.com/indaco/semver-cli/internal/semver"
 	"github.com/urfave/cli/v3"
 )
@@ -253,7 +254,16 @@ func validateVersionCmd() func(ctx context.Context, cmd *cli.Command) error {
 
 func pluginRegisterCmd() func(ctx context.Context, cmd *cli.Command) error {
 	return func(ctx context.Context, cmd *cli.Command) error {
-		return nil
+		localPath := cmd.String("path")
+		if localPath == "" {
+			return cli.Exit("missing --path (or --url) for plugin registration", 1)
+		}
+
+		// Get the plugin directory (use the provided flag or default to current directory)
+		pluginDirectory := cmd.String("plugin-dir")
+
+		// Proceed with normal plugin registration
+		return pluginmanager.RegisterLocalPlugin(localPath, ".semver.yaml", pluginDirectory)
 	}
 }
 

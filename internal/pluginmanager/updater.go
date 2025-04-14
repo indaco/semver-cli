@@ -1,14 +1,16 @@
 package pluginmanager
 
 import (
-	"fmt"
 	"os"
 
 	"github.com/goccy/go-yaml"
 	"github.com/indaco/semver-cli/internal/config"
 )
 
-var marshalFunc = yaml.Marshal
+var (
+	marshalFunc         = yaml.Marshal
+	AddPluginToConfigFn = AddPluginToConfig
+)
 
 // AddPluginToConfig appends a plugin entry to the YAML config at the given path.
 // It avoids duplicates and preserves existing fields.
@@ -26,7 +28,7 @@ func AddPluginToConfig(path string, plugin config.PluginConfig) error {
 	// Avoid duplicates
 	for _, p := range cfg.Plugins {
 		if p.Name == plugin.Name {
-			return fmt.Errorf("plugin %q already registered", plugin.Name)
+			return nil
 		}
 	}
 

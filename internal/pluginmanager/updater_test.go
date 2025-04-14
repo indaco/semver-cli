@@ -53,8 +53,23 @@ func TestAddPluginToConfig_Success(t *testing.T) {
 
 func TestAddPluginToConfig_Duplicate(t *testing.T) {
 	tmpDir := t.TempDir()
-	configPath := filepath.Join(tmpDir, ".semver.yaml")
 
+	origDir, err := os.Getwd()
+	if err != nil {
+		t.Fatalf("failed to get working directory: %v", err)
+	}
+
+	if err := os.Chdir(tmpDir); err != nil {
+		t.Fatalf("failed to change directory to %s: %v", tmpDir, err)
+	}
+	t.Cleanup(func() {
+		if err := os.Chdir(origDir); err != nil {
+			t.Fatalf("failed to restore working directory: %v", err)
+		}
+	})
+
+	configPath := filepath.Join(tmpDir, ".semver.yaml")
+	// Initial config with one plugin
 	initial := []byte(`
 path: .version
 plugins:
@@ -72,9 +87,25 @@ plugins:
 		Enabled: true,
 	}
 
-	err := AddPluginToConfig(configPath, plugin)
-	if err == nil || err.Error() != `plugin "commit-parser" already registered` {
-		t.Fatalf("expected duplicate error, got: %v", err)
+	// First registration (no error expected)
+	err = AddPluginToConfig(configPath, plugin)
+	if err != nil {
+		t.Fatalf("unexpected error during first registration: %v", err)
+	}
+
+	// Second registration (no error expected, duplicates are silently skipped)
+	err = AddPluginToConfig(configPath, plugin)
+	if err != nil {
+		t.Fatalf("unexpected error during second registration: %v", err)
+	}
+
+	// Ensure the config file has only one plugin
+	cfg, err := config.LoadConfig()
+	if err != nil {
+		t.Fatalf("expected no error loading config, got: %v", err)
+	}
+	if len(cfg.Plugins) != 1 {
+		t.Fatalf("expected 1 plugin in config, got: %d", len(cfg.Plugins))
 	}
 }
 

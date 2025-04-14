@@ -28,6 +28,8 @@ var (
 		".DS_Store":    {},
 		"node_modules": {},
 	}
+
+	CopyDirFn = CopyDir
 )
 
 // CopyDir recursively copies all files and subdirectories from src to dst.

@@ -62,6 +62,39 @@ func TestLoadConfig_MissingFile(t *testing.T) {
 	}
 }
 
+func TestLoadConfig_DefaultPathFallback(t *testing.T) {
+	content := "{}\n"
+	tmpPath := testutils.WriteTempConfig(t, content)
+	tmpDir := filepath.Dir(tmpPath)
+
+	origDir, err := os.Getwd()
+	if err != nil {
+		t.Fatalf("failed to get working directory: %v", err)
+	}
+
+	if err := os.Chdir(tmpDir); err != nil {
+		t.Fatalf("failed to change directory to %s: %v", tmpDir, err)
+	}
+	t.Cleanup(func() {
+		if err := os.Chdir(origDir); err != nil {
+			t.Fatalf("failed to restore working directory: %v", err)
+		}
+	})
+
+	cfg, err := LoadConfig()
+	if err != nil {
+		t.Fatalf("Unexpected error: %v", err)
+	}
+
+	if cfg == nil {
+		t.Fatal("Expected config, got nil")
+	}
+
+	if cfg.Path != ".version" {
+		t.Errorf("Expected fallback path '.version', got '%s'", cfg.Path)
+	}
+}
+
 func TestNormalizeVersionPath(t *testing.T) {
 	// Case 1: path is a file
 	got := NormalizeVersionPath("foo/.version")

@@ -16,7 +16,7 @@ func main() {
 }
 
 func runCLI(args []string) error {
-	cfg, err := config.LoadConfig()
+	cfg, err := config.LoadConfigFn()
 	if err != nil {
 		return err
 	}

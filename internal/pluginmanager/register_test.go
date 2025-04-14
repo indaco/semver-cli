@@ -151,7 +151,7 @@ func TestRegisterLocalPlugin_DefaultConfigPath(t *testing.T) {
 	}
 
 	// Ensure the config file has the plugin registered
-	cfg, err := config.LoadConfig()
+	cfg, err := config.LoadConfigFn()
 	if err != nil {
 		t.Fatalf("expected no error loading config, got: %v", err)
 	}
@@ -178,7 +178,7 @@ func TestRegisterLocalPlugin_DefaultConfigPath(t *testing.T) {
 	}
 
 	// Verify the path has been set to the default value when configPath is empty
-	cfg, err = config.LoadConfig()
+	cfg, err = config.LoadConfigFn()
 	if err != nil {
 		t.Fatalf("expected no error loading config, got: %v", err)
 	}
@@ -235,7 +235,7 @@ func TestRegisterLocalPlugin_DefaultConfigPathUsed_CurrentWorkingDir(t *testing.
 	}
 
 	// Ensure the config file has the plugin registered
-	cfg, err := config.LoadConfig()
+	cfg, err := config.LoadConfigFn()
 	if err != nil {
 		t.Fatalf("expected no error loading config, got: %v", err)
 	}
@@ -283,7 +283,7 @@ func TestRegisterLocalPlugin_DefaultConfigPathUsed_OtherDir(t *testing.T) {
 	}
 
 	// Ensure the config file has the plugin registered
-	cfg, err := config.LoadConfig()
+	cfg, err := config.LoadConfigFn()
 	if err != nil {
 		t.Fatalf("expected no error loading config, got: %v", err)
 	}

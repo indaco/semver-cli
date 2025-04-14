@@ -15,7 +15,7 @@ func TestLoadConfig_FromEnv(t *testing.T) {
 	os.Setenv("SEMVER_PATH", "env-defined/.version")
 	defer os.Unsetenv("SEMVER_PATH")
 
-	cfg, err := LoadConfig()
+	cfg, err := LoadConfigFn()
 	if err != nil {
 		t.Fatalf("expected nil error, got %v", err)
 	}
@@ -43,7 +43,7 @@ func TestLoadConfig_ValidFile(t *testing.T) {
 		}
 	})
 
-	cfg, err := LoadConfig()
+	cfg, err := LoadConfigFn()
 	if err != nil {
 		t.Fatalf("expected no error, got %v", err)
 	}
@@ -53,7 +53,7 @@ func TestLoadConfig_ValidFile(t *testing.T) {
 }
 
 func TestLoadConfig_MissingFile(t *testing.T) {
-	cfg, err := LoadConfig()
+	cfg, err := LoadConfigFn()
 	if err != nil {
 		t.Fatalf("expected nil error, got %v", err)
 	}
@@ -81,7 +81,7 @@ func TestLoadConfig_DefaultPathFallback(t *testing.T) {
 		}
 	})
 
-	cfg, err := LoadConfig()
+	cfg, err := LoadConfigFn()
 	if err != nil {
 		t.Fatalf("Unexpected error: %v", err)
 	}
@@ -133,7 +133,7 @@ func TestLoadConfig_InvalidYAML(t *testing.T) {
 		}
 	})
 
-	cfg, err := LoadConfig()
+	cfg, err := LoadConfigFn()
 	if err == nil {
 		t.Fatal("expected YAML parse error or missing key error, got nil")
 	}
@@ -159,7 +159,7 @@ func TestLoadConfig_UnmarshalError(t *testing.T) {
 		}
 	})
 
-	cfg, err := LoadConfig()
+	cfg, err := LoadConfigFn()
 	if err == nil {
 		t.Fatal("expected unmarshal error, got nil")
 	}
@@ -190,7 +190,7 @@ func TestLoadConfig_ReadFileError(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	cfg, err := LoadConfig()
+	cfg, err := LoadConfigFn()
 	if err == nil {
 		t.Fatal("expected error when reading non-file .semver.yaml, got nil")
 	}

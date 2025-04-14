@@ -19,7 +19,9 @@ type Config struct {
 	Plugins []PluginConfig `yaml:"plugins,omitempty"`
 }
 
-func LoadConfig() (*Config, error) {
+var LoadConfigFn = loadConfig
+
+func loadConfig() (*Config, error) {
 	// Highest priority: ENV variable
 	if envPath := os.Getenv("SEMVER_PATH"); envPath != "" {
 		return &Config{Path: envPath}, nil

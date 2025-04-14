@@ -9,6 +9,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/indaco/semver-cli/internal/config"
 	"github.com/indaco/semver-cli/internal/semver"
 	"github.com/indaco/semver-cli/internal/testutils"
 )
@@ -1057,5 +1058,113 @@ func TestPluginRegisterCmd_MissingPathArgument(t *testing.T) {
 	// Check if the expected error message is in the captured output
 	if !strings.Contains(string(output), expected) {
 		t.Errorf("expected output to contain %q, got %q", expected, string(output))
+	}
+}
+
+/* ------------------------------------------------------------------------- */
+/* PLUGIN LIST COMMAND                                                   */
+/* ------------------------------------------------------------------------- */
+
+func TestPluginListCmd(t *testing.T) {
+	// Set up a temporary directory for the config file and plugin directory
+	tmpDir := t.TempDir()
+	configPath := filepath.Join(tmpDir, ".semver.yaml")
+
+	// Test with no plugins registered
+	// Create an empty .semver.yaml to simulate no plugins
+	err := os.WriteFile(configPath, []byte("plugins: []\n"), 0644)
+	if err != nil {
+		t.Fatalf("failed to create .semver.yaml: %v", err)
+	}
+
+	// Set the config path and simulate calling the plugin list command
+	appCli := newCLI(configPath)
+
+	output, err := testutils.CaptureStdout(func() {
+		testutils.RunCLITest(t, appCli, []string{"semver", "plugin", "list"}, tmpDir)
+	})
+	if err != nil {
+		t.Fatalf("Failed to capture stdout: %v", err)
+	}
+
+	// Check if the expected message is printed
+	expected := "No plugins registered."
+	if !strings.Contains(output, expected) {
+		t.Errorf("expected output to contain %q, got %q", expected, output)
+	}
+
+	// Test with some plugins registered
+	// Create a .semver.yaml with sample plugins
+	pluginsContent := `
+plugins:
+  - name: mock-plugin-1
+    path: /path/to/mock-plugin-1
+    enabled: true
+  - name: mock-plugin-2
+    path: /path/to/mock-plugin-2
+    enabled: false
+`
+	err = os.WriteFile(configPath, []byte(pluginsContent), 0644)
+	if err != nil {
+		t.Fatalf("failed to write .semver.yaml: %v", err)
+	}
+
+	// Capture the output of the plugin list command again
+	output, err = testutils.CaptureStdout(func() {
+		testutils.RunCLITest(t, appCli, []string{"semver", "plugin", "list"}, tmpDir)
+	})
+	if err != nil {
+		t.Fatalf("Failed to capture stdout: %v", err)
+	}
+
+	// Check if the output contains information about the plugins
+	expectedPlugins := []string{
+		"Name: mock-plugin-1, Path: /path/to/mock-plugin-1, Enabled: true",
+		"Name: mock-plugin-2, Path: /path/to/mock-plugin-2, Enabled: false",
+	}
+
+	for _, exp := range expectedPlugins {
+		if !strings.Contains(output, exp) {
+			t.Errorf("expected output to contain %q, got %q", exp, output)
+		}
+	}
+}
+
+func TestPluginListCmd_LoadConfigError(t *testing.T) {
+	// Create a mock of the LoadConfig function that returns an error
+	originalLoadConfig := config.LoadConfigFn
+	defer func() {
+		// Restore the original LoadConfig function after the test
+		config.LoadConfigFn = originalLoadConfig
+	}()
+
+	// Mock the LoadConfig function to simulate an error
+	config.LoadConfigFn = func() (*config.Config, error) {
+		return nil, fmt.Errorf("failed to load configuration")
+	}
+
+	// Set up a temporary directory for the config file (not used here, since LoadConfig will fail)
+	tmpDir := t.TempDir()
+
+	// Set the config path and simulate calling the plugin list command
+	appCli := newCLI(tmpDir)
+
+	// Capture the output of the plugin list command again
+	output, err := testutils.CaptureStdout(func() {
+		err := appCli.Run(context.Background(), []string{"semver", "plugin", "list"})
+		// Capture the actual error during execution
+		if err != nil {
+			t.Fatalf("Expected no error, got: %v", err)
+		}
+	})
+
+	if err != nil {
+		t.Fatalf("Failed to capture stdout: %v", err)
+	}
+
+	// Check if the error message was properly printed
+	expectedErrorMessage := "failed to load configuration"
+	if !strings.Contains(output, expectedErrorMessage) {
+		t.Errorf("Expected error message to contain %q, but got: %q", expectedErrorMessage, output)
 	}
 }

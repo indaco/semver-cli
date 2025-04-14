@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"os"
 
+	"github.com/indaco/semver-cli/internal/config"
 	"github.com/indaco/semver-cli/internal/pluginmanager"
 	"github.com/indaco/semver-cli/internal/semver"
 	"github.com/urfave/cli/v3"
@@ -269,6 +270,26 @@ func pluginRegisterCmd() func(ctx context.Context, cmd *cli.Command) error {
 
 func pluginListCmd() func(ctx context.Context, cmd *cli.Command) error {
 	return func(ctx context.Context, cmd *cli.Command) error {
+		// Load the configuration file
+		cfg, err := config.LoadConfigFn()
+		if err != nil {
+			// Print the error to stdout and return
+			fmt.Println("failed to load configuration:", err)
+			return nil
+		}
+
+		// If there are no plugins, notify the user
+		if len(cfg.Plugins) == 0 {
+			fmt.Println("No plugins registered.")
+			return nil
+		}
+
+		// Display the list of plugins
+		fmt.Println("List of Registered Plugins:")
+		for _, plugin := range cfg.Plugins {
+			fmt.Printf("Name: %s, Path: %s, Enabled: %v\n", plugin.Name, plugin.Path, plugin.Enabled)
+		}
+
 		return nil
 	}
 }

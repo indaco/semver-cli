@@ -139,14 +139,14 @@ func newCLI(defaultPath string) *cli.Command {
 				Usage: "Manage plugins for semver-cli",
 				Commands: []*cli.Command{
 					{
-						Name:  "register",
+						Name:  "add",
 						Usage: "Register a plugin from a remote repo or local path",
 						Flags: []cli.Flag{
 							&cli.StringFlag{Name: "url", Usage: "Git URL to clone"},
 							&cli.StringFlag{Name: "path", Usage: "Local path to copy from"},
 							&cli.StringFlag{Name: "plugin-dir", Usage: "Directory to store plugins in", Value: "."},
 						},
-						Action: pluginRegisterCmd(),
+						Action: pluginAddCmd(),
 					},
 					{
 						Name:   "list",

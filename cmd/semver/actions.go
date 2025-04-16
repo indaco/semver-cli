@@ -254,7 +254,7 @@ func validateVersionCmd() func(ctx context.Context, cmd *cli.Command) error {
 	}
 }
 
-func pluginRegisterCmd() func(ctx context.Context, cmd *cli.Command) error {
+func pluginAddCmd() func(ctx context.Context, cmd *cli.Command) error {
 	return func(ctx context.Context, cmd *cli.Command) error {
 		localPath := cmd.String("path")
 		if localPath == "" {

@@ -973,7 +973,7 @@ func TestCLI_ValidateCommand_Errors(t *testing.T) {
 }
 
 /* ------------------------------------------------------------------------- */
-/* PLUGIN REGISTER COMMAND                                                   */
+/* PLUGIN ADD COMMAND                                                        */
 /* ------------------------------------------------------------------------- */
 
 func TestPluginRegisterCmd_Success(t *testing.T) {
@@ -1018,7 +1018,7 @@ entry: mock-entry`
 	// Run the command, ensuring we pass the correct plugin directory
 	output, _ := testutils.CaptureStdout(func() {
 		testutils.RunCLITest(t, appCli, []string{
-			"semver", "plugin", "register", "--path", pluginDir,
+			"semver", "plugin", "add", "--path", pluginDir,
 			"--plugin-dir", tmpDir}, tmpDir)
 	})
 
@@ -1035,7 +1035,7 @@ func TestPluginRegisterCmd_MissingPathArgument(t *testing.T) {
 		appCli := newCLI(versionPath)
 
 		// Run the CLI command with missing --path argument
-		err := appCli.Run(context.Background(), []string{"semver", "plugin", "register"})
+		err := appCli.Run(context.Background(), []string{"semver", "plugin", "add"})
 		if err != nil {
 			fmt.Fprintln(os.Stderr, err)
 			os.Exit(1) // expected non-zero exit

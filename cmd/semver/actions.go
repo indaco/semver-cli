@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"os"
+	"path/filepath"
 
 	"github.com/indaco/semver-cli/internal/config"
 	"github.com/indaco/semver-cli/internal/pluginmanager"
@@ -288,6 +289,58 @@ func pluginListCmd() func(ctx context.Context, cmd *cli.Command) error {
 		fmt.Println("List of Registered Plugins:")
 		for _, plugin := range cfg.Plugins {
 			fmt.Printf("Name: %s, Path: %s, Enabled: %v\n", plugin.Name, plugin.Path, plugin.Enabled)
+		}
+
+		return nil
+	}
+}
+
+func pluginRemoveCmd() func(ctx context.Context, cmd *cli.Command) error {
+	return func(ctx context.Context, cmd *cli.Command) error {
+		// Get the plugin name from the flag
+		pluginName := cmd.String("name")
+		if pluginName == "" {
+			return fmt.Errorf("please provide a plugin name to remove")
+		}
+
+		cfg, err := config.LoadConfigFn()
+		if err != nil {
+			fmt.Println("failed to load configuration:", err)
+			return nil
+		}
+
+		var pluginToRemove *config.PluginConfig
+		for i, plugin := range cfg.Plugins {
+			if plugin.Name == pluginName {
+				pluginToRemove = &cfg.Plugins[i]
+				break
+			}
+		}
+
+		if pluginToRemove == nil {
+			fmt.Printf("plugin %q not found\n", pluginName)
+			return nil
+		}
+
+		// Disable the plugin in the configuration (set Enabled to false)
+		pluginToRemove.Enabled = false
+
+		// Save the updated config back to the file
+		if err := config.SaveConfigFn(cfg); err != nil {
+			fmt.Println("failed to save updated configuration:", err)
+			return nil
+		}
+
+		// Check if --delete-folder flag is set to remove the plugin folder
+		if cmd.Bool("delete-folder") {
+			// Remove the plugin directory from ".semver-plugins"
+			pluginDirPath := filepath.Join(".semver-plugins", pluginName)
+			if err := os.RemoveAll(pluginDirPath); err != nil {
+				return fmt.Errorf("failed to remove plugin directory: %w", err)
+			}
+			fmt.Printf("✅ Plugin %q and its directory removed successfully.\n", pluginName)
+		} else {
+			fmt.Printf("✅ Plugin %q removed, but its directory is preserved.\n", pluginName)
 		}
 
 		return nil

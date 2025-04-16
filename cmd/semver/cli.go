@@ -153,6 +153,22 @@ func newCLI(defaultPath string) *cli.Command {
 						Usage:  "List installed plugins",
 						Action: pluginListCmd(),
 					},
+
+					{
+						Name:  "remove",
+						Usage: "Remove a registered plugin",
+						Flags: []cli.Flag{
+							&cli.StringFlag{
+								Name:  "name",
+								Usage: "Name of the plugin to remove",
+							},
+							&cli.BoolFlag{
+								Name:  "delete-folder",
+								Usage: "Delete the plugin directory from the .semver-plugins folder",
+							},
+						},
+						Action: pluginRemoveCmd(),
+					},
 				},
 			},
 		},

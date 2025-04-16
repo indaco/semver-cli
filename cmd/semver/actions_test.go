@@ -6,6 +6,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"runtime"
 	"strings"
 	"testing"
 
@@ -1166,5 +1167,324 @@ func TestPluginListCmd_LoadConfigError(t *testing.T) {
 	expectedErrorMessage := "failed to load configuration"
 	if !strings.Contains(output, expectedErrorMessage) {
 		t.Errorf("Expected error message to contain %q, but got: %q", expectedErrorMessage, output)
+	}
+}
+
+/* ------------------------------------------------------------------------- */
+/* PLUGIN REMOVE COMMAND                                                     */
+/* ------------------------------------------------------------------------- */
+
+func TestPluginRemoveCmd_DeleteFolderVariants(t *testing.T) {
+	pluginName := "mock-plugin"
+
+	tests := []struct {
+		name          string
+		deleteFolder  bool
+		expectDeleted bool
+	}{
+		{
+			name:          "delete-folder=false",
+			deleteFolder:  false,
+			expectDeleted: false,
+		},
+		{
+			name:          "delete-folder=true",
+			deleteFolder:  true,
+			expectDeleted: true,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			tmpDir := t.TempDir()
+
+			// Prepare paths
+			pluginsRoot := filepath.Join(tmpDir, ".semver-plugins")
+			pluginDir := filepath.Join(pluginsRoot, pluginName)
+			configPath := filepath.Join(tmpDir, ".semver.yaml")
+
+			// Create dummy plugin dir
+			if err := os.MkdirAll(pluginDir, 0755); err != nil {
+				t.Fatalf("failed to create plugin directory: %v", err)
+			}
+
+			// Write .semver.yaml config
+			content := `plugins:
+  - name: mock-plugin
+    path: /some/path
+    enabled: true`
+			if err := os.WriteFile(configPath, []byte(content), 0644); err != nil {
+				t.Fatalf("failed to write config file: %v", err)
+			}
+
+			// Build CLI args
+			args := []string{"semver", "plugin", "remove", "--name", pluginName}
+			if tt.deleteFolder {
+				args = append(args, "--delete-folder")
+			}
+
+			appCli := newCLI(configPath)
+			output, err := testutils.CaptureStdout(func() {
+				testutils.RunCLITest(t, appCli, args, tmpDir)
+			})
+			if err != nil {
+				t.Fatalf("CLI run failed: %v", err)
+			}
+
+			// Check output
+			if tt.deleteFolder {
+				exp := fmt.Sprintf("✅ Plugin %q and its directory removed successfully.", pluginName)
+				if !strings.Contains(output, exp) {
+					t.Errorf("expected output to contain %q, got:\n%s", exp, output)
+				}
+			} else {
+				exp := fmt.Sprintf("✅ Plugin %q removed, but its directory is preserved.", pluginName)
+				if !strings.Contains(output, exp) {
+					t.Errorf("expected output to contain %q, got:\n%s", exp, output)
+				}
+			}
+
+			// Check if directory was deleted or not
+			_, err = os.Stat(pluginDir)
+			if tt.expectDeleted {
+				if !os.IsNotExist(err) {
+					t.Errorf("expected plugin directory to be deleted, but it still exists")
+				}
+			} else {
+				if err != nil {
+					t.Errorf("expected plugin directory to exist, got: %v", err)
+				}
+			}
+
+			// Verify plugin is disabled in config
+			cfg, err := config.LoadConfigFn()
+			if err != nil {
+				t.Fatalf("failed to reload config: %v", err)
+			}
+			found := false
+			for _, plugin := range cfg.Plugins {
+				if plugin.Name == pluginName {
+					found = true
+					if plugin.Enabled {
+						t.Errorf("expected plugin %q to be disabled, but it's still enabled", pluginName)
+					}
+					break
+				}
+			}
+			if !found {
+				t.Errorf("plugin %q not found in config", pluginName)
+			}
+		})
+	}
+}
+
+func TestPluginRemoveCmd_DeleteFolderFailure(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("permission-based RemoveAll failure is unreliable on Windows")
+	}
+
+	tmpDir := t.TempDir()
+	pluginName := "mock-plugin"
+	pluginDir := filepath.Join(tmpDir, ".semver-plugins", pluginName)
+	pluginConfigPath := filepath.Join(tmpDir, ".semver.yaml")
+
+	if err := os.MkdirAll(pluginDir, 0755); err != nil {
+		t.Fatalf("failed to create plugin directory: %v", err)
+	}
+
+	protectedFile := filepath.Join(pluginDir, "protected.txt")
+	if err := os.WriteFile(protectedFile, []byte("protected"), 0400); err != nil {
+		t.Fatalf("failed to create protected file: %v", err)
+	}
+	if err := os.Chmod(pluginDir, 0500); err != nil {
+		t.Fatalf("failed to chmod plugin dir: %v", err)
+	}
+
+	defer func() {
+		_ = os.Chmod(protectedFile, 0600)
+		_ = os.Chmod(pluginDir, 0700)
+	}()
+
+	content := `plugins:
+  - name: mock-plugin
+    path: /some/path
+    enabled: true`
+	if err := os.WriteFile(pluginConfigPath, []byte(content), 0644); err != nil {
+		t.Fatalf("failed to write config: %v", err)
+	}
+
+	appCli := newCLI(pluginConfigPath)
+
+	var cliErr error
+	_, captureErr := testutils.CaptureStdout(func() {
+		cliErr = testutils.RunCLITestAllowError(t, appCli, []string{
+			"semver", "plugin", "remove",
+			"--name", pluginName,
+			"--delete-folder",
+		}, tmpDir)
+	})
+	if captureErr != nil {
+		t.Fatalf("failed to capture output: %v", captureErr)
+	}
+
+	_ = os.Chmod(protectedFile, 0600)
+	_ = os.Chmod(pluginDir, 0700)
+
+	if cliErr == nil {
+		t.Fatal("expected error but got nil")
+	}
+
+	expectedMsg := "failed to remove plugin directory"
+	if !strings.Contains(cliErr.Error(), expectedMsg) {
+		t.Errorf("expected error message to contain %q, got: %v", expectedMsg, cliErr)
+	}
+
+}
+
+func TestCLI_PluginRemove_MissingName(t *testing.T) {
+	if os.Getenv("TEST_PLUGIN_REMOVE_MISSING_NAME") == "1" {
+		tmp := t.TempDir()
+
+		// Write valid .semver.yaml with 1 plugin (won't be used, but still required)
+		configPath := filepath.Join(tmp, ".semver.yaml")
+		content := `plugins:
+  - name: mock-plugin
+    path: /some/path
+    enabled: true`
+		if err := os.WriteFile(configPath, []byte(content), 0644); err != nil {
+			fmt.Fprintln(os.Stderr, "failed to write config:", err)
+			os.Exit(1)
+		}
+
+		appCli := newCLI(configPath)
+
+		// Run command WITHOUT --name (should trigger the validation)
+		err := appCli.Run(context.Background(), []string{
+			"semver", "plugin", "remove", "--path", configPath,
+		})
+		if err != nil {
+			fmt.Fprintln(os.Stderr, err)
+			os.Exit(1)
+		}
+
+		// Shouldn't reach here
+		os.Exit(0)
+	}
+
+	cmd := exec.Command(os.Args[0], "-test.run=TestCLI_PluginRemove_MissingName")
+	cmd.Env = append(os.Environ(), "TEST_PLUGIN_REMOVE_MISSING_NAME=1")
+	output, err := cmd.CombinedOutput()
+
+	if err == nil {
+		t.Fatal("expected non-zero exit status")
+	}
+
+	expected := "please provide a plugin name to remove"
+	if !strings.Contains(string(output), expected) {
+		t.Errorf("expected output to contain %q, got:\n%s", expected, output)
+	}
+}
+
+func TestPluginRemoveCmd_LoadConfigError(t *testing.T) {
+	// Mock the LoadConfig function to simulate an error
+	originalLoadConfig := config.LoadConfigFn
+	defer func() {
+		config.LoadConfigFn = originalLoadConfig
+	}()
+
+	config.LoadConfigFn = func() (*config.Config, error) {
+		return nil, fmt.Errorf("failed to load configuration")
+	}
+
+	tmpDir := t.TempDir()
+	pluginConfigPath := filepath.Join(tmpDir, ".semver.yaml")
+
+	// Run the plugin remove command
+	appCli := newCLI(pluginConfigPath)
+
+	// Capture the output
+	output, err := testutils.CaptureStdout(func() {
+		testutils.RunCLITest(t, appCli, []string{"semver", "plugin", "remove", "--name", "mock-plugin"}, tmpDir)
+	})
+
+	if err != nil {
+		t.Fatalf("Failed to capture stdout: %v", err)
+	}
+
+	// Expected error message
+	expected := "failed to load configuration"
+	if !strings.Contains(output, expected) {
+		t.Errorf("expected output to contain %q, got %q", expected, output)
+	}
+}
+
+func TestPluginRemoveCmd_PluginNotFound(t *testing.T) {
+	tmpDir := t.TempDir()
+	pluginConfigPath := filepath.Join(tmpDir, ".semver.yaml")
+
+	// Create a dummy .semver.yaml configuration file with no plugin
+	content := `plugins: []`
+	if err := os.WriteFile(pluginConfigPath, []byte(content), 0644); err != nil {
+		t.Fatalf("failed to create .semver.yaml: %v", err)
+	}
+
+	// Run the plugin remove command with a non-existent plugin
+	appCli := newCLI(pluginConfigPath)
+
+	// Capture the output
+	output, err := testutils.CaptureStdout(func() {
+		testutils.RunCLITest(t, appCli, []string{"semver", "plugin", "remove", "--name", "mock-plugin"}, tmpDir)
+	})
+
+	if err != nil {
+		t.Fatalf("Failed to capture stdout: %v", err)
+	}
+
+	// Expected error message
+	expected := "plugin \"mock-plugin\" not found"
+	if !strings.Contains(output, expected) {
+		t.Errorf("expected output to contain %q, got %q", expected, output)
+	}
+}
+
+func TestPluginRemoveCmd_SaveConfigError(t *testing.T) {
+	// Mock the SaveConfig function to simulate an error
+	originalSaveConfig := config.SaveConfigFn
+	defer func() {
+		config.SaveConfigFn = originalSaveConfig
+	}()
+
+	config.SaveConfigFn = func(cfg *config.Config) error {
+		return fmt.Errorf("failed to save updated configuration")
+	}
+
+	tmpDir := t.TempDir()
+	pluginConfigPath := filepath.Join(tmpDir, ".semver.yaml")
+
+	// Create a dummy .semver.yaml configuration file
+	content := `plugins:
+  - name: mock-plugin
+    path: /path/to/plugin
+    enabled: true`
+	if err := os.WriteFile(pluginConfigPath, []byte(content), 0644); err != nil {
+		t.Fatalf("failed to create .semver.yaml: %v", err)
+	}
+
+	// Run the plugin remove command
+	appCli := newCLI(pluginConfigPath)
+
+	// Capture the output
+	output, err := testutils.CaptureStdout(func() {
+		testutils.RunCLITest(t, appCli, []string{"semver", "plugin", "remove", "--name", "mock-plugin"}, tmpDir)
+	})
+
+	if err != nil {
+		t.Fatalf("Failed to capture stdout: %v", err)
+	}
+
+	// Expected error message
+	expected := "failed to save updated configuration"
+	if !strings.Contains(output, expected) {
+		t.Errorf("expected output to contain %q, got %q", expected, output)
 	}
 }

@@ -2,6 +2,7 @@ package config
 
 import (
 	"bytes"
+	"fmt"
 	"os"
 	"path/filepath"
 
@@ -19,7 +20,15 @@ type Config struct {
 	Plugins []PluginConfig `yaml:"plugins,omitempty"`
 }
 
-var LoadConfigFn = loadConfig
+var (
+	LoadConfigFn = loadConfig
+	SaveConfigFn = saveConfig
+	marshalFn    = yaml.Marshal
+	openFileFn   = os.OpenFile
+	writeFileFn  = func(file *os.File, data []byte) (int, error) {
+		return file.Write(data)
+	}
+)
 
 func loadConfig() (*Config, error) {
 	// Highest priority: ENV variable
@@ -58,4 +67,23 @@ func NormalizeVersionPath(path string) string {
 
 	// If it doesn't exist or is already a file, return as-is
 	return path
+}
+
+func saveConfig(cfg *Config) error {
+	file, err := openFileFn(".semver.yaml", os.O_RDWR|os.O_CREATE|os.O_TRUNC, 0644)
+	if err != nil {
+		return fmt.Errorf("failed to open config file: %w", err)
+	}
+	defer file.Close()
+
+	data, err := marshalFn(cfg)
+	if err != nil {
+		return fmt.Errorf("failed to marshal config: %w", err)
+	}
+
+	if _, err := writeFileFn(file, data); err != nil {
+		return fmt.Errorf("failed to write config data: %w", err)
+	}
+
+	return nil
 }

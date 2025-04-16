@@ -37,17 +37,17 @@ entry: plugin.templ
 	}
 
 	// Override .semver-plugins dir for test
-	originalCopyDir := CopyDirFn
-	defer func() { CopyDirFn = originalCopyDir }()
+	originalCopyDir := copyDirFn
+	defer func() { copyDirFn = originalCopyDir }()
 
-	CopyDirFn = func(src, dst string) error {
+	copyDirFn = func(src, dst string) error {
 		if !strings.Contains(src, "myplugin") || !strings.Contains(dst, "test-plugin") {
 			t.Errorf("unexpected copy src=%q dst=%q", src, dst)
 		}
 		return nil
 	}
 
-	err := RegisterLocalPlugin(pluginDir, cfgPath, tmpDir)
+	err := RegisterLocalPluginFn(pluginDir, cfgPath, tmpDir)
 	if err != nil {
 		t.Fatalf("expected success, got error: %v", err)
 	}
@@ -55,7 +55,7 @@ entry: plugin.templ
 
 func TestRegisterLocalPlugin_InvalidPath(t *testing.T) {
 	tmpDir := os.TempDir()
-	err := RegisterLocalPlugin("/nonexistent/path", ".semver.yaml", tmpDir)
+	err := RegisterLocalPluginFn("/nonexistent/path", ".semver.yaml", tmpDir)
 	if err == nil || !strings.Contains(err.Error(), "plugin path error") {
 		t.Errorf("expected plugin path error, got: %v", err)
 	}
@@ -66,7 +66,7 @@ func TestRegisterLocalPlugin_NotDirectory(t *testing.T) {
 	file := filepath.Join(tmpDir, "file.txt")
 	_ = os.WriteFile(file, []byte("test"), 0644)
 
-	err := RegisterLocalPlugin(file, ".semver.yaml", tmpDir)
+	err := RegisterLocalPluginFn(file, ".semver.yaml", tmpDir)
 	if err == nil || !strings.Contains(err.Error(), "must be a directory") {
 		t.Errorf("expected directory error, got: %v", err)
 	}
@@ -78,7 +78,7 @@ func TestRegisterLocalPlugin_InvalidManifest(t *testing.T) {
 	_ = os.Mkdir(pluginDir, 0755)
 	_ = os.WriteFile(filepath.Join(pluginDir, "plugin.yaml"), []byte("invalid: yaml:::"), 0644)
 
-	err := RegisterLocalPlugin(pluginDir, ".semver.yaml", tmpDir)
+	err := RegisterLocalPluginFn(pluginDir, ".semver.yaml", tmpDir)
 	if err == nil || !strings.Contains(err.Error(), "failed to load plugin manifest") {
 		t.Errorf("expected manifest load error, got: %v", err)
 	}
@@ -93,17 +93,17 @@ func TestRegisterLocalPlugin_CopyDirFails(t *testing.T) {
 	configPath := testutils.WriteTempConfig(t, "plugins: []\n")
 
 	// Temporarily override CopyDirFn to simulate failure
-	originalCopyDirFn := CopyDirFn
-	CopyDirFn = func(src, dst string) error {
+	originalCopyDirFn := copyDirFn
+	copyDirFn = func(src, dst string) error {
 		return fmt.Errorf("simulated copy failure")
 	}
 	defer func() {
 		// Restore original CopyDir function
-		CopyDirFn = originalCopyDirFn
+		copyDirFn = originalCopyDirFn
 	}()
 
-	// Call RegisterLocalPlugin which should now fail due to the simulated copy error
-	err := RegisterLocalPlugin(pluginDir, configPath, tmpDir)
+	// Call RegisterLocalPluginFn which should now fail due to the simulated copy error
+	err := RegisterLocalPluginFn(pluginDir, configPath, tmpDir)
 	if err == nil {
 		t.Fatal("expected error when copying, got nil")
 	}
@@ -134,13 +134,13 @@ func TestRegisterLocalPlugin_DefaultConfigPath(t *testing.T) {
 	})
 
 	// Register the plugin for the first time
-	err = RegisterLocalPlugin(tmpPluginDir, tmpConfigPath, tmpDir)
+	err = RegisterLocalPluginFn(tmpPluginDir, tmpConfigPath, tmpDir)
 	if err != nil {
 		t.Fatalf("expected no error on first plugin registration, got: %v", err)
 	}
 
 	// Register the plugin again
-	err = RegisterLocalPlugin(tmpPluginDir, tmpConfigPath, tmpDir)
+	err = RegisterLocalPluginFn(tmpPluginDir, tmpConfigPath, tmpDir)
 	if err != nil {
 		t.Fatalf("expected no error on second plugin registration, got: %v", err)
 	}
@@ -172,7 +172,7 @@ func TestRegisterLocalPlugin_DefaultConfigPath(t *testing.T) {
 	}
 
 	// Test that the default config path is used when no configPath is passed
-	err = RegisterLocalPlugin(tmpPluginDir, "", tmpDir)
+	err = RegisterLocalPluginFn(tmpPluginDir, "", tmpDir)
 	if err != nil {
 		t.Fatalf("expected no error on second plugin registration with empty configPath, got: %v", err)
 	}
@@ -223,7 +223,7 @@ func TestRegisterLocalPlugin_DefaultConfigPathUsed_CurrentWorkingDir(t *testing.
 	})
 
 	// Register the plugin with the current directory as the plugin path ("" or ".")
-	err = RegisterLocalPlugin(tmpPluginDir, tmpConfigPath, "")
+	err = RegisterLocalPluginFn(tmpPluginDir, tmpConfigPath, "")
 	if err != nil {
 		t.Fatalf("expected no error on plugin registration, got: %v", err)
 	}
@@ -271,7 +271,7 @@ func TestRegisterLocalPlugin_DefaultConfigPathUsed_OtherDir(t *testing.T) {
 	})
 
 	// Register the plugin with the temporary plugin folder
-	err = RegisterLocalPlugin(tmpPluginDir, tmpConfigPath, tmpPluginFolder)
+	err = RegisterLocalPluginFn(tmpPluginDir, tmpConfigPath, tmpPluginFolder)
 	if err != nil {
 		t.Fatalf("expected no error on plugin registration, got: %v", err)
 	}
@@ -322,7 +322,7 @@ entry: mock-entry
 	}
 
 	// Call the RegisterLocalPlugin function
-	err := RegisterLocalPlugin(pluginDir, configPath, tmpDir)
+	err := RegisterLocalPluginFn(pluginDir, configPath, tmpDir)
 	if err != nil {
 		t.Fatalf("expected no error during plugin registration, got: %v", err)
 	}
@@ -356,7 +356,7 @@ entry: mock-entry
 	}
 
 	// Call the RegisterLocalPlugin function with an invalid config path
-	err := RegisterLocalPlugin(pluginDir, nonExistentConfigPath, tmpDir)
+	err := RegisterLocalPluginFn(pluginDir, nonExistentConfigPath, tmpDir)
 	if err == nil {
 		t.Fatal("expected error due to non-existent config file, got nil")
 	}
@@ -376,7 +376,7 @@ func TestRegisterLocalPlugin_InvalidConfigPathResolution(t *testing.T) {
 	invalidConfigPath := "/invalid/path/to/.semver.yaml"
 
 	// Try registering the plugin with the invalid config path
-	err := RegisterLocalPlugin(tmpPluginDir, invalidConfigPath, os.TempDir())
+	err := RegisterLocalPluginFn(tmpPluginDir, invalidConfigPath, os.TempDir())
 	if err == nil {
 		t.Fatal("expected error due to invalid config path resolution, got nil")
 	}
@@ -422,7 +422,7 @@ func TestRegisterLocalPlugin_AddPluginToConfigError(t *testing.T) {
 	}
 
 	// Attempt to register the plugin
-	err := RegisterLocalPlugin(localPath, cfgPath, tmpPluginDir)
+	err := RegisterLocalPluginFn(localPath, cfgPath, tmpPluginDir)
 
 	// Check that we get the expected error
 	if err == nil {

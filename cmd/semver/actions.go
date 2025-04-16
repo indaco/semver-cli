@@ -265,7 +265,7 @@ func pluginAddCmd() func(ctx context.Context, cmd *cli.Command) error {
 		pluginDirectory := cmd.String("plugin-dir")
 
 		// Proceed with normal plugin registration
-		return pluginmanager.RegisterLocalPlugin(localPath, ".semver.yaml", pluginDirectory)
+		return pluginmanager.RegisterLocalPluginFn(localPath, ".semver.yaml", pluginDirectory)
 	}
 }
 

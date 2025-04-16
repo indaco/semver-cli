@@ -9,9 +9,9 @@ import (
 	"github.com/indaco/semver-cli/internal/plugins"
 )
 
-var RegisterLocalPluginFn = RegisterLocalPlugin
+var RegisterLocalPluginFn = registerLocalPlugin
 
-func RegisterLocalPlugin(localPath, configPath, pluginDirectory string) error {
+func registerLocalPlugin(localPath, configPath, pluginDirectory string) error {
 	// 1. Validate source path (ensure it's a directory)
 	info, err := os.Stat(localPath)
 	if err != nil {
@@ -36,7 +36,7 @@ func RegisterLocalPlugin(localPath, configPath, pluginDirectory string) error {
 	destPath := filepath.Join(pluginDirectory, ".semver-plugins", manifest.Name)
 
 	// 4. Copy the plugin files to the destination directory
-	if err := CopyDirFn(localPath, destPath); err != nil {
+	if err := copyDirFn(localPath, destPath); err != nil {
 		return fmt.Errorf("failed to copy plugin files: %w", err)
 	}
 

@@ -29,12 +29,12 @@ var (
 		"node_modules": {},
 	}
 
-	CopyDirFn = CopyDir
+	copyDirFn = copyDir
 )
 
-// CopyDir recursively copies all files and subdirectories from src to dst.
+// copyDir recursively copies all files and subdirectories from src to dst.
 // It preserves permissions and creates necessary subfolders automatically.
-func CopyDir(src, dst string) error {
+func copyDir(src, dst string) error {
 	return walkFn(src, func(path string, info os.FileInfo, err error) error {
 		if err != nil {
 			return err

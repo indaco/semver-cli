@@ -28,7 +28,7 @@ entry: actions.json
 `
 	writePluginYAML(t, dir, content)
 
-	m, err := LoadPluginManifest(dir)
+	m, err := LoadPluginManifestFn(dir)
 	if err != nil {
 		t.Fatalf("expected no error, got %v", err)
 	}
@@ -39,7 +39,7 @@ entry: actions.json
 
 func TestLoadPluginManifest_MissingFile(t *testing.T) {
 	dir := t.TempDir()
-	_, err := LoadPluginManifest(dir)
+	_, err := LoadPluginManifestFn(dir)
 	if err == nil || !strings.Contains(err.Error(), "no such file") {
 		t.Fatalf("expected file not found error, got %v", err)
 	}
@@ -50,7 +50,7 @@ func TestLoadPluginManifest_InvalidYAML(t *testing.T) {
 	content := ": this is not valid yaml"
 	writePluginYAML(t, dir, content)
 
-	_, err := LoadPluginManifest(dir)
+	_, err := LoadPluginManifestFn(dir)
 	if err == nil || !strings.Contains(err.Error(), "failed to parse manifest:") {
 		t.Fatalf("expected YAML parse error, got %v", err)
 	}
@@ -68,7 +68,7 @@ entry: ""
 `
 	writePluginYAML(t, dir, content)
 
-	_, err := LoadPluginManifest(dir)
+	_, err := LoadPluginManifestFn(dir)
 	if err == nil || !strings.Contains(err.Error(), "plugin manifest: missing") {
 		t.Fatalf("expected validation error, got %v", err)
 	}

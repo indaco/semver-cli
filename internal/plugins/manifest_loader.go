@@ -9,10 +9,10 @@ import (
 	"github.com/goccy/go-yaml"
 )
 
-var LoadPluginManifestFn = LoadPluginManifest
+var LoadPluginManifestFn = loadPluginManifest
 
-// LoadPluginManifest loads and validates a plugin.yaml file from the given directory.
-func LoadPluginManifest(dir string) (*PluginManifest, error) {
+// loadPluginManifest loads and validates a plugin.yaml file from the given directory.
+func loadPluginManifest(dir string) (*PluginManifest, error) {
 	manifestPath := filepath.Join(dir, "plugin.yaml")
 
 	data, err := os.ReadFile(manifestPath)

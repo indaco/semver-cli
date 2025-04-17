@@ -3,6 +3,7 @@ package plugins
 import (
 	"testing"
 
+	"github.com/indaco/semver-cli/api"
 	"github.com/indaco/semver-cli/internal/config"
 	"github.com/urfave/cli/v3"
 )
@@ -21,14 +22,14 @@ func (d *dummyPlugin) Register(cmd *cli.Command) {
 	cmd.Description = "dummy registered"
 }
 
-func newDummyPlugin(name string) Plugin {
+func newDummyPlugin(name string) api.Plugin {
 	return &dummyPlugin{pluginName: name}
 }
 
 func TestRegisterConfiguredPlugins(t *testing.T) {
 	resetPluginSystem()
 
-	RegisterFactory("dummy", func() Plugin {
+	RegisterFactory("dummy", func() api.Plugin {
 		return newDummyPlugin("dummy")
 	})
 
@@ -68,7 +69,7 @@ func TestRegisterConfiguredPlugins_UnknownPlugin(t *testing.T) {
 func TestRegisterConfiguredPlugins_DisabledPlugin(t *testing.T) {
 	resetPluginSystem()
 
-	RegisterFactory("dummy", func() Plugin {
+	RegisterFactory("dummy", func() api.Plugin {
 		return newDummyPlugin("dummy")
 	})
 

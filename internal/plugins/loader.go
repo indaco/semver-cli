@@ -1,9 +1,12 @@
 package plugins
 
-import "github.com/indaco/semver-cli/internal/config"
+import (
+	"github.com/indaco/semver-cli/api"
+	"github.com/indaco/semver-cli/internal/config"
+)
 
 // Factory is a function that returns a new Plugin instance.
-type Factory func() Plugin
+type Factory func() api.Plugin
 
 var factories = map[string]Factory{}
 

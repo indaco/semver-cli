@@ -27,45 +27,47 @@ func registerLocalPlugin(localPath, configPath, pluginDirectory string) error {
 		return fmt.Errorf("failed to load plugin manifest: %w", err)
 	}
 
-	// 3. Determine the destination directory for plugins
-	// If pluginDirectory is provided, use it. Otherwise, default to current directory.
+	// 3. Determine pluginDirectory if not set
 	if pluginDirectory == "" {
 		pluginDirectory = "."
 	}
-
 	destPath := filepath.Join(pluginDirectory, ".semver-plugins", manifest.Name)
 
-	// 4. Copy the plugin files to the destination directory
+	// 4. Resolve and validate config path
+	if configPath == "" {
+		configPath = ".semver.yaml"
+	}
+	absConfigPath, _ := filepath.Abs(configPath)
+
+	if _, err := os.Stat(absConfigPath); os.IsNotExist(err) {
+		fmt.Fprintf(os.Stderr, `
+💡 To enable plugin support, create a .semver.yaml file in your project root. For example:
+
+    echo "plugins: []" > .semver.yaml
+
+Then run this command again.
+`)
+		return fmt.Errorf("config file not found at %s", absConfigPath)
+	}
+
+	// 5. Copy the plugin files to the destination directory
 	if err := copyDirFn(localPath, destPath); err != nil {
 		return fmt.Errorf("failed to copy plugin files: %w", err)
 	}
 
-	// 5. Ensure configPath is set, default to ".semver.yaml" if empty
-	if configPath == "" {
-		configPath = ".semver.yaml"
-	}
-
-	// 6. Resolve the config path to an absolute path
-	absConfigPath, _ := filepath.Abs(configPath)
-
-	// 7. Ensure the config file exists before trying to update it
-	if _, err := os.Stat(absConfigPath); os.IsNotExist(err) {
-		return fmt.Errorf("config file not found at %s", absConfigPath)
-	}
-
-	// 8. Prepare the plugin config entry
+	// 6. Update the config
 	pluginCfg := config.PluginConfig{
 		Name:    manifest.Name,
 		Path:    destPath,
 		Enabled: true,
 	}
 
-	// 9. Add the plugin to the config file
+	// 7. Add the plugin to the config file
 	if err := AddPluginToConfigFn(absConfigPath, pluginCfg); err != nil {
 		return fmt.Errorf("failed to update config: %w", err)
 	}
 
-	// 10. Success message
+	// 8. Success message
 	fmt.Printf("✅ Plugin %q registered successfully.\n", manifest.Name)
 	return nil
 }

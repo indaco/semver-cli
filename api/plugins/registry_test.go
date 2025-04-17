@@ -21,8 +21,8 @@ func (m *mockPlugin) Register(cmd *cli.Command) {
 
 func TestRegisterAndAll(t *testing.T) {
 	// Reset registry
-	resetPlugins()
-	defer resetPlugins()
+	ResetPlugins()
+	defer ResetPlugins()
 
 	p := &mockPlugin{}
 	Register(p)
@@ -39,8 +39,8 @@ func TestRegisterAndAll(t *testing.T) {
 
 func TestPluginRegisterModifiesCommand(t *testing.T) {
 	// Reset registry
-	resetPlugins()
-	defer resetPlugins()
+	ResetPlugins()
+	defer ResetPlugins()
 
 	p := &mockPlugin{}
 	Register(p)
@@ -51,13 +51,4 @@ func TestPluginRegisterModifiesCommand(t *testing.T) {
 	if root.Description != "plugin was here" {
 		t.Errorf("expected root.Description to be set, got %q", root.Description)
 	}
-}
-
-/* ------------------------------------------------------------------------- */
-/* HELPERS                                                                   */
-/* ------------------------------------------------------------------------- */
-
-// resetPlugins empties the internal registry between tests
-func resetPlugins() {
-	registry = nil
 }

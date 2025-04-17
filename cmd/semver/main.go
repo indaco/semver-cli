@@ -5,8 +5,8 @@ import (
 	"log"
 	"os"
 
+	"github.com/indaco/semver-cli/api/plugins"
 	"github.com/indaco/semver-cli/internal/config"
-	"github.com/indaco/semver-cli/internal/plugins"
 )
 
 func main() {

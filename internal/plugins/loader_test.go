@@ -3,7 +3,7 @@ package plugins
 import (
 	"testing"
 
-	"github.com/indaco/semver-cli/api"
+	"github.com/indaco/semver-cli/api/plugins"
 	"github.com/indaco/semver-cli/internal/config"
 	"github.com/urfave/cli/v3"
 )
@@ -22,14 +22,14 @@ func (d *dummyPlugin) Register(cmd *cli.Command) {
 	cmd.Description = "dummy registered"
 }
 
-func newDummyPlugin(name string) api.Plugin {
+func newDummyPlugin(name string) plugins.Plugin {
 	return &dummyPlugin{pluginName: name}
 }
 
 func TestRegisterConfiguredPlugins(t *testing.T) {
 	resetPluginSystem()
 
-	RegisterFactory("dummy", func() api.Plugin {
+	RegisterFactory("dummy", func() plugins.Plugin {
 		return newDummyPlugin("dummy")
 	})
 
@@ -41,7 +41,7 @@ func TestRegisterConfiguredPlugins(t *testing.T) {
 
 	RegisterConfiguredPlugins(cfg)
 
-	all := All()
+	all := plugins.All()
 	if len(all) != 1 {
 		t.Fatalf("expected 1 plugin, got %d", len(all))
 	}
@@ -61,7 +61,7 @@ func TestRegisterConfiguredPlugins_UnknownPlugin(t *testing.T) {
 
 	RegisterConfiguredPlugins(cfg)
 
-	if got := len(All()); got != 0 {
+	if got := len(plugins.All()); got != 0 {
 		t.Errorf("expected no plugin registered, got %d", got)
 	}
 }
@@ -69,7 +69,7 @@ func TestRegisterConfiguredPlugins_UnknownPlugin(t *testing.T) {
 func TestRegisterConfiguredPlugins_DisabledPlugin(t *testing.T) {
 	resetPluginSystem()
 
-	RegisterFactory("dummy", func() api.Plugin {
+	RegisterFactory("dummy", func() plugins.Plugin {
 		return newDummyPlugin("dummy")
 	})
 
@@ -81,20 +81,20 @@ func TestRegisterConfiguredPlugins_DisabledPlugin(t *testing.T) {
 
 	RegisterConfiguredPlugins(cfg)
 
-	if got := len(All()); got != 0 {
+	if got := len(plugins.All()); got != 0 {
 		t.Errorf("expected no plugin registered, got %d", got)
 	}
 }
 
 func TestRegisterConfiguredPlugins_NilConfig(t *testing.T) {
 	// Reset registry before and after test
-	resetPlugins()
-	defer resetPlugins()
+	plugins.ResetPlugins()
+	defer plugins.ResetPlugins()
 
 	RegisterConfiguredPlugins(nil)
 
-	if len(All()) != 0 {
-		t.Errorf("expected no plugins registered, got %d", len(All()))
+	if len(plugins.All()) != 0 {
+		t.Errorf("expected no plugins registered, got %d", len(plugins.All()))
 	}
 }
 
@@ -103,6 +103,6 @@ func TestRegisterConfiguredPlugins_NilConfig(t *testing.T) {
 /* ------------------------------------------------------------------------- */
 
 func resetPluginSystem() {
-	registry = nil
+	plugins.ResetPlugins()
 	factories = map[string]Factory{}
 }

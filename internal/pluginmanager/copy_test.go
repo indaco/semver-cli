@@ -178,24 +178,29 @@ func CopyFileTestHelper(src io.Reader, dst string, perm os.FileMode) error {
 	return nil
 }
 
-func TestShouldSkip(t *testing.T) {
+func TestShouldSkipEntry(t *testing.T) {
 	tests := []struct {
-		name     string
-		fileName string
-		wantSkip bool
+		name      string
+		fileName  string
+		isDir     bool
+		wantSkipF bool
+		wantSkipD bool
 	}{
-		{"git directory", ".git", true},
-		{"macOS metadata", ".DS_Store", true},
-		{"node modules", "node_modules", true},
-		{"normal file", "main.go", false},
-		{"dotfile", ".env", false},
+		{"macOS metadata file", ".DS_Store", false, true, false},
+		{"git directory", ".git", true, false, true},
+		{"node_modules directory", "node_modules", true, false, true},
+		{"regular file", "main.go", false, false, false},
+		{"dotfile", ".env", false, false, false},
+		{"unknown dir", "config", true, false, false},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			info := fakeFileInfo{name: tt.fileName}
-			if got := shouldSkip(info); got != tt.wantSkip {
-				t.Errorf("shouldSkip(%q) = %v, want %v", tt.fileName, got, tt.wantSkip)
+			info := fakeFileInfo{name: tt.fileName, dir: tt.isDir}
+			skipF, skipD := shouldSkipEntry(info)
+			if skipF != tt.wantSkipF || skipD != tt.wantSkipD {
+				t.Errorf("shouldSkipEntry(%q, dir=%v) = (%v, %v), want (%v, %v)",
+					tt.fileName, tt.isDir, skipF, skipD, tt.wantSkipF, tt.wantSkipD)
 			}
 		})
 	}
@@ -204,11 +209,12 @@ func TestShouldSkip(t *testing.T) {
 // fakeFileInfo is a minimal os.FileInfo stub for testing
 type fakeFileInfo struct {
 	name string
+	dir  bool
 }
 
 func (f fakeFileInfo) Name() string       { return f.name }
 func (f fakeFileInfo) Size() int64        { return 0 }
 func (f fakeFileInfo) Mode() os.FileMode  { return 0 }
 func (f fakeFileInfo) ModTime() time.Time { return time.Now() }
-func (f fakeFileInfo) IsDir() bool        { return false }
+func (f fakeFileInfo) IsDir() bool        { return f.dir }
 func (f fakeFileInfo) Sys() any           { return nil }

@@ -40,7 +40,11 @@ func copyDir(src, dst string) error {
 			return err
 		}
 
-		if shouldSkip(info) {
+		skipFile, skipDir := shouldSkipEntry(info)
+		if skipDir {
+			return filepath.SkipDir
+		}
+		if skipFile {
 			return nil
 		}
 
@@ -81,8 +85,14 @@ func copyFile(src, dst string, perm os.FileMode) error {
 	return nil
 }
 
-// shouldSkip determines if a file or directory should be excluded from copying.
-func shouldSkip(info os.FileInfo) bool {
+// shouldSkipEntry determines whether a file should be skipped or a directory subtree should be skipped.
+func shouldSkipEntry(info os.FileInfo) (skipFile bool, skipDir bool) {
 	_, skip := skipNames[info.Name()]
-	return skip
+	if !skip {
+		return false, false
+	}
+	if info.IsDir() {
+		return false, true // skip entire directory
+	}
+	return true, false // skip just the file
 }

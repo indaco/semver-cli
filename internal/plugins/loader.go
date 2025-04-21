@@ -5,8 +5,8 @@ import (
 	"github.com/indaco/semver-cli/internal/config"
 )
 
-// Factory is a function that returns a new Plugin instance.
-type Factory func() plugins.Plugin
+// Factory is a function that returns an instance that implements one or more plugin interfaces.
+type Factory func() any
 
 var factories = map[string]Factory{}
 
@@ -15,6 +15,7 @@ func RegisterFactory(name string, fn Factory) {
 	factories[name] = fn
 }
 
+// RegisterConfiguredPlugins loads and registers plugins declared in the .semver.yaml file.
 func RegisterConfiguredPlugins(cfg *config.Config) {
 	if cfg == nil {
 		return
@@ -27,10 +28,24 @@ func RegisterConfiguredPlugins(cfg *config.Config) {
 
 		factory, ok := factories[pluginCfg.Name]
 		if !ok {
-			// Optionally: fmt.Printf("Warning: plugin %q not found\n", pluginCfg.Name)
 			continue
 		}
 
-		plugins.Register(factory())
+		instance := factory()
+
+		// Register metadata
+		if meta, ok := instance.(plugins.Plugin); ok {
+			plugins.RegisterPlugin(meta)
+		}
+
+		// Register capabilities
+		if cp, ok := instance.(plugins.CommitParser); ok {
+			plugins.RegisterCommitParser(cp)
+		}
+
+		// future:
+		// if cg, ok := instance.(plugins.ChangelogGenerator); ok {
+		//     plugins.RegisterChangelogGenerator(cg)
+		// }
 	}
 }

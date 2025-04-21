@@ -1,52 +1,69 @@
 package plugins
 
 import (
+	"errors"
 	"testing"
 
 	"github.com/indaco/semver-cli/api/plugins"
 	"github.com/indaco/semver-cli/internal/config"
-	"github.com/urfave/cli/v3"
 )
 
-type dummyPlugin struct {
-	pluginName string
-	registered bool
+/* ------------------------------------------------------------------------- */
+/* MOCK PLUGINS                                                              */
+/* ------------------------------------------------------------------------- */
+
+// mockPlugin implements both metadata and CommitParser capability
+type mockPlugin struct {
+	metadataName string
 }
 
-func (d *dummyPlugin) Name() string {
-	return d.pluginName
+func (m mockPlugin) Name() string        { return m.metadataName }
+func (m mockPlugin) Description() string { return "mock description" }
+func (m mockPlugin) Version() string     { return "v0.0.1" }
+
+// CommitParser capability
+func (m mockPlugin) Parse(commits []string) (string, error) {
+	if len(commits) == 0 {
+		return "", errors.New("no commits")
+	}
+	return "patch", nil
 }
 
-func (d *dummyPlugin) Register(cmd *cli.Command) {
-	d.registered = true
-	cmd.Description = "dummy registered"
-}
+/* ------------------------------------------------------------------------- */
+/* TESTS                                                                     */
+/* ------------------------------------------------------------------------- */
 
-func newDummyPlugin(name string) plugins.Plugin {
-	return &dummyPlugin{pluginName: name}
-}
-
-func TestRegisterConfiguredPlugins(t *testing.T) {
+func TestRegisterConfiguredPlugins_WithMetadataAndCommitParser(t *testing.T) {
 	resetPluginSystem()
 
-	RegisterFactory("dummy", func() plugins.Plugin {
-		return newDummyPlugin("dummy")
+	RegisterFactory("mock", func() any {
+		return mockPlugin{metadataName: "mock"}
 	})
 
 	cfg := &config.Config{
 		Plugins: []config.PluginConfig{
-			{Name: "dummy", Enabled: true},
+			{Name: "mock", Enabled: true},
 		},
 	}
 
 	RegisterConfiguredPlugins(cfg)
 
-	all := plugins.All()
-	if len(all) != 1 {
-		t.Fatalf("expected 1 plugin, got %d", len(all))
+	// Check metadata
+	meta := plugins.AllPlugins()
+	if len(meta) != 1 {
+		t.Fatalf("expected 1 plugin metadata, got %d", len(meta))
 	}
-	if all[0].Name() != "dummy" {
-		t.Errorf("expected 'dummy', got %q", all[0].Name())
+	if meta[0].Name() != "mock" {
+		t.Errorf("expected name 'mock', got %q", meta[0].Name())
+	}
+
+	// Check capabilities
+	parser := plugins.GetCommitParser()
+	if parser == nil {
+		t.Fatalf("expected 1 commit parser, got 0")
+	}
+	if parser.Name() != "mock" {
+		t.Errorf("expected parser name 'mock', got %q", parser.Name())
 	}
 }
 
@@ -61,40 +78,38 @@ func TestRegisterConfiguredPlugins_UnknownPlugin(t *testing.T) {
 
 	RegisterConfiguredPlugins(cfg)
 
-	if got := len(plugins.All()); got != 0 {
-		t.Errorf("expected no plugin registered, got %d", got)
+	if got := len(plugins.AllPlugins()); got != 0 {
+		t.Errorf("expected no plugin metadata registered, got %d", got)
 	}
 }
 
 func TestRegisterConfiguredPlugins_DisabledPlugin(t *testing.T) {
 	resetPluginSystem()
 
-	RegisterFactory("dummy", func() plugins.Plugin {
-		return newDummyPlugin("dummy")
+	RegisterFactory("mock", func() any {
+		return mockPlugin{metadataName: "mock"}
 	})
 
 	cfg := &config.Config{
 		Plugins: []config.PluginConfig{
-			{Name: "dummy", Enabled: false},
+			{Name: "mock", Enabled: false},
 		},
 	}
 
 	RegisterConfiguredPlugins(cfg)
 
-	if got := len(plugins.All()); got != 0 {
-		t.Errorf("expected no plugin registered, got %d", got)
+	if got := len(plugins.AllPlugins()); got != 0 {
+		t.Errorf("expected no plugin metadata registered, got %d", got)
 	}
 }
 
 func TestRegisterConfiguredPlugins_NilConfig(t *testing.T) {
-	// Reset registry before and after test
-	plugins.ResetPlugins()
-	defer plugins.ResetPlugins()
+	resetPluginSystem()
 
 	RegisterConfiguredPlugins(nil)
 
-	if len(plugins.All()) != 0 {
-		t.Errorf("expected no plugins registered, got %d", len(plugins.All()))
+	if got := len(plugins.AllPlugins()); got != 0 {
+		t.Errorf("expected no plugin metadata registered, got %d", got)
 	}
 }
 
@@ -103,6 +118,7 @@ func TestRegisterConfiguredPlugins_NilConfig(t *testing.T) {
 /* ------------------------------------------------------------------------- */
 
 func resetPluginSystem() {
-	plugins.ResetPlugins()
 	factories = map[string]Factory{}
+	plugins.ResetCommitParser()
+	plugins.ResetPlugin()
 }

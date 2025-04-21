@@ -5,7 +5,6 @@ import (
 	"log"
 	"os"
 
-	"github.com/indaco/semver-cli/api/plugins"
 	"github.com/indaco/semver-cli/internal/config"
 )
 
@@ -27,11 +26,6 @@ func runCLI(args []string) error {
 	}
 
 	app := newCLI(defaultPath)
-
-	// Register statically loaded plugins
-	for _, plugin := range plugins.All() {
-		plugin.Register(app)
-	}
 
 	return app.Run(context.Background(), args)
 }

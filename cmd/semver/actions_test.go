@@ -10,6 +10,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/indaco/semver-cli/api/plugins"
 	"github.com/indaco/semver-cli/internal/config"
 	"github.com/indaco/semver-cli/internal/semver"
 	"github.com/indaco/semver-cli/internal/testutils"
@@ -1167,6 +1168,54 @@ func TestPluginListCmd_LoadConfigError(t *testing.T) {
 	expectedErrorMessage := "failed to load configuration"
 	if !strings.Contains(output, expectedErrorMessage) {
 		t.Errorf("Expected error message to contain %q, but got: %q", expectedErrorMessage, output)
+	}
+}
+
+func TestPluginListCmd_WithRegisteredMetadata(t *testing.T) {
+	tmpDir := t.TempDir()
+	configPath := filepath.Join(tmpDir, ".semver.yaml")
+
+	pluginName := "test-plugin"
+
+	// Write .semver.yaml with plugin that matches registered metadata
+	content := fmt.Sprintf(`plugins:
+  - name: %s
+    path: /some/path
+    enabled: true
+`, pluginName)
+	if err := os.WriteFile(configPath, []byte(content), 0644); err != nil {
+		t.Fatalf("failed to write config file: %v", err)
+	}
+
+	// Register mock metadata plugin
+	plugins.ResetPlugin()
+	t.Cleanup(plugins.ResetPlugin)
+
+	plugins.RegisterPlugin(testutils.MockPlugin{
+		NameValue:        pluginName,
+		VersionValue:     "9.9.9",
+		DescriptionValue: "Registered test plugin",
+	})
+
+	appCli := newCLI(configPath)
+	output, err := testutils.CaptureStdout(func() {
+		testutils.RunCLITest(t, appCli, []string{"semver", "plugin", "list"}, tmpDir)
+	})
+	if err != nil {
+		t.Fatalf("Failed to capture stdout: %v", err)
+	}
+
+	// Ensure metadata was printed
+	expectedValues := []string{
+		pluginName,
+		"9.9.9",
+		"true",
+		"Registered test plugin",
+	}
+	for _, expected := range expectedValues {
+		if !strings.Contains(output, expected) {
+			t.Errorf("expected output to contain %q, got:\n%s", expected, output)
+		}
 	}
 }
 

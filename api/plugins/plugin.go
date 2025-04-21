@@ -1,8 +1,12 @@
 package plugins
 
-import "github.com/urfave/cli/v3"
-
 type Plugin interface {
+	// Name returns a unique identifier
 	Name() string
-	Register(root *cli.Command)
+
+	// Description is a short human-friendly summary
+	Description() string
+
+	// Version returns the plugin version (e.g., "v0.1.0")
+	Version() string
 }

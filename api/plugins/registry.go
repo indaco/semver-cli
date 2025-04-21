@@ -1,16 +1,15 @@
 package plugins
 
-var registry []Plugin
+var metadataRegistry []Plugin
 
-func Register(p Plugin) {
-	registry = append(registry, p)
+func RegisterPlugin(p Plugin) {
+	metadataRegistry = append(metadataRegistry, p)
 }
 
-func All() []Plugin {
-	return registry
+func AllPlugins() []Plugin {
+	return metadataRegistry
 }
 
-// ResetPlugins empties the internal registry between tests
-func ResetPlugins() {
-	registry = nil
+func ResetPlugin() {
+	metadataRegistry = nil
 }

@@ -4,7 +4,7 @@ import (
 	"errors"
 	"testing"
 
-	"github.com/indaco/semver-cli/api/plugins"
+	"github.com/indaco/semver-cli/api/v0/plugins"
 	"github.com/indaco/semver-cli/internal/config"
 )
 

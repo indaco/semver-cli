@@ -6,7 +6,7 @@ import (
 	"os"
 	"path/filepath"
 
-	"github.com/indaco/semver-cli/api/plugins"
+	"github.com/indaco/semver-cli/api/v0/plugins"
 	"github.com/indaco/semver-cli/internal/config"
 	"github.com/indaco/semver-cli/internal/pluginmanager"
 	"github.com/indaco/semver-cli/internal/semver"

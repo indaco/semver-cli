@@ -153,7 +153,6 @@ func newCLI(defaultPath string) *cli.Command {
 						Usage:  "List installed plugins",
 						Action: pluginListCmd(),
 					},
-
 					{
 						Name:  "remove",
 						Usage: "Remove a registered plugin",

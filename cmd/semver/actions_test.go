@@ -1068,18 +1068,15 @@ func TestPluginRegisterCmd_MissingPathArgument(t *testing.T) {
 /* ------------------------------------------------------------------------- */
 
 func TestPluginListCmd(t *testing.T) {
-	// Set up a temporary directory for the config file and plugin directory
 	tmpDir := t.TempDir()
 	configPath := filepath.Join(tmpDir, ".semver.yaml")
 
-	// Test with no plugins registered
-	// Create an empty .semver.yaml to simulate no plugins
+	// Test with no plugins
 	err := os.WriteFile(configPath, []byte("plugins: []\n"), 0644)
 	if err != nil {
 		t.Fatalf("failed to create .semver.yaml: %v", err)
 	}
 
-	// Set the config path and simulate calling the plugin list command
 	appCli := newCLI(configPath)
 
 	output, err := testutils.CaptureStdout(func() {
@@ -1089,14 +1086,11 @@ func TestPluginListCmd(t *testing.T) {
 		t.Fatalf("Failed to capture stdout: %v", err)
 	}
 
-	// Check if the expected message is printed
-	expected := "No plugins registered."
-	if !strings.Contains(output, expected) {
-		t.Errorf("expected output to contain %q, got %q", expected, output)
+	if !strings.Contains(output, "No plugins registered.") {
+		t.Errorf("expected output to contain 'No plugins registered.', got:\n%s", output)
 	}
 
-	// Test with some plugins registered
-	// Create a .semver.yaml with sample plugins
+	// Add plugin entries
 	pluginsContent := `
 plugins:
   - name: mock-plugin-1
@@ -1111,7 +1105,6 @@ plugins:
 		t.Fatalf("failed to write .semver.yaml: %v", err)
 	}
 
-	// Capture the output of the plugin list command again
 	output, err = testutils.CaptureStdout(func() {
 		testutils.RunCLITest(t, appCli, []string{"semver", "plugin", "list"}, tmpDir)
 	})
@@ -1119,15 +1112,17 @@ plugins:
 		t.Fatalf("Failed to capture stdout: %v", err)
 	}
 
-	// Check if the output contains information about the plugins
-	expectedPlugins := []string{
-		"Name: mock-plugin-1, Path: /path/to/mock-plugin-1, Enabled: true",
-		"Name: mock-plugin-2, Path: /path/to/mock-plugin-2, Enabled: false",
+	expectedRows := []string{
+		"mock-plugin-1",
+		"true",
+		"mock-plugin-2",
+		"false",
+		"(no metadata)",
 	}
 
-	for _, exp := range expectedPlugins {
-		if !strings.Contains(output, exp) {
-			t.Errorf("expected output to contain %q, got %q", exp, output)
+	for _, expected := range expectedRows {
+		if !strings.Contains(output, expected) {
+			t.Errorf("expected output to contain %q, got:\n%s", expected, output)
 		}
 	}
 }

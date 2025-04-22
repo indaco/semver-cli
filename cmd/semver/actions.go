@@ -6,6 +6,7 @@ import (
 	"os"
 	"path/filepath"
 
+	"github.com/indaco/semver-cli/api/plugins"
 	"github.com/indaco/semver-cli/internal/config"
 	"github.com/indaco/semver-cli/internal/pluginmanager"
 	"github.com/indaco/semver-cli/internal/semver"
@@ -285,11 +286,30 @@ func pluginListCmd() func(ctx context.Context, cmd *cli.Command) error {
 			return nil
 		}
 
-		// Display the list of plugins
-		fmt.Println("List of Registered Plugins:")
-		for _, plugin := range cfg.Plugins {
-			fmt.Printf("Name: %s, Path: %s, Enabled: %v\n", plugin.Name, plugin.Path, plugin.Enabled)
+		// Create a lookup map of metadata
+		metadataMap := map[string]plugins.Plugin{}
+		for _, meta := range plugins.AllPlugins() {
+			metadataMap[meta.Name()] = meta
 		}
+
+		fmt.Println("List of Registered Plugins:")
+		fmt.Println()
+		fmt.Println("  NAME              VERSION     ENABLED   DESCRIPTION")
+		fmt.Println("  ----------------------------------------------------------")
+
+		for _, p := range cfg.Plugins {
+			meta, ok := metadataMap[p.Name]
+			version := "?"
+			desc := "(no metadata)"
+			if ok {
+				version = meta.Version()
+				desc = meta.Description()
+			}
+
+			fmt.Printf("  %-17s %-10s %-9v %s\n", p.Name, version, p.Enabled, desc)
+		}
+
+		fmt.Println()
 
 		return nil
 	}

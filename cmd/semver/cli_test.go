@@ -25,7 +25,7 @@ func TestNewCLI_BasicStructure(t *testing.T) {
 	cfg := &config.Config{Path: versionPath}
 	app := newCLI(cfg)
 
-	wantCommands := []string{"show", "set", "bump", "pre", "validate", "init"}
+	wantCommands := []string{"show", "set", "bump", "pre", "doctor", "init"}
 	for _, name := range wantCommands {
 		found := false
 		for _, cmd := range app.Commands {

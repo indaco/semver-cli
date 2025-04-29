@@ -8,16 +8,18 @@ import (
 	"github.com/urfave/cli/v3"
 )
 
-// FromCommand extracts the --path and --no-auto-init flags from a cli.Command,
+var FromCommandFn = fromCommand
+
+// fromCommand extracts the --path and --no-auto-init flags from a cli.Command,
 // and passes them to GetOrInitVersionFile.
-func FromCommand(cmd *cli.Command) (bool, error) {
-	return GetOrInitVersionFile(cmd.String("path"), cmd.Bool("no-auto-init"))
+func fromCommand(cmd *cli.Command) (bool, error) {
+	return getOrInitVersionFile(cmd.String("path"), cmd.Bool("no-auto-init"))
 }
 
-// GetOrInitVersionFile initializes the version file at the given path
+// getOrInitVersionFile initializes the version file at the given path
 // or checks for its existence based on the noAutoInit flag.
 // It returns true if the file was created, false if it already existed.
-func GetOrInitVersionFile(path string, noAutoInit bool) (bool, error) {
+func getOrInitVersionFile(path string, noAutoInit bool) (bool, error) {
 	if noAutoInit {
 		if _, err := os.Stat(path); err != nil {
 			return false, cli.Exit(fmt.Sprintf("version file not found at %s", path), 1)

@@ -34,7 +34,7 @@ func runCLI(args []string) error {
 
 	plugins.RegisterBuiltinPlugins(cfg)
 
-	if err := hooks.LoadPreReleaseHooksFromConfig(cfg); err != nil {
+	if err := hooks.LoadPreReleaseHooksFromConfigFn(cfg); err != nil {
 		return fmt.Errorf("failed to load pre-release hooks: %w", err)
 	}
 

@@ -9,6 +9,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/indaco/semver-cli/internal/clix"
 	"github.com/indaco/semver-cli/internal/config"
 	"github.com/indaco/semver-cli/internal/semver"
 	"github.com/indaco/semver-cli/internal/testutils"
@@ -134,5 +135,25 @@ func TestCLI_PreCommand_SaveVersionFails(t *testing.T) {
 
 	if !strings.Contains(string(output), "failed to save version") {
 		t.Errorf("expected wrapped error message, got: %q", string(output))
+	}
+}
+
+func TestCLI_PreCommand_FromCommandFails(t *testing.T) {
+	tmpDir := t.TempDir()
+	versionPath := filepath.Join(tmpDir, ".version")
+
+	// Backup and override clix.FromCommand
+	originalFromCommand := clix.FromCommandFn
+	clix.FromCommandFn = func(cmd *cli.Command) (bool, error) {
+		return false, fmt.Errorf("mock FromCommand error")
+	}
+	t.Cleanup(func() { clix.FromCommandFn = originalFromCommand })
+
+	cfg := &config.Config{Path: versionPath}
+	appCli := testutils.BuildCLIForTests(cfg.Path, []*cli.Command{Run()})
+
+	err := appCli.Run(context.Background(), []string{"semver", "pre", "--label", "beta.1"})
+	if err == nil || !strings.Contains(err.Error(), "mock FromCommand error") {
+		t.Fatalf("expected FromCommand error, got: %v", err)
 	}
 }

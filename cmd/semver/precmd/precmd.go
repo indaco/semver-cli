@@ -38,7 +38,7 @@ func runPreCmd(cmd *cli.Command) error {
 	label := cmd.String("label")
 	isInc := cmd.Bool("inc")
 
-	if _, err := clix.FromCommand(cmd); err != nil {
+	if _, err := clix.FromCommandFn(cmd); err != nil {
 		return err
 	}
 

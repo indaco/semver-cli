@@ -9,7 +9,9 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/indaco/semver-cli/internal/clix"
 	"github.com/indaco/semver-cli/internal/config"
+	"github.com/indaco/semver-cli/internal/hooks"
 	commitparser "github.com/indaco/semver-cli/internal/plugins/commit-parser"
 	"github.com/indaco/semver-cli/internal/plugins/commit-parser/gitlog"
 	"github.com/indaco/semver-cli/internal/semver"
@@ -80,6 +82,156 @@ func TestCLI_BumpCommand_AutoInitFeedback(t *testing.T) {
 			expected := fmt.Sprintf("Auto-initialized %s with default version", versionPath)
 			if !strings.Contains(output, expected) {
 				t.Errorf("expected feedback %q, got %q", expected, output)
+			}
+		})
+	}
+}
+
+func TestCLI_BumpSubcommands_EarlyFailures(t *testing.T) {
+
+	tests := []struct {
+		name        string
+		args        []string
+		override    func() func() // returns restore function
+		expectedErr string
+	}{
+		{
+			name: "patch - FromCommand fails",
+			args: []string{"semver", "bump", "patch"},
+			override: func() func() {
+				original := clix.FromCommandFn
+				clix.FromCommandFn = func(cmd *cli.Command) (bool, error) {
+					return false, fmt.Errorf("mock FromCommand error")
+				}
+				return func() { clix.FromCommandFn = original }
+			},
+			expectedErr: "mock FromCommand error",
+		},
+		{
+			name: "patch - RunPreReleaseHooks fails",
+			args: []string{"semver", "bump", "patch"},
+			override: func() func() {
+				original := hooks.RunPreReleaseHooksFn
+				hooks.RunPreReleaseHooksFn = func(skip bool) error {
+					return fmt.Errorf("mock pre-release hooks error")
+				}
+				return func() { hooks.RunPreReleaseHooksFn = original }
+			},
+			expectedErr: "mock pre-release hooks error",
+		},
+		{
+			name: "minor - FromCommand fails",
+			args: []string{"semver", "bump", "minor"},
+			override: func() func() {
+				original := clix.FromCommandFn
+				clix.FromCommandFn = func(cmd *cli.Command) (bool, error) {
+					return false, fmt.Errorf("mock FromCommand error")
+				}
+				return func() { clix.FromCommandFn = original }
+			},
+			expectedErr: "mock FromCommand error",
+		},
+		{
+			name: "minor - RunPreReleaseHooks fails",
+			args: []string{"semver", "bump", "minor"},
+			override: func() func() {
+				original := hooks.RunPreReleaseHooksFn
+				hooks.RunPreReleaseHooksFn = func(skip bool) error {
+					return fmt.Errorf("mock pre-release hooks error")
+				}
+				return func() { hooks.RunPreReleaseHooksFn = original }
+			},
+			expectedErr: "mock pre-release hooks error",
+		},
+		{
+			name: "major - FromCommand fails",
+			args: []string{"semver", "bump", "major"},
+			override: func() func() {
+				original := clix.FromCommandFn
+				clix.FromCommandFn = func(cmd *cli.Command) (bool, error) {
+					return false, fmt.Errorf("mock FromCommand error")
+				}
+				return func() { clix.FromCommandFn = original }
+			},
+			expectedErr: "mock FromCommand error",
+		},
+		{
+			name: "major - RunPreReleaseHooks fails",
+			args: []string{"semver", "bump", "major"},
+			override: func() func() {
+				original := hooks.RunPreReleaseHooksFn
+				hooks.RunPreReleaseHooksFn = func(skip bool) error {
+					return fmt.Errorf("mock pre-release hooks error")
+				}
+				return func() { hooks.RunPreReleaseHooksFn = original }
+			},
+			expectedErr: "mock pre-release hooks error",
+		},
+		{
+			name: "next - FromCommand fails",
+			args: []string{"semver", "bump", "next"},
+			override: func() func() {
+				original := clix.FromCommandFn
+				clix.FromCommandFn = func(cmd *cli.Command) (bool, error) {
+					return false, fmt.Errorf("mock FromCommand error")
+				}
+				return func() { clix.FromCommandFn = original }
+			},
+			expectedErr: "mock FromCommand error",
+		},
+		{
+			name: "next - RunPreReleaseHooks fails",
+			args: []string{"semver", "bump", "next"},
+			override: func() func() {
+				original := hooks.RunPreReleaseHooksFn
+				hooks.RunPreReleaseHooksFn = func(skip bool) error {
+					return fmt.Errorf("mock pre-release hooks error")
+				}
+				return func() { hooks.RunPreReleaseHooksFn = original }
+			},
+			expectedErr: "mock pre-release hooks error",
+		},
+		{
+			name: "release - FromCommand fails",
+			args: []string{"semver", "bump", "release"},
+			override: func() func() {
+				original := clix.FromCommandFn
+				clix.FromCommandFn = func(cmd *cli.Command) (bool, error) {
+					return false, fmt.Errorf("mock FromCommand error")
+				}
+				return func() { clix.FromCommandFn = original }
+			},
+			expectedErr: "mock FromCommand error",
+		},
+		{
+			name: "release - RunPreReleaseHooks fails",
+			args: []string{"semver", "bump", "release"},
+			override: func() func() {
+				original := hooks.RunPreReleaseHooksFn
+				hooks.RunPreReleaseHooksFn = func(skip bool) error {
+					return fmt.Errorf("mock pre-release hooks error")
+				}
+				return func() { hooks.RunPreReleaseHooksFn = original }
+			},
+			expectedErr: "mock pre-release hooks error",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			tmpDir := t.TempDir()
+			versionPath := filepath.Join(tmpDir, ".version")
+			testutils.WriteTempVersionFile(t, tmpDir, "1.2.3")
+
+			restore := tt.override()
+			defer restore()
+
+			cfg := &config.Config{Path: versionPath}
+			appCli := testutils.BuildCLIForTests(cfg.Path, []*cli.Command{Run(cfg)})
+
+			err := appCli.Run(context.Background(), tt.args)
+			if err == nil || !strings.Contains(err.Error(), tt.expectedErr) {
+				t.Fatalf("expected error containing %q, got: %v", tt.expectedErr, err)
 			}
 		})
 	}

@@ -6,7 +6,9 @@ import (
 	"github.com/indaco/semver-cli/internal/config"
 )
 
-func LoadPreReleaseHooksFromConfig(cfg *config.Config) error {
+var LoadPreReleaseHooksFromConfigFn = loadPreReleaseHooksFromConfig
+
+func loadPreReleaseHooksFromConfig(cfg *config.Config) error {
 	if cfg == nil || cfg.PreReleaseHooks == nil {
 		return nil
 	}

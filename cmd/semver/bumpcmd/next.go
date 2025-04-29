@@ -78,7 +78,7 @@ func runBumpNext(cfg *config.Config, cmd *cli.Command) error {
 
 	disableInfer := isNoInferFlag || (cfg != nil && cfg.Plugins != nil && !cfg.Plugins.CommitParser)
 
-	if _, err := clix.FromCommand(cmd); err != nil {
+	if _, err := clix.FromCommandFn(cmd); err != nil {
 		return err
 	}
 
@@ -87,7 +87,7 @@ func runBumpNext(cfg *config.Config, cmd *cli.Command) error {
 		return fmt.Errorf("failed to read version: %w", err)
 	}
 
-	if err := hooks.RunPreReleaseHooks(isSkipHooks); err != nil {
+	if err := hooks.RunPreReleaseHooksFn(isSkipHooks); err != nil {
 		return err
 	}
 

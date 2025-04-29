@@ -11,7 +11,10 @@ type PreReleaseHook interface {
 	Run() error
 }
 
-var preReleaseHooks []PreReleaseHook
+var (
+	preReleaseHooks      []PreReleaseHook
+	RunPreReleaseHooksFn = runPreReleaseHooks
+)
 
 func RegisterPreReleaseHook(h PreReleaseHook) {
 	preReleaseHooks = append(preReleaseHooks, h)
@@ -25,7 +28,7 @@ func ResetPreReleaseHooks() {
 	preReleaseHooks = nil
 }
 
-func RunPreReleaseHooks(skip bool) error {
+func runPreReleaseHooks(skip bool) error {
 	if skip {
 		return nil
 	}

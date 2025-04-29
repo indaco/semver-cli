@@ -35,11 +35,11 @@ func runBumpMinor(cmd *cli.Command) error {
 	isPreserveMeta := cmd.Bool("preserve-meta")
 	isSkipHooks := cmd.Bool("skip-hooks")
 
-	if _, err := clix.FromCommand(cmd); err != nil {
+	if _, err := clix.FromCommandFn(cmd); err != nil {
 		return err
 	}
 
-	if err := hooks.RunPreReleaseHooks(isSkipHooks); err != nil {
+	if err := hooks.RunPreReleaseHooksFn(isSkipHooks); err != nil {
 		return err
 	}
 

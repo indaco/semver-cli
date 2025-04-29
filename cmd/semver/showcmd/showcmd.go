@@ -23,7 +23,7 @@ func Run() *cli.Command {
 
 // runShowCmd prints the current version.
 func runShowCmd(cmd *cli.Command) error {
-	if _, err := clix.FromCommand(cmd); err != nil {
+	if _, err := clix.FromCommandFn(cmd); err != nil {
 		return err
 	}
 

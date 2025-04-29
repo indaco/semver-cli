@@ -1,5 +1,7 @@
 package testutils
 
+import "fmt"
+
 // MockPlugin implements only Plugin
 type MockPlugin struct {
 	NameValue        string
@@ -38,4 +40,21 @@ func (m MockCommitParser) Parse(_ []string) (string, error) {
 func WithMock(setup func(), testFunc func()) {
 	setup()
 	testFunc()
+}
+
+// MockHook implements PreReleaseHook for testing
+type MockHook struct {
+	Name      string
+	ShouldErr bool
+}
+
+func (m MockHook) HookName() string {
+	return m.Name
+}
+
+func (m MockHook) Run() error {
+	if m.ShouldErr {
+		return fmt.Errorf("%s failed", m.Name)
+	}
+	return nil
 }

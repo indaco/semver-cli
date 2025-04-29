@@ -13,11 +13,16 @@ func installCmd() *cli.Command {
 		Name:  "install",
 		Usage: "Install an extension from a remote repo or local path",
 		MutuallyExclusiveFlags: []cli.MutuallyExclusiveFlags{
-			{},
+			{
+				Flags: [][]cli.Flag{
+					{
+						&cli.StringFlag{Name: "url", Usage: "Git URL to clone"},
+						&cli.StringFlag{Name: "path", Usage: "Local path to copy from"},
+					},
+				},
+			},
 		},
 		Flags: []cli.Flag{
-			&cli.StringFlag{Name: "url", Usage: "Git URL to clone"},
-			&cli.StringFlag{Name: "path", Usage: "Local path to copy from"},
 			&cli.StringFlag{Name: "extension-dir", Usage: "Directory to store extensions in", Value: "."},
 		},
 		Action: func(ctx context.Context, cmd *cli.Command) error {

@@ -43,11 +43,11 @@
 
 ## ✨ Features
 
-- ⚙️  Lightweight `.version` file — SemVer 2.0.0 compliant
-- 🚀  `init`, `bump`, `set`, `show`, `validate` — intuitive version control
-- 🔁  Pre-release support with auto-increment (`alpha`, `beta.1`, `rc.2`, `--inc`)
-- 🛠️  Works standalone or in CI — `--no-auto-init` for strict mode
-- ⚡  Configurable via flags, env vars, or `.semver.yaml`
+- Lightweight `.version` file — SemVer 2.0.0 compliant
+- `init`, `bump`, `set`, `show`, `validate` — intuitive version control
+- Pre-release support with auto-increment (`alpha`, `beta.1`, `rc.2`, `--inc`)
+- Works standalone or in CI — `--no-auto-init` for strict mode
+- Configurable via flags, env vars, or `.semver.yaml`
 
 ## ❓ Why .version?
 
@@ -55,10 +55,10 @@ Most projects — especially CLIs, scripts, and internal tools — need a clean 
 
 The `.version` file:
 
-- ✅ Works in **any language**, not just Go
-- ✅ Fits seamlessly into CI/CD (e.g., Docker labels, GitHub Actions)
-- ✅ Pairs with `getVersion()` or env injection in your app
-- ✅ Keeps versioning simple, manual, and under your control
+- Works in **any language**, not just Go
+- Fits seamlessly into CI/CD (e.g., Docker labels, GitHub Actions)
+- Pairs with `getVersion()` or env injection in your app
+- Keeps versioning simple, manual, and under your control
 
 It’s not trying to replace `git tag` or build tools — just making versioning predictable and portable.
 

@@ -1,5 +1,1 @@
 path: internal/version/.version
-#plugins:
-#  - name: commit-parser
-#    path: .semver-plugins/commit-parser
-#    enabled: true

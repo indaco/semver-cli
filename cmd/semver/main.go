@@ -2,10 +2,12 @@ package main
 
 import (
 	"context"
+	"fmt"
 	"log"
 	"os"
 
 	"github.com/indaco/semver-cli/internal/config"
+	"github.com/indaco/semver-cli/internal/hooks"
 	"github.com/indaco/semver-cli/internal/plugins"
 )
 
@@ -31,6 +33,10 @@ func runCLI(args []string) error {
 	}
 
 	plugins.RegisterBuiltinPlugins(cfg)
+
+	if err := hooks.LoadPreReleaseHooksFromConfig(cfg); err != nil {
+		return fmt.Errorf("failed to load pre-release hooks: %w", err)
+	}
 
 	app := newCLI(cfg)
 	return app.Run(context.Background(), args)

@@ -1,12 +1,16 @@
 package main
 
 import (
+	"context"
 	"fmt"
 
 	"github.com/indaco/semver-cli/internal/config"
+	"github.com/indaco/semver-cli/internal/console"
 	"github.com/indaco/semver-cli/internal/version"
 	"github.com/urfave/cli/v3"
 )
+
+var noColorFlag bool
 
 // newCLI builds and returns the root CLI command,
 // configuring all subcommands and flags for the semver cli.
@@ -26,6 +30,15 @@ func newCLI(cfg *config.Config) *cli.Command {
 				Name:  "no-auto-init",
 				Usage: "Disable auto-initialization of the .version file",
 			},
+			&cli.BoolFlag{
+				Name:        "no-color",
+				Usage:       "Disable colored output",
+				Destination: &noColorFlag,
+			},
+		},
+		Before: func(ctx context.Context, cmd *cli.Command) (context.Context, error) {
+			console.SetNoColor(noColorFlag)
+			return ctx, nil
 		},
 		Commands: []*cli.Command{
 			{
@@ -73,25 +86,49 @@ func newCLI(cfg *config.Config) *cli.Command {
 						Name:      "patch",
 						Usage:     "Increment patch version",
 						UsageText: "semver bump patch [--pre label] [--meta data] [--preserve-meta]",
-						Action:    bumpPatchCmd(),
+						Flags: []cli.Flag{
+							&cli.BoolFlag{
+								Name:  "skip-hooks",
+								Usage: "Skip pre-release hooks",
+							},
+						},
+						Action: bumpPatchCmd(),
 					},
 					{
 						Name:      "minor",
 						Usage:     "Increment minor version and reset patch",
 						UsageText: "semver bump minor [--pre label] [--meta data] [--preserve-meta]",
-						Action:    bumpMinorCmd(),
+						Flags: []cli.Flag{
+							&cli.BoolFlag{
+								Name:  "skip-hooks",
+								Usage: "Skip pre-release hooks",
+							},
+						},
+						Action: bumpMinorCmd(),
 					},
 					{
 						Name:      "major",
 						Usage:     "Increment major version and reset minor and patch",
 						UsageText: "semver bump major [--pre label] [--meta data] [--preserve-meta]",
-						Action:    bumpMajorCmd(),
+						Flags: []cli.Flag{
+							&cli.BoolFlag{
+								Name:  "skip-hooks",
+								Usage: "Skip pre-release hooks",
+							},
+						},
+						Action: bumpMajorCmd(),
 					},
 					{
 						Name:      "release",
 						Usage:     "Promote pre-release to final version (e.g. 1.2.3-alpha → 1.2.3)",
 						UsageText: "semver bump release [--preserve-meta]",
-						Action:    bumpReleaseCmd(),
+						Flags: []cli.Flag{
+							&cli.BoolFlag{
+								Name:  "skip-hooks",
+								Usage: "Skip pre-release hooks",
+							},
+						},
+						Action: bumpReleaseCmd(),
 					},
 					{
 						Name:  "next",
@@ -124,6 +161,14 @@ You can override this behavior with the --label flag, disable it explicitly with
 							&cli.BoolFlag{
 								Name:  "no-infer",
 								Usage: "Disable bump inference from commit messages (overrides config)",
+							},
+							&cli.BoolFlag{
+								Name:  "hook-only",
+								Usage: "Only run pre-release hooks, do not modify the version",
+							},
+							&cli.BoolFlag{
+								Name:  "skip-hooks",
+								Usage: "Skip pre-release hooks",
 							},
 						},
 						Action: bumpNextCmd(cfg),

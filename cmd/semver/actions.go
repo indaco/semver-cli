@@ -9,14 +9,22 @@ import (
 	"github.com/indaco/semver-cli/api/v0/extensions"
 	"github.com/indaco/semver-cli/internal/config"
 	extensionmanager "github.com/indaco/semver-cli/internal/extension-manager"
+	"github.com/indaco/semver-cli/internal/hooks"
 	commitparser "github.com/indaco/semver-cli/internal/plugins/commit-parser"
 	"github.com/indaco/semver-cli/internal/plugins/commit-parser/gitlog"
 	"github.com/indaco/semver-cli/internal/semver"
 	"github.com/urfave/cli/v3"
 )
 
-// At package level
+/* ------------------------------------------------------------------------- */
+/* GLOBALS                                                                   */
+/* ------------------------------------------------------------------------- */
+
 var tryInferBumpTypeFromCommitParserPluginFn = tryInferBumpTypeFromCommitParserPlugin
+
+/* ------------------------------------------------------------------------- */
+/* VERSION COMMANDS                                                          */
+/* ------------------------------------------------------------------------- */
 
 func initVersionCmd() func(ctx context.Context, cmd *cli.Command) error {
 	return func(ctx context.Context, cmd *cli.Command) error {
@@ -41,58 +49,74 @@ func initVersionCmd() func(ctx context.Context, cmd *cli.Command) error {
 	}
 }
 
-// bumpPatch increments the patch version of the .version file.
-func bumpPatchCmd() func(ctx context.Context, cmd *cli.Command) error {
+// showVersionCmd prints the current version.
+func showVersionCmd() func(ctx context.Context, cmd *cli.Command) error {
 	return func(ctx context.Context, cmd *cli.Command) error {
-		path := cmd.String("path")
-		pre := cmd.String("pre")
-		meta := cmd.String("meta")
-		preserve := cmd.Bool("preserve-meta")
-
-		if _, err := getOrInitVersionFile(cmd); err != nil {
+		_, err := getOrInitVersionFile(cmd)
+		if err != nil {
 			return err
 		}
 
-		return semver.UpdateVersion(path, "patch", pre, meta, preserve)
-	}
-}
-
-// bumpMinor increments the minor version and resets patch.
-func bumpMinorCmd() func(ctx context.Context, cmd *cli.Command) error {
-	return func(ctx context.Context, cmd *cli.Command) error {
 		path := cmd.String("path")
-		pre := cmd.String("pre")
-		meta := cmd.String("meta")
-		preserve := cmd.Bool("preserve-meta")
-
-		if _, err := getOrInitVersionFile(cmd); err != nil {
-			return err
+		version, err := semver.ReadVersion(path)
+		if err != nil {
+			return fmt.Errorf("failed to read version file at %s: %w", path, err)
 		}
 
-		return semver.UpdateVersion(path, "minor", pre, meta, preserve)
+		fmt.Println(version.String())
+		return nil
 	}
 }
 
-// bumpMajor increments the major version and resets minor/patch.
-func bumpMajorCmd() func(ctx context.Context, cmd *cli.Command) error {
+// validateVersionCmd checks that the .version file is valid.
+func validateVersionCmd() func(ctx context.Context, cmd *cli.Command) error {
 	return func(ctx context.Context, cmd *cli.Command) error {
 		path := cmd.String("path")
-		pre := cmd.String("pre")
-		meta := cmd.String("meta")
-		preserve := cmd.Bool("preserve-meta")
+		_, err := semver.ReadVersion(path)
+		if err != nil {
+			return fmt.Errorf("invalid version file at %s: %w", path, err)
+		}
+		fmt.Printf("Valid version file at %s\n", path)
+		return nil
+	}
+}
 
-		if _, err := getOrInitVersionFile(cmd); err != nil {
-			return err
+// setVersionCmd manually sets the version.
+func setVersionCmd() func(ctx context.Context, cmd *cli.Command) error {
+	return func(ctx context.Context, cmd *cli.Command) error {
+		path := cmd.String("path")
+		args := cmd.Args()
+
+		if args.Len() < 1 {
+			return cli.Exit("missing required version argument", 1)
 		}
 
-		return semver.UpdateVersion(path, "major", pre, meta, preserve)
+		raw := args.Get(0)
+		pre := cmd.String("pre")
+		meta := cmd.String("meta")
+
+		version, err := semver.ParseVersion(raw)
+		if err != nil {
+			return fmt.Errorf("invalid version: %w", err)
+		}
+		version.PreRelease = pre
+		version.Build = meta
+
+		if err := semver.SaveVersion(path, version); err != nil {
+			return fmt.Errorf("failed to save version: %w", err)
+		}
+
+		fmt.Printf("Set version to %s in %s\n", version.String(), path)
+		return nil
 	}
 }
 
-func bumpReleaseCmd() func(ctx context.Context, cmd *cli.Command) error {
+// setPreRelease sets or increments the pre-release label.
+func setPreReleaseCmd() func(ctx context.Context, cmd *cli.Command) error {
 	return func(ctx context.Context, cmd *cli.Command) error {
 		path := cmd.String("path")
-		preserveMeta := cmd.Bool("preserve-meta")
+		label := cmd.String("label")
+		isInc := cmd.Bool("inc")
 
 		if _, err := getOrInitVersionFile(cmd); err != nil {
 			return err
@@ -103,8 +127,112 @@ func bumpReleaseCmd() func(ctx context.Context, cmd *cli.Command) error {
 			return fmt.Errorf("failed to read version: %w", err)
 		}
 
+		if isInc {
+			version.PreRelease = semver.IncrementPreRelease(version.PreRelease, label)
+		} else {
+			if version.PreRelease == "" {
+				version.Patch++
+			}
+			version.PreRelease = label
+		}
+
+		if err := semver.SaveVersion(path, version); err != nil {
+			return fmt.Errorf("failed to save version: %w", err)
+		}
+
+		return nil
+	}
+}
+
+/* ------------------------------------------------------------------------- */
+/* BUMP COMMANDS                                                             */
+/* ------------------------------------------------------------------------- */
+
+// bumpPatch increments the patch version of the .version file.
+func bumpPatchCmd() func(ctx context.Context, cmd *cli.Command) error {
+	return func(ctx context.Context, cmd *cli.Command) error {
+		path := cmd.String("path")
+		pre := cmd.String("pre")
+		meta := cmd.String("meta")
+		isPreserveMeta := cmd.Bool("preserve-meta")
+		isSkipHooks := cmd.Bool("skip-hooks")
+
+		if _, err := getOrInitVersionFile(cmd); err != nil {
+			return err
+		}
+
+		if err := hooks.RunPreReleaseHooks(isSkipHooks); err != nil {
+			return err
+		}
+
+		return semver.UpdateVersion(path, "patch", pre, meta, isPreserveMeta)
+	}
+}
+
+// bumpMinor increments the minor version and resets patch.
+func bumpMinorCmd() func(ctx context.Context, cmd *cli.Command) error {
+	return func(ctx context.Context, cmd *cli.Command) error {
+		path := cmd.String("path")
+		pre := cmd.String("pre")
+		meta := cmd.String("meta")
+		isPreserveMeta := cmd.Bool("preserve-meta")
+		isSkipHooks := cmd.Bool("skip-hooks")
+
+		if _, err := getOrInitVersionFile(cmd); err != nil {
+			return err
+		}
+
+		if err := hooks.RunPreReleaseHooks(isSkipHooks); err != nil {
+			return err
+		}
+
+		return semver.UpdateVersion(path, "minor", pre, meta, isPreserveMeta)
+	}
+}
+
+// bumpMajor increments the major version and resets minor/patch.
+func bumpMajorCmd() func(ctx context.Context, cmd *cli.Command) error {
+	return func(ctx context.Context, cmd *cli.Command) error {
+		path := cmd.String("path")
+		pre := cmd.String("pre")
+		meta := cmd.String("meta")
+		isPreserveMeta := cmd.Bool("preserve-meta")
+		isSkipHooks := cmd.Bool("skip-hooks")
+
+		if _, err := getOrInitVersionFile(cmd); err != nil {
+			return err
+		}
+
+		if err := hooks.RunPreReleaseHooks(isSkipHooks); err != nil {
+			return err
+		}
+
+		return semver.UpdateVersion(path, "major", pre, meta, isPreserveMeta)
+	}
+}
+
+// bumpReleaseCmd promotes a pre-release version to a final release.
+func bumpReleaseCmd() func(ctx context.Context, cmd *cli.Command) error {
+	return func(ctx context.Context, cmd *cli.Command) error {
+		path := cmd.String("path")
+		isPreserveMeta := cmd.Bool("preserve-meta")
+		isSkipHooks := cmd.Bool("skip-hooks")
+
+		if _, err := getOrInitVersionFile(cmd); err != nil {
+			return err
+		}
+
+		version, err := semver.ReadVersion(path)
+		if err != nil {
+			return fmt.Errorf("failed to read version: %w", err)
+		}
+
+		if err := hooks.RunPreReleaseHooks(isSkipHooks); err != nil {
+			return err
+		}
+
 		version.PreRelease = ""
-		if !preserveMeta {
+		if !isPreserveMeta {
 			version.Build = ""
 		}
 
@@ -117,6 +245,7 @@ func bumpReleaseCmd() func(ctx context.Context, cmd *cli.Command) error {
 	}
 }
 
+// bumpNextCmd performs smart bumping (e.g. promote, patch, infer).
 func bumpNextCmd(cfg *config.Config) func(ctx context.Context, cmd *cli.Command) error {
 	return func(ctx context.Context, cmd *cli.Command) error {
 		path := cmd.String("path")
@@ -126,6 +255,7 @@ func bumpNextCmd(cfg *config.Config) func(ctx context.Context, cmd *cli.Command)
 		until := cmd.String("until")
 		isPreserveMeta := cmd.Bool("preserve-meta")
 		isNoInferFlag := cmd.Bool("no-infer")
+		isSkipHooks := cmd.Bool("skip-hooks")
 
 		disableInfer := isNoInferFlag || (cfg != nil && cfg.Plugins != nil && !cfg.Plugins.CommitParser)
 
@@ -136,6 +266,10 @@ func bumpNextCmd(cfg *config.Config) func(ctx context.Context, cmd *cli.Command)
 		current, err := semver.ReadVersion(path)
 		if err != nil {
 			return fmt.Errorf("failed to read version: %w", err)
+		}
+
+		if err := hooks.RunPreReleaseHooks(isSkipHooks); err != nil {
+			return err
 		}
 
 		var next semver.SemVersion
@@ -190,98 +324,11 @@ func bumpNextCmd(cfg *config.Config) func(ctx context.Context, cmd *cli.Command)
 	}
 }
 
-// setPreRelease sets or increments the pre-release label.
-func setPreReleaseCmd() func(ctx context.Context, cmd *cli.Command) error {
-	return func(ctx context.Context, cmd *cli.Command) error {
-		path := cmd.String("path")
-		label := cmd.String("label")
-		inc := cmd.Bool("inc")
+/* ------------------------------------------------------------------------- */
+/* EXTENSION COMMANDS                                                        */
+/* ------------------------------------------------------------------------- */
 
-		if _, err := getOrInitVersionFile(cmd); err != nil {
-			return err
-		}
-
-		version, err := semver.ReadVersion(path)
-		if err != nil {
-			return fmt.Errorf("failed to read version: %w", err)
-		}
-
-		if inc {
-			version.PreRelease = semver.IncrementPreRelease(version.PreRelease, label)
-		} else {
-			if version.PreRelease == "" {
-				version.Patch++
-			}
-			version.PreRelease = label
-		}
-
-		if err := semver.SaveVersion(path, version); err != nil {
-			return fmt.Errorf("failed to save version: %w", err)
-		}
-
-		return nil
-	}
-}
-
-func showVersionCmd() func(ctx context.Context, cmd *cli.Command) error {
-	return func(ctx context.Context, cmd *cli.Command) error {
-		_, err := getOrInitVersionFile(cmd)
-		if err != nil {
-			return err
-		}
-
-		path := cmd.String("path")
-		version, err := semver.ReadVersion(path)
-		if err != nil {
-			return fmt.Errorf("failed to read version file at %s: %w", path, err)
-		}
-
-		fmt.Println(version.String())
-		return nil
-	}
-}
-
-func setVersionCmd() func(ctx context.Context, cmd *cli.Command) error {
-	return func(ctx context.Context, cmd *cli.Command) error {
-		path := cmd.String("path")
-		args := cmd.Args()
-
-		if args.Len() < 1 {
-			return cli.Exit("missing required version argument", 1)
-		}
-
-		raw := args.Get(0)
-		pre := cmd.String("pre")
-		meta := cmd.String("meta")
-
-		version, err := semver.ParseVersion(raw)
-		if err != nil {
-			return fmt.Errorf("invalid version: %w", err)
-		}
-		version.PreRelease = pre
-		version.Build = meta
-
-		if err := semver.SaveVersion(path, version); err != nil {
-			return fmt.Errorf("failed to save version: %w", err)
-		}
-
-		fmt.Printf("Set version to %s in %s\n", version.String(), path)
-		return nil
-	}
-}
-
-func validateVersionCmd() func(ctx context.Context, cmd *cli.Command) error {
-	return func(ctx context.Context, cmd *cli.Command) error {
-		path := cmd.String("path")
-		_, err := semver.ReadVersion(path)
-		if err != nil {
-			return fmt.Errorf("invalid version file at %s: %w", path, err)
-		}
-		fmt.Printf("Valid version file at %s\n", path)
-		return nil
-	}
-}
-
+// extensionInstallCmd installs an extension from local or remote.
 func extensionInstallCmd() func(ctx context.Context, cmd *cli.Command) error {
 	return func(ctx context.Context, cmd *cli.Command) error {
 		localPath := cmd.String("path")
@@ -297,6 +344,7 @@ func extensionInstallCmd() func(ctx context.Context, cmd *cli.Command) error {
 	}
 }
 
+// extensionListCmd lists installed extensions.
 func extensionListCmd() func(ctx context.Context, cmd *cli.Command) error {
 	return func(ctx context.Context, cmd *cli.Command) error {
 		// Load the configuration file
@@ -342,6 +390,7 @@ func extensionListCmd() func(ctx context.Context, cmd *cli.Command) error {
 	}
 }
 
+// extensionRemoveCmd removes an installed extension.
 func extensionRemoveCmd() func(ctx context.Context, cmd *cli.Command) error {
 	return func(ctx context.Context, cmd *cli.Command) error {
 		// Get the plugin name from the flag
@@ -379,7 +428,8 @@ func extensionRemoveCmd() func(ctx context.Context, cmd *cli.Command) error {
 		}
 
 		// Check if --delete-folder flag is set to remove the extension folder
-		if cmd.Bool("delete-folder") {
+		isDeleteFolder := cmd.Bool("delete-folder")
+		if isDeleteFolder {
 			// Remove the extension directory from ".semver-extensions"
 			extensionDir := filepath.Join(".semver-extensions", extensionName)
 			if err := os.RemoveAll(extensionDir); err != nil {
@@ -394,13 +444,16 @@ func extensionRemoveCmd() func(ctx context.Context, cmd *cli.Command) error {
 	}
 }
 
-// getOrInitVersionFile handles .version file initialization or returns an error
-// if auto-init is disabled and the file is missing.
+/* ------------------------------------------------------------------------- */
+/* HELPERS                                                                   */
+/* ------------------------------------------------------------------------- */
+
+// getOrInitVersionFile initializes the version file or checks existence based on flag.
 func getOrInitVersionFile(cmd *cli.Command) (created bool, err error) {
 	path := cmd.String("path")
-	noAutoInit := cmd.Bool("no-auto-init")
+	isNoAutoInit := cmd.Bool("no-auto-init")
 
-	if noAutoInit {
+	if isNoAutoInit {
 		if _, err := os.Stat(path); err != nil {
 			return false, cli.Exit(fmt.Sprintf("version file not found at %s", path), 1)
 		}
@@ -417,6 +470,7 @@ func getOrInitVersionFile(cmd *cli.Command) (created bool, err error) {
 	return created, nil
 }
 
+// promotePreRelease strips pre-release and optionally preserves metadata.
 func promotePreRelease(current semver.SemVersion, preserveMeta bool) semver.SemVersion {
 	next := current
 	next.PreRelease = ""
@@ -428,6 +482,7 @@ func promotePreRelease(current semver.SemVersion, preserveMeta bool) semver.SemV
 	return next
 }
 
+// tryInferBumpTypeFromCommitParserPlugin tries to infer bump type from commit messages.
 func tryInferBumpTypeFromCommitParserPlugin(since, until string) string {
 	parser := commitparser.GetCommitParserFn()
 	if parser == nil {

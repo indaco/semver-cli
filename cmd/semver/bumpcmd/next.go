@@ -91,13 +91,39 @@ func runBumpNext(cfg *config.Config, cmd *cli.Command) error {
 		return err
 	}
 
+	next, err := getNextVersion(current, label, disableInfer, since, until, isPreserveMeta)
+	if err != nil {
+		return err
+	}
+
+	next = setBuildMetadata(current, next, meta, isPreserveMeta)
+
+	if err := semver.SaveVersion(path, next); err != nil {
+		return fmt.Errorf("failed to save version: %w", err)
+	}
+
+	fmt.Printf("Bumped version from %s to %s\n", current.String(), next.String())
+	return nil
+}
+
+// getNextVersion determines the next semantic version based on the provided label,
+// commit inference, or default bump logic. It returns an error if bumping fails
+// or if an invalid label is specified.
+func getNextVersion(
+	current semver.SemVersion,
+	label string,
+	disableInfer bool,
+	since, until string,
+	preserveMeta bool,
+) (semver.SemVersion, error) {
 	var next semver.SemVersion
+	var err error
 
 	switch label {
 	case "patch", "minor", "major":
 		next, err = semver.BumpByLabelFunc(current, label)
 		if err != nil {
-			return fmt.Errorf("failed to bump version with label: %w", err)
+			return semver.SemVersion{}, fmt.Errorf("failed to bump version with label: %w", err)
 		}
 	case "":
 		if !disableInfer {
@@ -106,40 +132,39 @@ func runBumpNext(cfg *config.Config, cmd *cli.Command) error {
 				fmt.Fprintf(os.Stderr, "🔍 Inferred bump type: %s\n", inferred)
 
 				if current.PreRelease != "" {
-					next = promotePreRelease(current, isPreserveMeta)
-				} else {
-					next, err = semver.BumpByLabelFunc(current, inferred)
-					if err != nil {
-						return fmt.Errorf("failed to bump inferred version: %w", err)
-					}
+					return promotePreRelease(current, preserveMeta), nil
 				}
-				break
+				next, err = semver.BumpByLabelFunc(current, inferred)
+				if err != nil {
+					return semver.SemVersion{}, fmt.Errorf("failed to bump inferred version: %w", err)
+				}
+				return next, nil
 			}
 		}
 
 		next, err = semver.BumpNextFunc(current)
 		if err != nil {
-			return fmt.Errorf("failed to determine next version: %w", err)
+			return semver.SemVersion{}, fmt.Errorf("failed to determine next version: %w", err)
 		}
 	default:
-		return cli.Exit("invalid --label: must be 'patch', 'minor', or 'major'", 1)
+		return semver.SemVersion{}, cli.Exit("invalid --label: must be 'patch', 'minor', or 'major'", 1)
 	}
 
+	return next, nil
+}
+
+// setBuildMetadata updates the build metadata of the next version based on
+// the provided meta string and the preserve flag.
+func setBuildMetadata(current, next semver.SemVersion, meta string, preserve bool) semver.SemVersion {
 	switch {
 	case meta != "":
 		next.Build = meta
-	case isPreserveMeta:
+	case preserve:
 		next.Build = current.Build
 	default:
 		next.Build = ""
 	}
-
-	if err := semver.SaveVersion(path, next); err != nil {
-		return fmt.Errorf("failed to save version: %w", err)
-	}
-
-	fmt.Printf("Bumped version from %s to %s\n", current.String(), next.String())
-	return nil
+	return next
 }
 
 // promotePreRelease strips pre-release and optionally preserves metadata.

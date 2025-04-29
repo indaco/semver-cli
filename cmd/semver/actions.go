@@ -4,7 +4,11 @@ import (
 	"context"
 	"fmt"
 	"os"
+	"path/filepath"
 
+	"github.com/indaco/semver-cli/api/v0/plugins"
+	"github.com/indaco/semver-cli/internal/config"
+	"github.com/indaco/semver-cli/internal/pluginmanager"
 	"github.com/indaco/semver-cli/internal/semver"
 	"github.com/urfave/cli/v3"
 )
@@ -247,6 +251,118 @@ func validateVersionCmd() func(ctx context.Context, cmd *cli.Command) error {
 			return fmt.Errorf("invalid version file at %s: %w", path, err)
 		}
 		fmt.Printf("Valid version file at %s\n", path)
+		return nil
+	}
+}
+
+func pluginAddCmd() func(ctx context.Context, cmd *cli.Command) error {
+	return func(ctx context.Context, cmd *cli.Command) error {
+		localPath := cmd.String("path")
+		if localPath == "" {
+			return cli.Exit("missing --path (or --url) for plugin registration", 1)
+		}
+
+		// Get the plugin directory (use the provided flag or default to current directory)
+		pluginDirectory := cmd.String("plugin-dir")
+
+		// Proceed with normal plugin registration
+		return pluginmanager.RegisterLocalPluginFn(localPath, ".semver.yaml", pluginDirectory)
+	}
+}
+
+func pluginListCmd() func(ctx context.Context, cmd *cli.Command) error {
+	return func(ctx context.Context, cmd *cli.Command) error {
+		// Load the configuration file
+		cfg, err := config.LoadConfigFn()
+		if err != nil {
+			// Print the error to stdout and return
+			fmt.Println("failed to load configuration:", err)
+			return nil
+		}
+
+		// If there are no plugins, notify the user
+		if len(cfg.Plugins) == 0 {
+			fmt.Println("No plugins registered.")
+			return nil
+		}
+
+		// Create a lookup map of metadata
+		metadataMap := map[string]plugins.Plugin{}
+		for _, meta := range plugins.AllPlugins() {
+			metadataMap[meta.Name()] = meta
+		}
+
+		fmt.Println("List of Registered Plugins:")
+		fmt.Println()
+		fmt.Println("  NAME              VERSION     ENABLED   DESCRIPTION")
+		fmt.Println("  ----------------------------------------------------------")
+
+		for _, p := range cfg.Plugins {
+			meta, ok := metadataMap[p.Name]
+			version := "?"
+			desc := "(no metadata)"
+			if ok {
+				version = meta.Version()
+				desc = meta.Description()
+			}
+
+			fmt.Printf("  %-17s %-10s %-9v %s\n", p.Name, version, p.Enabled, desc)
+		}
+
+		fmt.Println()
+
+		return nil
+	}
+}
+
+func pluginRemoveCmd() func(ctx context.Context, cmd *cli.Command) error {
+	return func(ctx context.Context, cmd *cli.Command) error {
+		// Get the plugin name from the flag
+		pluginName := cmd.String("name")
+		if pluginName == "" {
+			return fmt.Errorf("please provide a plugin name to remove")
+		}
+
+		cfg, err := config.LoadConfigFn()
+		if err != nil {
+			fmt.Println("failed to load configuration:", err)
+			return nil
+		}
+
+		var pluginToRemove *config.PluginConfig
+		for i, plugin := range cfg.Plugins {
+			if plugin.Name == pluginName {
+				pluginToRemove = &cfg.Plugins[i]
+				break
+			}
+		}
+
+		if pluginToRemove == nil {
+			fmt.Printf("plugin %q not found\n", pluginName)
+			return nil
+		}
+
+		// Disable the plugin in the configuration (set Enabled to false)
+		pluginToRemove.Enabled = false
+
+		// Save the updated config back to the file
+		if err := config.SaveConfigFn(cfg); err != nil {
+			fmt.Println("failed to save updated configuration:", err)
+			return nil
+		}
+
+		// Check if --delete-folder flag is set to remove the plugin folder
+		if cmd.Bool("delete-folder") {
+			// Remove the plugin directory from ".semver-plugins"
+			pluginDirPath := filepath.Join(".semver-plugins", pluginName)
+			if err := os.RemoveAll(pluginDirPath); err != nil {
+				return fmt.Errorf("failed to remove plugin directory: %w", err)
+			}
+			fmt.Printf("✅ Plugin %q and its directory removed successfully.\n", pluginName)
+		} else {
+			fmt.Printf("✅ Plugin %q removed, but its directory is preserved.\n", pluginName)
+		}
+
 		return nil
 	}
 }

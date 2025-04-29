@@ -1,18 +1,36 @@
 package config
 
 import (
-	"errors"
+	"bytes"
+	"fmt"
 	"os"
 	"path/filepath"
 
-	"gopkg.in/yaml.v3"
+	"github.com/goccy/go-yaml"
 )
 
-type Config struct {
-	Path string `yaml:"path"`
+type PluginConfig struct {
+	Name    string `yaml:"name"`
+	Path    string `yaml:"path"`
+	Enabled bool   `yaml:"enabled"`
 }
 
-func LoadConfig() (*Config, error) {
+type Config struct {
+	Path    string         `yaml:"path"`
+	Plugins []PluginConfig `yaml:"plugins,omitempty"`
+}
+
+var (
+	LoadConfigFn = loadConfig
+	SaveConfigFn = saveConfig
+	marshalFn    = yaml.Marshal
+	openFileFn   = os.OpenFile
+	writeFileFn  = func(file *os.File, data []byte) (int, error) {
+		return file.Write(data)
+	}
+)
+
+func loadConfig() (*Config, error) {
 	// Highest priority: ENV variable
 	if envPath := os.Getenv("SEMVER_PATH"); envPath != "" {
 		return &Config{Path: envPath}, nil
@@ -28,13 +46,13 @@ func LoadConfig() (*Config, error) {
 	}
 
 	var cfg Config
-	if err := yaml.Unmarshal(data, &cfg); err != nil {
+	decoder := yaml.NewDecoder(bytes.NewReader(data), yaml.Strict())
+	if err := decoder.Decode(&cfg); err != nil {
 		return nil, err
 	}
 
-	// Extra safety: ensure the `path` key was present
 	if cfg.Path == "" {
-		return nil, errors.New("invalid config: missing or empty 'path'")
+		cfg.Path = ".version"
 	}
 
 	return &cfg, nil
@@ -49,4 +67,23 @@ func NormalizeVersionPath(path string) string {
 
 	// If it doesn't exist or is already a file, return as-is
 	return path
+}
+
+func saveConfig(cfg *Config) error {
+	file, err := openFileFn(".semver.yaml", os.O_RDWR|os.O_CREATE|os.O_TRUNC, 0644)
+	if err != nil {
+		return fmt.Errorf("failed to open config file: %w", err)
+	}
+	defer file.Close()
+
+	data, err := marshalFn(cfg)
+	if err != nil {
+		return fmt.Errorf("failed to marshal config: %w", err)
+	}
+
+	if _, err := writeFileFn(file, data); err != nil {
+		return fmt.Errorf("failed to write config data: %w", err)
+	}
+
+	return nil
 }

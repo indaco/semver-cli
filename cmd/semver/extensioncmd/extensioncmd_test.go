@@ -17,6 +17,77 @@ import (
 )
 
 /* ------------------------------------------------------------------------- */
+/* HELPERS                                                                   */
+/* ------------------------------------------------------------------------- */
+
+func createExtensionDir(t *testing.T, path string) {
+	t.Helper()
+	if err := os.MkdirAll(path, 0755); err != nil {
+		t.Fatalf("failed to create extension directory: %v", err)
+	}
+}
+
+func writeConfigFile(t *testing.T, path string) {
+	t.Helper()
+	content := `extensions:
+  - name: mock-extension
+    path: /some/path
+    enabled: true`
+	if err := os.WriteFile(path, []byte(content), 0644); err != nil {
+		t.Fatalf("failed to write config file: %v", err)
+	}
+}
+
+func checkCLIOutput(t *testing.T, output, extensionName string, deleted bool) {
+	t.Helper()
+	var expected string
+	if deleted {
+		expected = fmt.Sprintf("✅ Extension %q and its directory removed successfully.", extensionName)
+	} else {
+		expected = fmt.Sprintf("✅ Extension %q removed, but its directory is preserved.", extensionName)
+	}
+	if !strings.Contains(output, expected) {
+		t.Errorf("expected output to contain %q, got:\n%s", expected, output)
+	}
+}
+
+func checkExtensionDirDeleted(t *testing.T, dir string, expectDeleted bool) {
+	t.Helper()
+	_, err := os.Stat(dir)
+	if expectDeleted {
+		if !os.IsNotExist(err) {
+			t.Errorf("expected extension directory to be deleted, but it still exists")
+		}
+	} else {
+		if err != nil {
+			t.Errorf("expected extension directory to exist, got: %v", err)
+		}
+	}
+}
+
+func checkExtensionDisabledInConfig(t *testing.T, configPath, extensionName string) {
+	t.Helper()
+	cfg, err := config.LoadConfigFn()
+	if err != nil {
+		t.Fatalf("failed to reload config: %v", err)
+	}
+
+	found := false
+	for _, ext := range cfg.Extensions {
+		if ext.Name == extensionName {
+			found = true
+			if ext.Enabled {
+				t.Errorf("expected extension %q to be disabled, but it's still enabled", extensionName)
+			}
+			break
+		}
+	}
+	if !found {
+		t.Errorf("extension %q not found in config", extensionName)
+	}
+}
+
+/* ------------------------------------------------------------------------- */
 /* EXTENSION INSTALL COMMAND                                                 */
 /* ------------------------------------------------------------------------- */
 
@@ -295,32 +366,18 @@ func TestExtensionRemoveCmd_DeleteFolderVariants(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			tmpDir := t.TempDir()
 
-			// Prepare paths
 			extensionsRoot := filepath.Join(tmpDir, ".semver-extensions")
 			extensionDir := filepath.Join(extensionsRoot, extensionName)
 			configPath := filepath.Join(tmpDir, ".semver.yaml")
 
-			// Create dummy extension dir
-			if err := os.MkdirAll(extensionDir, 0755); err != nil {
-				t.Fatalf("failed to create extension directory: %v", err)
-			}
+			createExtensionDir(t, extensionDir)
+			writeConfigFile(t, configPath)
 
-			// Write .semver.yaml config
-			content := `extensions:
-  - name: mock-extension
-    path: /some/path
-    enabled: true`
-			if err := os.WriteFile(configPath, []byte(content), 0644); err != nil {
-				t.Fatalf("failed to write config file: %v", err)
-			}
-
-			// Build CLI args
 			args := []string{"semver", "extension", "remove", "--name", extensionName}
 			if tt.deleteFolder {
 				args = append(args, "--delete-folder")
 			}
 
-			// Prepare and run the CLI command
 			cfg := &config.Config{Path: configPath}
 			appCli := testutils.BuildCLIForTests(cfg.Path, []*cli.Command{Run()})
 
@@ -331,49 +388,9 @@ func TestExtensionRemoveCmd_DeleteFolderVariants(t *testing.T) {
 				t.Fatalf("CLI run failed: %v", err)
 			}
 
-			// Check output
-			if tt.deleteFolder {
-				exp := fmt.Sprintf("✅ Extension %q and its directory removed successfully.", extensionName)
-				if !strings.Contains(output, exp) {
-					t.Errorf("expected output to contain %q, got:\n%s", exp, output)
-				}
-			} else {
-				exp := fmt.Sprintf("✅ Extension %q removed, but its directory is preserved.", extensionName)
-				if !strings.Contains(output, exp) {
-					t.Errorf("expected output to contain %q, got:\n%s", exp, output)
-				}
-			}
-
-			// Check if directory was deleted or not
-			_, err = os.Stat(extensionDir)
-			if tt.expectDeleted {
-				if !os.IsNotExist(err) {
-					t.Errorf("expected extension directory to be deleted, but it still exists")
-				}
-			} else {
-				if err != nil {
-					t.Errorf("expected extension directory to exist, got: %v", err)
-				}
-			}
-
-			// Verify extension is disabled in config
-			cfg, err = config.LoadConfigFn()
-			if err != nil {
-				t.Fatalf("failed to reload config: %v", err)
-			}
-			found := false
-			for _, ext := range cfg.Extensions {
-				if ext.Name == extensionName {
-					found = true
-					if ext.Enabled {
-						t.Errorf("expected extension %q to be disabled, but it's still enabled", extensionName)
-					}
-					break
-				}
-			}
-			if !found {
-				t.Errorf("extension %q not found in config", extensionName)
-			}
+			checkCLIOutput(t, output, extensionName, tt.deleteFolder)
+			checkExtensionDirDeleted(t, extensionDir, tt.expectDeleted)
+			checkExtensionDisabledInConfig(t, configPath, extensionName)
 		})
 	}
 }

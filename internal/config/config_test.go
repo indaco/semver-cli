@@ -11,6 +11,34 @@ import (
 )
 
 /* ------------------------------------------------------------------------- */
+/* HELPERS                                                                   */
+/* ------------------------------------------------------------------------- */
+
+func checkError(t *testing.T, err error, wantErr bool) {
+	t.Helper()
+	if (err != nil) != wantErr {
+		t.Fatalf("expected err=%v, got err=%v", wantErr, err)
+	}
+}
+
+func checkConfigNil(t *testing.T, cfg *Config, wantNil bool) {
+	t.Helper()
+	if wantNil && cfg != nil {
+		t.Errorf("expected nil config, got %+v", cfg)
+	}
+	if !wantNil && cfg == nil {
+		t.Fatal("expected non-nil config, got nil")
+	}
+}
+
+func checkConfigPath(t *testing.T, cfg *Config, wantNil bool, wantPath string) {
+	t.Helper()
+	if !wantNil && cfg.Path != wantPath {
+		t.Errorf("expected path %q, got %q", wantPath, cfg.Path)
+	}
+}
+
+/* ------------------------------------------------------------------------- */
 /* LOAD CONFIG                                                               */
 /* ------------------------------------------------------------------------- */
 
@@ -123,18 +151,9 @@ func TestLoadConfig(t *testing.T) {
 			defer restore()
 
 			cfg, err := LoadConfigFn()
-			if (err != nil) != tt.wantErr {
-				t.Fatalf("expected err=%v, got err=%v", tt.wantErr, err)
-			}
-			if tt.wantNil && cfg != nil {
-				t.Errorf("expected nil config, got %+v", cfg)
-			}
-			if !tt.wantNil && cfg == nil {
-				t.Fatal("expected non-nil config, got nil")
-			}
-			if cfg != nil && cfg.Path != tt.wantPath {
-				t.Errorf("expected path %q, got %q", tt.wantPath, cfg.Path)
-			}
+			checkError(t, err, tt.wantErr)
+			checkConfigNil(t, cfg, tt.wantNil)
+			checkConfigPath(t, cfg, tt.wantNil, tt.wantPath)
 		})
 	}
 }

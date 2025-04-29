@@ -19,10 +19,15 @@ type ExtensionConfig struct {
 	Enabled bool   `yaml:"enabled"`
 }
 
+type PreReleaseHookConfig struct {
+	Command string `yaml:"command,omitempty"`
+}
+
 type Config struct {
-	Path       string            `yaml:"path"`
-	Plugins    *PluginConfig     `yaml:"plugins,omitempty"`
-	Extensions []ExtensionConfig `yaml:"extensions,omitempty"`
+	Path            string                            `yaml:"path"`
+	Plugins         *PluginConfig                     `yaml:"plugins,omitempty"`
+	Extensions      []ExtensionConfig                 `yaml:"extensions,omitempty"`
+	PreReleaseHooks []map[string]PreReleaseHookConfig `yaml:"pre-release-hooks,omitempty"`
 }
 
 var (

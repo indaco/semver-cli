@@ -187,7 +187,7 @@ func TestSaveConfigFn(t *testing.T) {
 				name: "save config with plugins",
 				cfg: &Config{
 					Path: "custom.version",
-					Plugins: []PluginConfig{
+					Extensions: []ExtensionConfig{
 						{Name: "example", Path: "/plugin/path", Enabled: true},
 					},
 				},

@@ -1,11 +1,11 @@
-package plugins
+package extensions
 
 import (
 	"errors"
 )
 
-// PluginManifest defines the metadata and entry point for a semver plugin.
-// This structure is expected to be defined in a plugin's `plugin.yaml` file.
+// ExtensionManifest defines the metadata and entry point for a semver extension.
+// This structure is expected to be defined in a extension's `extension.yaml` file.
 //
 // All fields are required:
 // - Name: A unique plugin identifier (e.g. "commit-parser")
@@ -14,7 +14,7 @@ import (
 // - Author: Name or handle of the plugin author
 // - Repository: URL of the plugin's source repository
 // - Entry: Go package path of the entry point (e.g. "github.com/user/semver-plugin-commit/parser")
-type PluginManifest struct {
+type ExtensionManifest struct {
 	Name        string `yaml:"name"`
 	Version     string `yaml:"version"`
 	Description string `yaml:"description"`
@@ -24,7 +24,7 @@ type PluginManifest struct {
 }
 
 // ValidateManifest ensures all required fields are present
-func (m *PluginManifest) ValidateManifest() error {
+func (m *ExtensionManifest) ValidateManifest() error {
 	if m.Name == "" {
 		return errors.New("plugin manifest: missing 'name'")
 	}

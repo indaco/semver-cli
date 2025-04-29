@@ -1,4 +1,4 @@
-package pluginmanager
+package extensionmanager
 
 import (
 	"io"

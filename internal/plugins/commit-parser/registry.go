@@ -1,18 +1,17 @@
-package plugins
+package commitparser
 
 import (
 	"fmt"
 	"os"
 )
 
-type CommitParser interface {
-	Name() string
-	Parse(commits []string) (string, error)
-}
+var (
+	defaultCommitParser    CommitParser
+	RegisterCommitParserFn = registerCommitParser
+	GetCommitParserFn      = getCommitParser
+)
 
-var defaultCommitParser CommitParser
-
-func RegisterCommitParser(p CommitParser) {
+func registerCommitParser(p CommitParser) {
 	if defaultCommitParser != nil {
 		fmt.Fprintf(os.Stderr,
 			"⚠️  Ignoring commit parser %q: another parser (%q) is already registered.\n",
@@ -23,7 +22,7 @@ func RegisterCommitParser(p CommitParser) {
 	defaultCommitParser = p
 }
 
-func GetCommitParser() CommitParser {
+func getCommitParser() CommitParser {
 	return defaultCommitParser
 }
 

@@ -1,4 +1,4 @@
-package pluginmanager
+package extensionmanager
 
 import (
 	"os"
@@ -8,13 +8,13 @@ import (
 )
 
 var (
-	marshalFunc         = yaml.Marshal
-	AddPluginToConfigFn = AddPluginToConfig
+	marshalFunc            = yaml.Marshal
+	AddExtensionToConfigFn = AddExtensionToConfig
 )
 
-// AddPluginToConfig appends a plugin entry to the YAML config at the given path.
+// AddExtensionToConfig appends an extension entry to the YAML config at the given path.
 // It avoids duplicates and preserves existing fields.
-func AddPluginToConfig(path string, plugin config.PluginConfig) error {
+func AddExtensionToConfig(path string, extension config.ExtensionConfig) error {
 	data, err := os.ReadFile(path)
 	if err != nil {
 		return err
@@ -26,13 +26,13 @@ func AddPluginToConfig(path string, plugin config.PluginConfig) error {
 	}
 
 	// Avoid duplicates
-	for _, p := range cfg.Plugins {
-		if p.Name == plugin.Name {
+	for _, ext := range cfg.Extensions {
+		if ext.Name == extension.Name {
 			return nil
 		}
 	}
 
-	cfg.Plugins = append(cfg.Plugins, plugin)
+	cfg.Extensions = append(cfg.Extensions, extension)
 
 	out, err := marshalFunc(cfg)
 	if err != nil {

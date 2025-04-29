@@ -1,4 +1,4 @@
-package plugins
+package extensions
 
 import (
 	"os"
@@ -7,16 +7,16 @@ import (
 	"testing"
 )
 
-func writePluginYAML(t *testing.T, dir, content string) string {
+func writeExtensionYAML(t *testing.T, dir, content string) string {
 	t.Helper()
-	path := filepath.Join(dir, "plugin.yaml")
+	path := filepath.Join(dir, "extension.yaml")
 	if err := os.WriteFile(path, []byte(content), 0644); err != nil {
-		t.Fatalf("failed to write plugin.yaml: %v", err)
+		t.Fatalf("failed to write extension.yaml: %v", err)
 	}
 	return path
 }
 
-func TestLoadPluginManifest_Valid(t *testing.T) {
+func TestLoadExtensionManifest_Valid(t *testing.T) {
 	dir := t.TempDir()
 	content := `
 name: test
@@ -26,9 +26,9 @@ author: me
 repository: https://example.com/repo
 entry: actions.json
 `
-	writePluginYAML(t, dir, content)
+	writeExtensionYAML(t, dir, content)
 
-	m, err := LoadPluginManifestFn(dir)
+	m, err := LoadExtensionManifestFn(dir)
 	if err != nil {
 		t.Fatalf("expected no error, got %v", err)
 	}
@@ -37,26 +37,26 @@ entry: actions.json
 	}
 }
 
-func TestLoadPluginManifest_MissingFile(t *testing.T) {
+func TestLoadExtensionManifest_MissingFile(t *testing.T) {
 	dir := t.TempDir()
-	_, err := LoadPluginManifestFn(dir)
+	_, err := LoadExtensionManifestFn(dir)
 	if err == nil || !strings.Contains(err.Error(), "no such file") {
 		t.Fatalf("expected file not found error, got %v", err)
 	}
 }
 
-func TestLoadPluginManifest_InvalidYAML(t *testing.T) {
+func TestLoadExtensionManifest_InvalidYAML(t *testing.T) {
 	dir := t.TempDir()
 	content := ": this is not valid yaml"
-	writePluginYAML(t, dir, content)
+	writeExtensionYAML(t, dir, content)
 
-	_, err := LoadPluginManifestFn(dir)
+	_, err := LoadExtensionManifestFn(dir)
 	if err == nil || !strings.Contains(err.Error(), "failed to parse manifest:") {
 		t.Fatalf("expected YAML parse error, got %v", err)
 	}
 }
 
-func TestLoadPluginManifest_InvalidManifest(t *testing.T) {
+func TestLoadExtensionManifest_InvalidManifest(t *testing.T) {
 	dir := t.TempDir()
 	content := `
 name: ""
@@ -66,9 +66,9 @@ author: ""
 repository: ""
 entry: ""
 `
-	writePluginYAML(t, dir, content)
+	writeExtensionYAML(t, dir, content)
 
-	_, err := LoadPluginManifestFn(dir)
+	_, err := LoadExtensionManifestFn(dir)
 	if err == nil || !strings.Contains(err.Error(), "plugin manifest: missing") {
 		t.Fatalf("expected validation error, got %v", err)
 	}

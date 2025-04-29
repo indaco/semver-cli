@@ -1,4 +1,4 @@
-package plugins
+package extensions
 
 import (
 	"bytes"
@@ -9,18 +9,18 @@ import (
 	"github.com/goccy/go-yaml"
 )
 
-var LoadPluginManifestFn = loadPluginManifest
+var LoadExtensionManifestFn = loadExtensionManifest
 
-// loadPluginManifest loads and validates a plugin.yaml file from the given directory.
-func loadPluginManifest(dir string) (*PluginManifest, error) {
-	manifestPath := filepath.Join(dir, "plugin.yaml")
+// loadExtensionManifest loads and validates a extension.yaml file from the given directory.
+func loadExtensionManifest(dir string) (*ExtensionManifest, error) {
+	manifestPath := filepath.Join(dir, "extension.yaml")
 
 	data, err := os.ReadFile(manifestPath)
 	if err != nil {
 		return nil, fmt.Errorf("failed to read manifest: %w", err)
 	}
 
-	var manifest PluginManifest
+	var manifest ExtensionManifest
 	decoder := yaml.NewDecoder(bytes.NewReader(data), yaml.Strict())
 
 	if err := decoder.Decode(&manifest); err != nil {

@@ -3,13 +3,14 @@ package main
 import (
 	"fmt"
 
+	"github.com/indaco/semver-cli/internal/config"
 	"github.com/indaco/semver-cli/internal/version"
 	"github.com/urfave/cli/v3"
 )
 
 // newCLI builds and returns the root CLI command,
 // configuring all subcommands and flags for the semver cli.
-func newCLI(defaultPath string) *cli.Command {
+func newCLI(cfg *config.Config) *cli.Command {
 	return &cli.Command{
 		Name:    "semver",
 		Version: fmt.Sprintf("v%s", version.GetVersion()),
@@ -19,7 +20,7 @@ func newCLI(defaultPath string) *cli.Command {
 				Name:    "path",
 				Aliases: []string{"p"},
 				Usage:   "Path to .version file",
-				Value:   defaultPath,
+				Value:   cfg.Path,
 			},
 			&cli.BoolFlag{
 				Name:  "no-auto-init",
@@ -93,16 +94,39 @@ func newCLI(defaultPath string) *cli.Command {
 						Action:    bumpReleaseCmd(),
 					},
 					{
-						Name:      "next",
-						Usage:     "Smart bump logic (e.g. promote pre-release or bump patch)",
-						UsageText: "semver bump next [--label patch|minor|major] [--meta data] [--preserve-meta]",
+						Name:  "next",
+						Usage: "Smart bump logic (e.g. promote pre-release or bump patch)",
+						UsageText: `semver bump next [--label patch|minor|major] [--meta data] [--preserve-meta] [--since ref] [--until ref] [--no-infer]
+
+By default, semver tries to infer the bump type from recent commit messages using the built-in commit-parser plugin.
+You can override this behavior with the --label flag, disable it explicitly with --no-infer, or disable the plugin via the config file (.semver.yaml).`,
 						Flags: []cli.Flag{
 							&cli.StringFlag{
 								Name:  "label",
 								Usage: "Optional bump label override (patch, minor, major)",
 							},
+							&cli.StringFlag{
+								Name:  "meta",
+								Usage: "Set build metadata (e.g. 'ci.123')",
+							},
+							&cli.BoolFlag{
+								Name:  "preserve-meta",
+								Usage: "Preserve existing build metadata instead of clearing it",
+							},
+							&cli.StringFlag{
+								Name:  "since",
+								Usage: "Start commit/tag for bump inference (default: last tag or HEAD~10)",
+							},
+							&cli.StringFlag{
+								Name:  "until",
+								Usage: "End commit/tag for bump inference (default: HEAD)",
+							},
+							&cli.BoolFlag{
+								Name:  "no-infer",
+								Usage: "Disable bump inference from commit messages (overrides config)",
+							},
 						},
-						Action: bumpNextCmd(),
+						Action: bumpNextCmd(cfg),
 					},
 				},
 			},
@@ -135,38 +159,38 @@ func newCLI(defaultPath string) *cli.Command {
 				Action:    initVersionCmd(),
 			},
 			{
-				Name:  "plugin",
-				Usage: "Manage plugins for semver-cli",
+				Name:  "extension",
+				Usage: "Manage extensions for semver-cli",
 				Commands: []*cli.Command{
 					{
-						Name:  "add",
-						Usage: "Register a plugin from a remote repo or local path",
+						Name:  "install",
+						Usage: "Install an extension from a remote repo or local path",
 						Flags: []cli.Flag{
 							&cli.StringFlag{Name: "url", Usage: "Git URL to clone"},
 							&cli.StringFlag{Name: "path", Usage: "Local path to copy from"},
-							&cli.StringFlag{Name: "plugin-dir", Usage: "Directory to store plugins in", Value: "."},
+							&cli.StringFlag{Name: "extension-dir", Usage: "Directory to store extensions in", Value: "."},
 						},
-						Action: pluginAddCmd(),
+						Action: extensionInstallCmd(),
 					},
 					{
 						Name:   "list",
-						Usage:  "List installed plugins",
-						Action: pluginListCmd(),
+						Usage:  "List installed extensions",
+						Action: extensionListCmd(),
 					},
 					{
 						Name:  "remove",
-						Usage: "Remove a registered plugin",
+						Usage: "Remove a registered extension",
 						Flags: []cli.Flag{
 							&cli.StringFlag{
 								Name:  "name",
-								Usage: "Name of the plugin to remove",
+								Usage: "Name of the extension to remove",
 							},
 							&cli.BoolFlag{
 								Name:  "delete-folder",
-								Usage: "Delete the plugin directory from the .semver-plugins folder",
+								Usage: "Delete the extension directory from the .semver-extensions folder",
 							},
 						},
-						Action: pluginRemoveCmd(),
+						Action: extensionRemoveCmd(),
 					},
 				},
 			},

@@ -6,12 +6,17 @@ import (
 	"os"
 	"path/filepath"
 
-	"github.com/indaco/semver-cli/api/v0/plugins"
+	"github.com/indaco/semver-cli/api/v0/extensions"
 	"github.com/indaco/semver-cli/internal/config"
-	"github.com/indaco/semver-cli/internal/pluginmanager"
+	extensionmanager "github.com/indaco/semver-cli/internal/extension-manager"
+	commitparser "github.com/indaco/semver-cli/internal/plugins/commit-parser"
+	"github.com/indaco/semver-cli/internal/plugins/commit-parser/gitlog"
 	"github.com/indaco/semver-cli/internal/semver"
 	"github.com/urfave/cli/v3"
 )
+
+// At package level
+var tryInferBumpTypeFromCommitParserPluginFn = tryInferBumpTypeFromCommitParserPlugin
 
 func initVersionCmd() func(ctx context.Context, cmd *cli.Command) error {
 	return func(ctx context.Context, cmd *cli.Command) error {
@@ -112,12 +117,17 @@ func bumpReleaseCmd() func(ctx context.Context, cmd *cli.Command) error {
 	}
 }
 
-func bumpNextCmd() func(ctx context.Context, cmd *cli.Command) error {
+func bumpNextCmd(cfg *config.Config) func(ctx context.Context, cmd *cli.Command) error {
 	return func(ctx context.Context, cmd *cli.Command) error {
 		path := cmd.String("path")
 		label := cmd.String("label")
 		meta := cmd.String("meta")
-		preserveMeta := cmd.Bool("preserve-meta")
+		since := cmd.String("since")
+		until := cmd.String("until")
+		isPreserveMeta := cmd.Bool("preserve-meta")
+		isNoInferFlag := cmd.Bool("no-infer")
+
+		disableInfer := isNoInferFlag || (cfg != nil && cfg.Plugins != nil && !cfg.Plugins.CommitParser)
 
 		if _, err := getOrInitVersionFile(cmd); err != nil {
 			return err
@@ -137,6 +147,23 @@ func bumpNextCmd() func(ctx context.Context, cmd *cli.Command) error {
 				return fmt.Errorf("failed to bump version with label: %w", err)
 			}
 		case "":
+			if !disableInfer {
+				inferred := tryInferBumpTypeFromCommitParserPluginFn(since, until)
+				if inferred != "" {
+					fmt.Fprintf(os.Stderr, "🔍 Inferred bump type: %s\n", inferred)
+
+					if current.PreRelease != "" {
+						next = promotePreRelease(current, isPreserveMeta)
+					} else {
+						next, err = semver.BumpByLabelFunc(current, inferred)
+						if err != nil {
+							return fmt.Errorf("failed to bump inferred version: %w", err)
+						}
+					}
+					break
+				}
+			}
+
 			next, err = semver.BumpNextFunc(current)
 			if err != nil {
 				return fmt.Errorf("failed to determine next version: %w", err)
@@ -148,7 +175,7 @@ func bumpNextCmd() func(ctx context.Context, cmd *cli.Command) error {
 		switch {
 		case meta != "":
 			next.Build = meta
-		case preserveMeta:
+		case isPreserveMeta:
 			next.Build = current.Build
 		default:
 			next.Build = ""
@@ -255,22 +282,22 @@ func validateVersionCmd() func(ctx context.Context, cmd *cli.Command) error {
 	}
 }
 
-func pluginAddCmd() func(ctx context.Context, cmd *cli.Command) error {
+func extensionInstallCmd() func(ctx context.Context, cmd *cli.Command) error {
 	return func(ctx context.Context, cmd *cli.Command) error {
 		localPath := cmd.String("path")
 		if localPath == "" {
-			return cli.Exit("missing --path (or --url) for plugin registration", 1)
+			return cli.Exit("missing --path (or --url) for extension registration", 1)
 		}
 
-		// Get the plugin directory (use the provided flag or default to current directory)
-		pluginDirectory := cmd.String("plugin-dir")
+		// Get the extension directory (use the provided flag or default to current directory)
+		extensionDirectory := cmd.String("extension-dir")
 
-		// Proceed with normal plugin registration
-		return pluginmanager.RegisterLocalPluginFn(localPath, ".semver.yaml", pluginDirectory)
+		// Proceed with normal extension registration
+		return extensionmanager.RegisterLocalExtensionFn(localPath, ".semver.yaml", extensionDirectory)
 	}
 }
 
-func pluginListCmd() func(ctx context.Context, cmd *cli.Command) error {
+func extensionListCmd() func(ctx context.Context, cmd *cli.Command) error {
 	return func(ctx context.Context, cmd *cli.Command) error {
 		// Load the configuration file
 		cfg, err := config.LoadConfigFn()
@@ -281,23 +308,23 @@ func pluginListCmd() func(ctx context.Context, cmd *cli.Command) error {
 		}
 
 		// If there are no plugins, notify the user
-		if len(cfg.Plugins) == 0 {
-			fmt.Println("No plugins registered.")
+		if len(cfg.Extensions) == 0 {
+			fmt.Println("No extensions registered.")
 			return nil
 		}
 
 		// Create a lookup map of metadata
-		metadataMap := map[string]plugins.Plugin{}
-		for _, meta := range plugins.AllPlugins() {
+		metadataMap := map[string]extensions.Extension{}
+		for _, meta := range extensions.AllExtensions() {
 			metadataMap[meta.Name()] = meta
 		}
 
-		fmt.Println("List of Registered Plugins:")
+		fmt.Println("List of Registered Extensions:")
 		fmt.Println()
 		fmt.Println("  NAME              VERSION     ENABLED   DESCRIPTION")
 		fmt.Println("  ----------------------------------------------------------")
 
-		for _, p := range cfg.Plugins {
+		for _, p := range cfg.Extensions {
 			meta, ok := metadataMap[p.Name]
 			version := "?"
 			desc := "(no metadata)"
@@ -315,12 +342,12 @@ func pluginListCmd() func(ctx context.Context, cmd *cli.Command) error {
 	}
 }
 
-func pluginRemoveCmd() func(ctx context.Context, cmd *cli.Command) error {
+func extensionRemoveCmd() func(ctx context.Context, cmd *cli.Command) error {
 	return func(ctx context.Context, cmd *cli.Command) error {
 		// Get the plugin name from the flag
-		pluginName := cmd.String("name")
-		if pluginName == "" {
-			return fmt.Errorf("please provide a plugin name to remove")
+		extensionName := cmd.String("name")
+		if extensionName == "" {
+			return fmt.Errorf("please provide an extension name to remove")
 		}
 
 		cfg, err := config.LoadConfigFn()
@@ -329,21 +356,21 @@ func pluginRemoveCmd() func(ctx context.Context, cmd *cli.Command) error {
 			return nil
 		}
 
-		var pluginToRemove *config.PluginConfig
-		for i, plugin := range cfg.Plugins {
-			if plugin.Name == pluginName {
-				pluginToRemove = &cfg.Plugins[i]
+		var extensionToRemove *config.ExtensionConfig
+		for i, extension := range cfg.Extensions {
+			if extension.Name == extensionName {
+				extensionToRemove = &cfg.Extensions[i]
 				break
 			}
 		}
 
-		if pluginToRemove == nil {
-			fmt.Printf("plugin %q not found\n", pluginName)
+		if extensionToRemove == nil {
+			fmt.Printf("extension %q not found\n", extensionName)
 			return nil
 		}
 
 		// Disable the plugin in the configuration (set Enabled to false)
-		pluginToRemove.Enabled = false
+		extensionToRemove.Enabled = false
 
 		// Save the updated config back to the file
 		if err := config.SaveConfigFn(cfg); err != nil {
@@ -351,16 +378,16 @@ func pluginRemoveCmd() func(ctx context.Context, cmd *cli.Command) error {
 			return nil
 		}
 
-		// Check if --delete-folder flag is set to remove the plugin folder
+		// Check if --delete-folder flag is set to remove the extension folder
 		if cmd.Bool("delete-folder") {
-			// Remove the plugin directory from ".semver-plugins"
-			pluginDirPath := filepath.Join(".semver-plugins", pluginName)
-			if err := os.RemoveAll(pluginDirPath); err != nil {
-				return fmt.Errorf("failed to remove plugin directory: %w", err)
+			// Remove the extension directory from ".semver-extensions"
+			extensionDir := filepath.Join(".semver-extensions", extensionName)
+			if err := os.RemoveAll(extensionDir); err != nil {
+				return fmt.Errorf("failed to remove extension directory: %w", err)
 			}
-			fmt.Printf("✅ Plugin %q and its directory removed successfully.\n", pluginName)
+			fmt.Printf("✅ Extension %q and its directory removed successfully.\n", extensionName)
 		} else {
-			fmt.Printf("✅ Plugin %q removed, but its directory is preserved.\n", pluginName)
+			fmt.Printf("✅ Extension %q removed, but its directory is preserved.\n", extensionName)
 		}
 
 		return nil
@@ -388,4 +415,36 @@ func getOrInitVersionFile(cmd *cli.Command) (created bool, err error) {
 		fmt.Printf("Auto-initialized %s with default version\n", path)
 	}
 	return created, nil
+}
+
+func promotePreRelease(current semver.SemVersion, preserveMeta bool) semver.SemVersion {
+	next := current
+	next.PreRelease = ""
+	if preserveMeta {
+		next.Build = current.Build
+	} else {
+		next.Build = ""
+	}
+	return next
+}
+
+func tryInferBumpTypeFromCommitParserPlugin(since, until string) string {
+	parser := commitparser.GetCommitParserFn()
+	if parser == nil {
+		return ""
+	}
+
+	commits, err := gitlog.GetCommitsFn(since, until)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "failed to read commits: %v\n", err)
+		return ""
+	}
+
+	label, err := parser.Parse(commits)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "commit parser failed: %v\n", err)
+		return ""
+	}
+
+	return label
 }

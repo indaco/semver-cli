@@ -1,4 +1,4 @@
-package pluginmanager
+package extensionmanager
 
 import (
 	"errors"
@@ -11,22 +11,22 @@ import (
 	"github.com/indaco/semver-cli/internal/config"
 )
 
-func TestAddPluginToConfig_Success(t *testing.T) {
+func TestAddExtensionToConfig_Success(t *testing.T) {
 	tmpDir := t.TempDir()
 	configPath := filepath.Join(tmpDir, ".semver.yaml")
 
-	initial := []byte("path: .version\nplugins: []\n")
+	initial := []byte("path: .version\nextensions: []\n")
 	if err := os.WriteFile(configPath, initial, 0644); err != nil {
 		t.Fatal(err)
 	}
 
-	plugin := config.PluginConfig{
+	extension := config.ExtensionConfig{
 		Name:    "commit-parser",
-		Path:    ".semver-plugins/commit-parser",
+		Path:    ".semver-extensions/commit-parser",
 		Enabled: true,
 	}
 
-	if err := AddPluginToConfig(configPath, plugin); err != nil {
+	if err := AddExtensionToConfig(configPath, extension); err != nil {
 		t.Fatalf("expected success, got: %v", err)
 	}
 
@@ -41,17 +41,17 @@ func TestAddPluginToConfig_Success(t *testing.T) {
 		t.Fatalf("failed to unmarshal updated config: %v", err)
 	}
 
-	if len(parsed.Plugins) != 1 {
-		t.Fatalf("expected 1 plugin, got %d", len(parsed.Plugins))
+	if len(parsed.Extensions) != 1 {
+		t.Fatalf("expected 1 plugin, got %d", len(parsed.Extensions))
 	}
 
-	got := parsed.Plugins[0]
-	if got.Name != plugin.Name || got.Path != plugin.Path || !got.Enabled {
+	got := parsed.Extensions[0]
+	if got.Name != extension.Name || got.Path != extension.Path || !got.Enabled {
 		t.Errorf("unexpected plugin entry: %+v", got)
 	}
 }
 
-func TestAddPluginToConfig_Duplicate(t *testing.T) {
+func TestAddExtensionToConfig_Duplicate(t *testing.T) {
 	tmpDir := t.TempDir()
 
 	origDir, err := os.Getwd()
@@ -72,29 +72,29 @@ func TestAddPluginToConfig_Duplicate(t *testing.T) {
 	// Initial config with one plugin
 	initial := []byte(`
 path: .version
-plugins:
-  - name: commit-parser
-    path: .semver-plugins/commit-parser
+extensions:
+  - name: test-extension
+    path: .semver-extensions/test-extension
     enabled: true
 `)
 	if err := os.WriteFile(configPath, initial, 0644); err != nil {
 		t.Fatal(err)
 	}
 
-	plugin := config.PluginConfig{
-		Name:    "commit-parser",
-		Path:    ".semver-plugins/commit-parser",
+	extension := config.ExtensionConfig{
+		Name:    "test-extension",
+		Path:    ".semver-plugins/test-extension",
 		Enabled: true,
 	}
 
 	// First registration (no error expected)
-	err = AddPluginToConfig(configPath, plugin)
+	err = AddExtensionToConfig(configPath, extension)
 	if err != nil {
 		t.Fatalf("unexpected error during first registration: %v", err)
 	}
 
 	// Second registration (no error expected, duplicates are silently skipped)
-	err = AddPluginToConfig(configPath, plugin)
+	err = AddExtensionToConfig(configPath, extension)
 	if err != nil {
 		t.Fatalf("unexpected error during second registration: %v", err)
 	}
@@ -104,27 +104,27 @@ plugins:
 	if err != nil {
 		t.Fatalf("expected no error loading config, got: %v", err)
 	}
-	if len(cfg.Plugins) != 1 {
-		t.Fatalf("expected 1 plugin in config, got: %d", len(cfg.Plugins))
+	if len(cfg.Extensions) != 1 {
+		t.Fatalf("expected 1 extension in config, got: %d", len(cfg.Extensions))
 	}
 }
 
-func TestAddPluginToConfig_ReadFileError(t *testing.T) {
+func TestAddExtensionToConfig_ReadFileError(t *testing.T) {
 	invalidPath := filepath.Join(t.TempDir(), "nonexistent.yaml")
 
-	plugin := config.PluginConfig{
+	extension := config.ExtensionConfig{
 		Name:    "test",
 		Path:    "some/path",
 		Enabled: true,
 	}
 
-	err := AddPluginToConfig(invalidPath, plugin)
+	err := AddExtensionToConfig(invalidPath, extension)
 	if err == nil || !os.IsNotExist(err) {
 		t.Fatalf("expected file not found error, got: %v", err)
 	}
 }
 
-func TestAddPluginToConfig_UnmarshalError(t *testing.T) {
+func TestAddExtensionToConfig_UnmarshalError(t *testing.T) {
 	tmp := t.TempDir()
 	configPath := filepath.Join(tmp, ".semver.yaml")
 
@@ -133,7 +133,7 @@ func TestAddPluginToConfig_UnmarshalError(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	err := AddPluginToConfig(configPath, config.PluginConfig{
+	err := AddExtensionToConfig(configPath, config.ExtensionConfig{
 		Name:    "test",
 		Path:    "some/path",
 		Enabled: true,
@@ -144,7 +144,7 @@ func TestAddPluginToConfig_UnmarshalError(t *testing.T) {
 	}
 }
 
-func TestAddPluginToConfig_MarshalError(t *testing.T) {
+func TestAddExtensionToConfig_MarshalError(t *testing.T) {
 	// Create a temporary file with a valid config
 	tmp := t.TempDir()
 	configPath := filepath.Join(tmp, ".semver.yaml")
@@ -162,7 +162,7 @@ func TestAddPluginToConfig_MarshalError(t *testing.T) {
 		return nil, errors.New("forced marshal failure")
 	}
 
-	err := AddPluginToConfig(configPath, config.PluginConfig{
+	err := AddExtensionToConfig(configPath, config.ExtensionConfig{
 		Name:    "fail-marshaling",
 		Path:    ".semver-plugins/fail",
 		Enabled: true,
@@ -173,11 +173,11 @@ func TestAddPluginToConfig_MarshalError(t *testing.T) {
 	}
 }
 
-func TestAddPluginToConfig_WriteFileError(t *testing.T) {
+func TestAddExtensionToConfig_WriteFileError(t *testing.T) {
 	tmp := t.TempDir()
 	configPath := filepath.Join(tmp, ".semver.yaml")
 
-	initial := []byte("path: .version\nplugins: []\n")
+	initial := []byte("path: .version\nextensions: []\n")
 	if err := os.WriteFile(configPath, initial, 0444); err != nil {
 		t.Fatal(err)
 	}
@@ -186,7 +186,7 @@ func TestAddPluginToConfig_WriteFileError(t *testing.T) {
 		_ = os.Chmod(configPath, 0644)
 	})
 
-	err := AddPluginToConfig(configPath, config.PluginConfig{
+	err := AddExtensionToConfig(configPath, config.ExtensionConfig{
 		Name:    "test",
 		Path:    "some/path",
 		Enabled: true,

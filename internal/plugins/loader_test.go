@@ -1,124 +1,69 @@
 package plugins
 
 import (
-	"errors"
 	"testing"
 
-	"github.com/indaco/semver-cli/api/v0/plugins"
 	"github.com/indaco/semver-cli/internal/config"
+	commitparser "github.com/indaco/semver-cli/internal/plugins/commit-parser"
 )
 
-/* ------------------------------------------------------------------------- */
-/* MOCK PLUGINS                                                              */
-/* ------------------------------------------------------------------------- */
-
-// mockPlugin implements both metadata and CommitParser capability
-type mockPlugin struct {
-	metadataName string
-}
-
-func (m mockPlugin) Name() string        { return m.metadataName }
-func (m mockPlugin) Description() string { return "mock description" }
-func (m mockPlugin) Version() string     { return "v0.0.1" }
-
-// CommitParser capability
-func (m mockPlugin) Parse(commits []string) (string, error) {
-	if len(commits) == 0 {
-		return "", errors.New("no commits")
-	}
-	return "patch", nil
-}
-
-/* ------------------------------------------------------------------------- */
-/* TESTS                                                                     */
-/* ------------------------------------------------------------------------- */
-
-func TestRegisterConfiguredPlugins_WithMetadataAndCommitParser(t *testing.T) {
-	resetPluginSystem()
-
-	RegisterFactory("mock", func() any {
-		return mockPlugin{metadataName: "mock"}
-	})
+func TestRegisterConfiguredPlugins_WithCommitParser(t *testing.T) {
+	commitparser.ResetCommitParser()
 
 	cfg := &config.Config{
-		Plugins: []config.PluginConfig{
-			{Name: "mock", Enabled: true},
+		Plugins: &config.PluginConfig{
+			CommitParser: true,
 		},
 	}
 
-	RegisterConfiguredPlugins(cfg)
+	RegisterBuiltinPlugins(cfg)
 
-	// Check metadata
-	meta := plugins.AllPlugins()
-	if len(meta) != 1 {
-		t.Fatalf("expected 1 plugin metadata, got %d", len(meta))
-	}
-	if meta[0].Name() != "mock" {
-		t.Errorf("expected name 'mock', got %q", meta[0].Name())
+	p := commitparser.GetCommitParserFn()
+	if p == nil {
+		t.Fatal("expected commit parser to be registered, got nil")
 	}
 
-	// Check capabilities
-	parser := plugins.GetCommitParser()
-	if parser == nil {
-		t.Fatalf("expected 1 commit parser, got 0")
-	}
-	if parser.Name() != "mock" {
-		t.Errorf("expected parser name 'mock', got %q", parser.Name())
+	if p.Name() != "commit-parser" {
+		t.Errorf("expected name 'commit-parser', got %q", p.Name())
 	}
 }
 
-func TestRegisterConfiguredPlugins_UnknownPlugin(t *testing.T) {
-	resetPluginSystem()
+func TestRegisterConfiguredPlugins_DisabledCommitParser(t *testing.T) {
+	commitparser.ResetCommitParser()
 
 	cfg := &config.Config{
-		Plugins: []config.PluginConfig{
-			{Name: "unknown", Enabled: true},
+		Plugins: &config.PluginConfig{
+			CommitParser: false,
 		},
 	}
 
-	RegisterConfiguredPlugins(cfg)
+	RegisterBuiltinPlugins(cfg)
 
-	if got := len(plugins.AllPlugins()); got != 0 {
-		t.Errorf("expected no plugin metadata registered, got %d", got)
-	}
-}
-
-func TestRegisterConfiguredPlugins_DisabledPlugin(t *testing.T) {
-	resetPluginSystem()
-
-	RegisterFactory("mock", func() any {
-		return mockPlugin{metadataName: "mock"}
-	})
-
-	cfg := &config.Config{
-		Plugins: []config.PluginConfig{
-			{Name: "mock", Enabled: false},
-		},
-	}
-
-	RegisterConfiguredPlugins(cfg)
-
-	if got := len(plugins.AllPlugins()); got != 0 {
-		t.Errorf("expected no plugin metadata registered, got %d", got)
+	if p := commitparser.GetCommitParserFn(); p != nil {
+		t.Errorf("expected no commit parser to be registered, got %q", p.Name())
 	}
 }
 
 func TestRegisterConfiguredPlugins_NilConfig(t *testing.T) {
-	resetPluginSystem()
+	commitparser.ResetCommitParser()
 
-	RegisterConfiguredPlugins(nil)
+	RegisterBuiltinPlugins(nil)
 
-	if got := len(plugins.AllPlugins()); got != 0 {
-		t.Errorf("expected no plugin metadata registered, got %d", got)
+	if p := commitparser.GetCommitParserFn(); p != nil {
+		t.Errorf("expected no commit parser to be registered, got %q", p.Name())
 	}
 }
 
-/* ------------------------------------------------------------------------- */
-/* HELPERS                                                                   */
-/* ------------------------------------------------------------------------- */
+func TestRegisterConfiguredPlugins_NilPluginsField(t *testing.T) {
+	commitparser.ResetCommitParser()
 
-func resetPluginSystem() {
-	factories = map[string]Factory{}
-	plugins.ResetCommitParser()
-	plugins.ResetPlugin()
+	cfg := &config.Config{
+		Plugins: nil, // explicit nil
+	}
+
+	RegisterBuiltinPlugins(cfg)
+
+	if p := commitparser.GetCommitParserFn(); p != nil {
+		t.Errorf("expected no commit parser to be registered, got %q", p.Name())
+	}
 }

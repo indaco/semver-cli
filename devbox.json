@@ -13,14 +13,23 @@
   },
   "shell": {
     "init_hook": [
-      "echo '\nWelcome to the semver-cli devbox!\n'",
-      "echo '* Set GOROOT'",
+      "echo '\n Welcome to the semver-cli devbox!'",
+      "echo ' ---------------------------------------\n'",
+
+      "echo ' ✓ Set GOROOT'",
       "export GOROOT=$(go env GOROOT)",
-      "echo '* Set Git hooks path\n'",
+
+      "echo ' ✓ Download Go modules'",
+      "go mod download",
+
+      "echo ' ✓ Set Git hooks path'",
       "find .githooks -type f -exec chmod +x {} \\;",
       "git config core.hooksPath .githooks",
-      "echo '* Install go-modernize'",
-      "go install golang.org/x/tools/gopls/internal/analysis/modernize/cmd/modernize@latest"
+
+      "echo ' ✓ Install go-modernize'",
+      "go install golang.org/x/tools/gopls/internal/analysis/modernize/cmd/modernize@latest",
+
+      "echo ' ✓ READY!\n'"
     ],
     "scripts": {}
   }

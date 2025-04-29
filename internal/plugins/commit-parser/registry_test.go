@@ -1,4 +1,4 @@
-package plugins
+package commitparser
 
 import (
 	"bytes"
@@ -34,15 +34,15 @@ func TestRegisterCommitParser_SetsOnce(t *testing.T) {
 	defer ResetCommitParser()
 
 	p := fakeCommitParser{name: "first"}
-	RegisterCommitParser(p)
+	RegisterCommitParserFn(p)
 
-	registered := GetCommitParser()
+	registered := GetCommitParserFn()
 	if registered == nil || registered.Name() != "first" {
 		t.Fatalf("expected first parser to be registered, got %v", registered)
 	}
 
-	RegisterCommitParser(fakeCommitParser{name: "second"})
-	still := GetCommitParser()
+	RegisterCommitParserFn(fakeCommitParser{name: "second"})
+	still := GetCommitParserFn()
 	if still.Name() != "first" {
 		t.Errorf("expected original parser to remain, got %q", still.Name())
 	}
@@ -53,14 +53,14 @@ func TestCommitParser_ParseDelegates(t *testing.T) {
 	defer ResetCommitParser()
 
 	expected := "minor"
-	RegisterCommitParser(fakeCommitParser{
+	RegisterCommitParserFn(fakeCommitParser{
 		name: "test",
 		parse: func(commits []string) (string, error) {
 			return expected, nil
 		},
 	})
 
-	parser := GetCommitParser()
+	parser := GetCommitParserFn()
 	result, err := parser.Parse([]string{"feat: add button"})
 	if err != nil {
 		t.Errorf("unexpected error: %v", err)
@@ -74,14 +74,14 @@ func TestCommitParser_ParseReturnsError(t *testing.T) {
 	ResetCommitParser()
 	defer ResetCommitParser()
 
-	RegisterCommitParser(fakeCommitParser{
+	RegisterCommitParserFn(fakeCommitParser{
 		name: "failing",
 		parse: func(commits []string) (string, error) {
 			return "", errors.New("parse failed")
 		},
 	})
 
-	_, err := GetCommitParser().Parse([]string{"invalid commit"})
+	_, err := GetCommitParserFn().Parse([]string{"invalid commit"})
 	if err == nil {
 		t.Errorf("expected error from parser, got nil")
 	}
@@ -91,7 +91,7 @@ func TestGetCommitParser_ReturnsNilIfUnset(t *testing.T) {
 	ResetCommitParser()
 	defer ResetCommitParser()
 
-	if GetCommitParser() != nil {
+	if GetCommitParserFn() != nil {
 		t.Errorf("expected nil parser when unset")
 	}
 }
@@ -100,9 +100,9 @@ func TestRegisterCommitParser_Single(t *testing.T) {
 	defer ResetCommitParser()
 
 	p := &fakeCommitParser{name: "primary"}
-	RegisterCommitParser(p)
+	RegisterCommitParserFn(p)
 
-	if GetCommitParser() == nil || GetCommitParser().Name() != "primary" {
+	if GetCommitParserFn() == nil || GetCommitParserFn().Name() != "primary" {
 		t.Errorf("expected commit parser to be 'primary'")
 	}
 }
@@ -117,10 +117,10 @@ func TestRegisterCommitParser_SecondShowsWarning(t *testing.T) {
 	os.Stderr = w
 
 	// Register the first parser
-	RegisterCommitParser(&fakeCommitParser{name: "first"})
+	RegisterCommitParserFn(&fakeCommitParser{name: "first"})
 
 	// Register a second parser, should trigger warning
-	RegisterCommitParser(&fakeCommitParser{name: "second"})
+	RegisterCommitParserFn(&fakeCommitParser{name: "second"})
 
 	// Restore stderr and read output
 	_ = w.Close()

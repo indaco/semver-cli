@@ -1,12 +1,12 @@
-package plugins
+package extensions
 
 import (
 	"strings"
 	"testing"
 )
 
-func TestPluginManifest_Validate(t *testing.T) {
-	base := PluginManifest{
+func TestExtensionManifest_Validate(t *testing.T) {
+	base := ExtensionManifest{
 		Name:        "commit-parser",
 		Version:     "0.1.0",
 		Description: "Parses conventional commits",
@@ -17,15 +17,15 @@ func TestPluginManifest_Validate(t *testing.T) {
 
 	tests := []struct {
 		field    string
-		modify   func(m *PluginManifest)
+		modify   func(m *ExtensionManifest)
 		expected string
 	}{
-		{"missing name", func(m *PluginManifest) { m.Name = "" }, "missing 'name'"},
-		{"missing version", func(m *PluginManifest) { m.Version = "" }, "missing 'version'"},
-		{"missing description", func(m *PluginManifest) { m.Description = "" }, "missing 'description'"},
-		{"missing author", func(m *PluginManifest) { m.Author = "" }, "missing 'author'"},
-		{"missing repository", func(m *PluginManifest) { m.Repository = "" }, "missing 'repository'"},
-		{"missing entry", func(m *PluginManifest) { m.Entry = "" }, "missing 'entry'"},
+		{"missing name", func(m *ExtensionManifest) { m.Name = "" }, "missing 'name'"},
+		{"missing version", func(m *ExtensionManifest) { m.Version = "" }, "missing 'version'"},
+		{"missing description", func(m *ExtensionManifest) { m.Description = "" }, "missing 'description'"},
+		{"missing author", func(m *ExtensionManifest) { m.Author = "" }, "missing 'author'"},
+		{"missing repository", func(m *ExtensionManifest) { m.Repository = "" }, "missing 'repository'"},
+		{"missing entry", func(m *ExtensionManifest) { m.Entry = "" }, "missing 'entry'"},
 	}
 
 	for _, tt := range tests {

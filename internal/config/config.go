@@ -10,14 +10,19 @@ import (
 )
 
 type PluginConfig struct {
+	CommitParser bool `yaml:"commit-parser"`
+}
+
+type ExtensionConfig struct {
 	Name    string `yaml:"name"`
 	Path    string `yaml:"path"`
 	Enabled bool   `yaml:"enabled"`
 }
 
 type Config struct {
-	Path    string         `yaml:"path"`
-	Plugins []PluginConfig `yaml:"plugins,omitempty"`
+	Path       string            `yaml:"path"`
+	Plugins    *PluginConfig     `yaml:"plugins,omitempty"`
+	Extensions []ExtensionConfig `yaml:"extensions,omitempty"`
 }
 
 var (
@@ -53,6 +58,10 @@ func loadConfig() (*Config, error) {
 
 	if cfg.Path == "" {
 		cfg.Path = ".version"
+	}
+
+	if cfg.Plugins == nil {
+		cfg.Plugins = &PluginConfig{CommitParser: true}
 	}
 
 	return &cfg, nil

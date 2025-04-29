@@ -8,6 +8,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/indaco/semver-cli/internal/config"
 	"github.com/indaco/semver-cli/internal/semver"
 )
 
@@ -21,7 +22,8 @@ func TestNewCLI_BasicStructure(t *testing.T) {
 	versionPath := filepath.Join(tmpDir, ".version")
 	_ = os.WriteFile(versionPath, []byte("1.2.3\n"), semver.VersionFilePerm)
 
-	app := newCLI(versionPath)
+	cfg := &config.Config{Path: versionPath}
+	app := newCLI(cfg)
 
 	wantCommands := []string{"show", "set", "bump", "pre", "validate", "init"}
 	for _, name := range wantCommands {
@@ -51,7 +53,8 @@ func TestNewCLI_ShowCommand(t *testing.T) {
 	r, w, _ := os.Pipe()
 	os.Stdout = w
 
-	app := newCLI(versionPath)
+	cfg := &config.Config{Path: versionPath}
+	app := newCLI(cfg)
 
 	err = app.Run(context.Background(), []string{"semver", "show", "--path", versionPath})
 
@@ -95,7 +98,8 @@ func TestNewCLI_UsesConfigPath(t *testing.T) {
 		}
 	})
 
-	app := newCLI(versionPath) // we still need to pass a dummy path
+	cfg := &config.Config{Path: versionPath}
+	app := newCLI(cfg)
 
 	err = app.Run(context.Background(), []string{"semver", "bump", "patch"})
 	if err != nil {

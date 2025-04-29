@@ -6,6 +6,7 @@ import (
 	"os"
 
 	"github.com/indaco/semver-cli/internal/config"
+	"github.com/indaco/semver-cli/internal/plugins"
 )
 
 func main() {
@@ -19,13 +20,18 @@ func runCLI(args []string) error {
 	if err != nil {
 		return err
 	}
-
-	defaultPath := ".version"
-	if cfg != nil && cfg.Path != "" {
-		defaultPath = config.NormalizeVersionPath(cfg.Path)
+	if cfg == nil {
+		cfg = &config.Config{}
 	}
 
-	app := newCLI(defaultPath)
+	// Normalize or fallback
+	cfg.Path = config.NormalizeVersionPath(cfg.Path)
+	if cfg.Path == "" {
+		cfg.Path = ".version"
+	}
 
+	plugins.RegisterBuiltinPlugins(cfg)
+
+	app := newCLI(cfg)
 	return app.Run(context.Background(), args)
 }

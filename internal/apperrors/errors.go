@@ -1,7 +1,7 @@
-// Package errors defines custom error types for the semver-cli application.
+// Package apperrors defines custom error types for the semver-cli application.
 // These typed errors enable proper error handling with errors.Is and errors.As
 // without coupling internal packages to the CLI framework.
-package errors
+package apperrors
 
 import "fmt"
 

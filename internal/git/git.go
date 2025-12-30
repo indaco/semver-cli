@@ -1,6 +1,7 @@
 package git
 
 import (
+	"context"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -23,11 +24,11 @@ func DefaultCloneOrUpdate(repoURL, repoPath string) error {
 }
 
 func DefaultUpdateRepo(repoPath string) error {
-	return cmdrunner.RunCommand(repoPath, "git", "pull")
+	return cmdrunner.RunCommandContext(context.Background(), repoPath, "git", "pull")
 }
 
 func CloneRepo(repoURL, repoPath string) error {
-	return cmdrunner.RunCommand(".", "git", "clone", repoURL, repoPath)
+	return cmdrunner.RunCommandContext(context.Background(), ".", "git", "clone", repoURL, repoPath)
 }
 
 func ForceReclone(repoURL, repoPath string) error {

@@ -10,41 +10,46 @@ import (
 	"time"
 )
 
-func TestRunCommand_Success(t *testing.T) {
+func TestRunCommandContext_Success(t *testing.T) {
 	tempDir := os.TempDir()
-	err := RunCommand(tempDir, "echo", "Hello, Tempo!")
+	err := RunCommandContext(context.Background(), tempDir, "echo", "Hello, Tempo!")
 	if err != nil {
 		t.Fatalf("Unexpected error: %v", err)
 	}
 }
 
-func TestRunCommandWithTimeout_Success(t *testing.T) {
+func TestRunCommandContext_WithTimeout(t *testing.T) {
 	tempDir := os.TempDir()
-	err := RunCommandWithTimeout(tempDir, 10*time.Second, "echo", "Hello, Tempo!")
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+
+	err := RunCommandContext(ctx, tempDir, "echo", "Hello, Tempo!")
 	if err != nil {
 		t.Fatalf("Unexpected error: %v", err)
 	}
 }
 
-func TestRunCommand_InvalidCommand(t *testing.T) {
+func TestRunCommandContext_InvalidCommand(t *testing.T) {
 	tempDir := os.TempDir()
-	err := RunCommand(tempDir, "invalid_command_xyz")
+	err := RunCommandContext(context.Background(), tempDir, "invalid_command_xyz")
 	if err == nil {
 		t.Fatal("Expected error for invalid command, got nil")
 	}
 }
 
-func TestRunCommandWithTimeout_Timeout(t *testing.T) {
+func TestRunCommandContext_Timeout(t *testing.T) {
 	tempDir := os.TempDir()
+	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
+	defer cancel()
 
 	// Run a sleep command for longer than the timeout (e.g., 10s sleep, but 2s timeout)
-	err := RunCommandWithTimeout(tempDir, 2*time.Second, "sleep", "10") // Linux/Mac
+	err := RunCommandContext(ctx, tempDir, "sleep", "10") // Linux/Mac
 	if err == nil {
 		t.Fatal("Expected timeout error, but got nil")
 	}
 }
 
-func TestRunCommand_Cancel(t *testing.T) {
+func TestRunCommandContext_Cancel(t *testing.T) {
 	tempDir := os.TempDir()
 
 	ctx, cancel := context.WithCancel(context.Background())
@@ -72,13 +77,13 @@ func TestRunCommand_Cancel(t *testing.T) {
 	}
 }
 
-func TestRunCommand_InsideDir(t *testing.T) {
+func TestRunCommandContext_InsideDir(t *testing.T) {
 	tempDir := os.TempDir()
 	testDir := filepath.Join(tempDir, "test-cmd-runner")
 	_ = os.MkdirAll(testDir, os.ModePerm)
 	defer os.RemoveAll(testDir)
 
-	err := RunCommand(testDir, "touch", "testfile.txt")
+	err := RunCommandContext(context.Background(), testDir, "touch", "testfile.txt")
 	if err != nil {
 		t.Fatalf("Unexpected error: %v", err)
 	}
@@ -90,27 +95,29 @@ func TestRunCommand_InsideDir(t *testing.T) {
 	}
 }
 
-func TestRunCommand_PermissionDenied(t *testing.T) {
+func TestRunCommandContext_PermissionDenied(t *testing.T) {
 	// Try running inside `/root` (which requires sudo)
-	err := RunCommand("/root", "echo", "Hello")
+	err := RunCommandContext(context.Background(), "/root", "echo", "Hello")
 	if err == nil {
 		t.Fatal("Expected permission error, but got nil")
 	}
 }
 
-func TestRunCommand_NonExistentDirectory(t *testing.T) {
+func TestRunCommandContext_NonExistentDirectory(t *testing.T) {
 	invalidDir := filepath.Join(os.TempDir(), "does-not-exist-123456")
 
-	err := RunCommand(invalidDir, "echo", "Hello")
+	err := RunCommandContext(context.Background(), invalidDir, "echo", "Hello")
 	if err == nil {
 		t.Fatal("Expected error for non-existent directory, but got nil")
 	}
 }
 
-func TestRunCommandOutput_Success(t *testing.T) {
+func TestRunCommandOutputContext_Success(t *testing.T) {
 	tempDir := os.TempDir()
+	ctx, cancel := context.WithTimeout(context.Background(), DefaultOutputTimeout)
+	defer cancel()
 
-	output, err := RunCommandOutput(tempDir, "echo", "Hello, Tempo!")
+	output, err := RunCommandOutputContext(ctx, tempDir, "echo", "Hello, Tempo!")
 	if err != nil {
 		t.Fatalf("Unexpected error: %v", err)
 	}
@@ -123,29 +130,35 @@ func TestRunCommandOutput_Success(t *testing.T) {
 	}
 }
 
-func TestRunCommandOutput_InvalidCommand(t *testing.T) {
+func TestRunCommandOutputContext_InvalidCommand(t *testing.T) {
 	tempDir := os.TempDir()
+	ctx, cancel := context.WithTimeout(context.Background(), DefaultOutputTimeout)
+	defer cancel()
 
-	_, err := RunCommandOutput(tempDir, "invalid_command_xyz")
+	_, err := RunCommandOutputContext(ctx, tempDir, "invalid_command_xyz")
 	if err == nil {
 		t.Fatal("Expected error for invalid command, got nil")
 	}
 }
 
-func TestRunCommandOutput_Timeout(t *testing.T) {
+func TestRunCommandOutputContext_Timeout(t *testing.T) {
 	tempDir := os.TempDir()
+	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
+	defer cancel()
 
-	// Expect a timeout when running a long-running command with default timeout
-	_, err := RunCommandOutput(tempDir, "sleep", "10") // Linux/Mac
+	// Expect a timeout when running a long-running command
+	_, err := RunCommandOutputContext(ctx, tempDir, "sleep", "10") // Linux/Mac
 	if err == nil {
 		t.Fatal("Expected timeout error, but got nil")
 	}
 }
 
-func TestRunCommandOutput_EmptyOutput(t *testing.T) {
+func TestRunCommandOutputContext_EmptyOutput(t *testing.T) {
 	tempDir := os.TempDir()
+	ctx, cancel := context.WithTimeout(context.Background(), DefaultOutputTimeout)
+	defer cancel()
 
-	output, err := RunCommandOutput(tempDir, "true") // `true` command has no output
+	output, err := RunCommandOutputContext(ctx, tempDir, "true") // `true` command has no output
 	if err != nil {
 		t.Fatalf("Unexpected error: %v", err)
 	}
@@ -155,10 +168,12 @@ func TestRunCommandOutput_EmptyOutput(t *testing.T) {
 	}
 }
 
-func TestRunCommandOutput_ErrorOutput(t *testing.T) {
+func TestRunCommandOutputContext_ErrorOutput(t *testing.T) {
 	tempDir := os.TempDir()
+	ctx, cancel := context.WithTimeout(context.Background(), DefaultOutputTimeout)
+	defer cancel()
 
-	_, err := RunCommandOutput(tempDir, "ls", "/does/not/exist")
+	_, err := RunCommandOutputContext(ctx, tempDir, "ls", "/does/not/exist")
 	if err == nil {
 		t.Fatal("Expected error for invalid path, got nil")
 	}

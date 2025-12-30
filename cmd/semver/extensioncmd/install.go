@@ -3,7 +3,7 @@ package extensioncmd
 import (
 	"context"
 
-	extensionmanager "github.com/indaco/semver-cli/internal/extension-manager"
+	"github.com/indaco/semver-cli/internal/extensionmgr"
 	"github.com/urfave/cli/v3"
 )
 
@@ -42,5 +42,5 @@ func runExtenstionInstall(cmd *cli.Command) error {
 	extensionDirectory := cmd.String("extension-dir")
 
 	// Proceed with normal extension registration
-	return extensionmanager.RegisterLocalExtensionFn(localPath, ".semver.yaml", extensionDirectory)
+	return extensionmgr.RegisterLocalExtensionFn(localPath, ".semver.yaml", extensionDirectory)
 }

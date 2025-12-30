@@ -83,8 +83,11 @@ func NormalizeVersionPath(path string) string {
 	return path
 }
 
+// ConfigFilePerm defines secure file permissions for config files (owner read/write only).
+const ConfigFilePerm = 0600
+
 func saveConfig(cfg *Config) error {
-	file, err := openFileFn(".semver.yaml", os.O_RDWR|os.O_CREATE|os.O_TRUNC, 0644)
+	file, err := openFileFn(".semver.yaml", os.O_RDWR|os.O_CREATE|os.O_TRUNC, ConfigFilePerm)
 	if err != nil {
 		return fmt.Errorf("failed to open config file: %w", err)
 	}

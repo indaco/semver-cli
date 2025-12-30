@@ -11,7 +11,6 @@ import (
 	"github.com/indaco/semver-cli/cmd/semver/bumpcmd"
 	"github.com/indaco/semver-cli/cmd/semver/precmd"
 	"github.com/indaco/semver-cli/internal/config"
-	"github.com/indaco/semver-cli/internal/semver"
 	"github.com/indaco/semver-cli/internal/testutils"
 	"github.com/urfave/cli/v3"
 )
@@ -98,16 +97,14 @@ func TestCLI_InitCommand_FileAlreadyExists(t *testing.T) {
 	}
 }
 
-func TestCLI_InitCommand_ReadVersionFails(t *testing.T) {
+func TestCLI_InitCommand_ExistingInvalidContent(t *testing.T) {
 	tmp := t.TempDir()
 	path := filepath.Join(tmp, ".version")
 
-	// Override InitializeVersionFile to write invalid content
-	original := semver.InitializeVersionFileFunc
-	semver.InitializeVersionFileFunc = func(p string) error {
-		return os.WriteFile(p, []byte("not-a-version\n"), 0600)
+	// Create a file with invalid version content (simulating manual corruption)
+	if err := os.WriteFile(path, []byte("not-a-version\n"), 0600); err != nil {
+		t.Fatalf("failed to write test file: %v", err)
 	}
-	t.Cleanup(func() { semver.InitializeVersionFileFunc = original })
 
 	// Prepare and run the CLI command
 	cfg := &config.Config{Path: path}

@@ -1,0 +1,27 @@
+package semver
+
+// VersionFilePerm defines secure file permissions for version files (owner read/write only).
+const VersionFilePerm = 0600
+
+// ReadVersion reads a version string from the given file and parses it into a SemVersion.
+// This is a convenience function that uses the default VersionManager.
+// For better testability, use VersionManager.Read() instead.
+func ReadVersion(path string) (SemVersion, error) {
+	return defaultManager.Read(path)
+}
+
+// SaveVersion writes a SemVersion to the given file path.
+// This is a convenience function that uses the default VersionManager.
+// For better testability, use VersionManager.Save() instead.
+func SaveVersion(path string, version SemVersion) error {
+	return defaultManager.Save(path, version)
+}
+
+// UpdateVersion updates the semantic version in the given file based on the bump type (patch, minor, major),
+// and optionally sets the pre-release and build metadata strings.
+// If preserve is true and meta is empty, existing build metadata is retained.
+// This is a convenience function that uses the default VersionManager.
+// For better testability, use VersionManager.Update() instead.
+func UpdateVersion(path string, bumpType string, pre string, meta string, preserve bool) error {
+	return defaultManager.Update(path, bumpType, pre, meta, preserve)
+}

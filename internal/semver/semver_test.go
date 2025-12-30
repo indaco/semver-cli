@@ -1,17 +1,26 @@
 package semver
 
 import (
+	"context"
 	"errors"
 	"os"
-	"os/exec"
 	"path/filepath"
 	"strings"
 	"testing"
 
+	"github.com/indaco/semver-cli/internal/core"
 	"github.com/indaco/semver-cli/internal/testutils"
 )
 
-var originalExecCommand = execCommand
+// mockGitTagReader implements GitTagReader for testing.
+type mockGitTagReader struct {
+	tag string
+	err error
+}
+
+func (m *mockGitTagReader) DescribeTags(ctx context.Context) (string, error) {
+	return m.tag, m.err
+}
 
 func TestSemVersion_String_WithBuildOnly(t *testing.T) {
 	v := SemVersion{
@@ -73,8 +82,11 @@ func TestInitializeVersionFileWithFeedback(t *testing.T) {
 		tmp := t.TempDir()
 		path := filepath.Join(tmp, ".version")
 
-		execCommand = fakeExecCommand("v1.2.3\n")
-		defer func() { execCommand = originalExecCommand }()
+		// Use mock git tag reader that returns a valid tag
+		mockGit := &mockGitTagReader{tag: "v1.2.3\n", err: nil}
+		mgr := NewVersionManager(core.NewOSFileSystem(), mockGit)
+		restore := SetDefaultManager(mgr)
+		defer restore()
 
 		created, err := InitializeVersionFileWithFeedback(path)
 		if err != nil {
@@ -84,14 +96,23 @@ func TestInitializeVersionFileWithFeedback(t *testing.T) {
 			t.Errorf("expected created=true, got false")
 		}
 
+		// Verify content
+		data, _ := os.ReadFile(path)
+		got := strings.TrimSpace(string(data))
+		if got != "1.2.3" {
+			t.Errorf("expected 1.2.3, got %q", got)
+		}
 	})
 
 	t.Run("file does not exist, fallback to default 0.1.0", func(t *testing.T) {
 		tmp := t.TempDir()
 		path := filepath.Join(tmp, ".version")
 
-		execCommand = fakeExecCommand("invalid-tag\n")
-		defer func() { execCommand = originalExecCommand }()
+		// Use mock git tag reader that returns an invalid tag
+		mockGit := &mockGitTagReader{tag: "invalid-tag\n", err: nil}
+		mgr := NewVersionManager(core.NewOSFileSystem(), mockGit)
+		restore := SetDefaultManager(mgr)
+		defer restore()
 
 		created, err := InitializeVersionFileWithFeedback(path)
 		if err != nil {
@@ -99,6 +120,13 @@ func TestInitializeVersionFileWithFeedback(t *testing.T) {
 		}
 		if !created {
 			t.Errorf("expected created=true, got false")
+		}
+
+		// Verify content
+		data, _ := os.ReadFile(path)
+		got := strings.TrimSpace(string(data))
+		if got != "0.1.0" {
+			t.Errorf("expected 0.1.0, got %q", got)
 		}
 	})
 }
@@ -330,17 +358,20 @@ func TestIncrementPreRelease(t *testing.T) {
 }
 
 /* ------------------------------------------------------------------------- */
-/* VERSION FILE INITIALIZATION                                               */
+/* VERSION FILE INITIALIZATION WITH MOCKS                                    */
 /* ------------------------------------------------------------------------- */
 
-func TestInitializeVersionFile_NewFile_WithValidGitTag(t *testing.T) {
+func TestInitialize_NewFile_WithValidGitTag(t *testing.T) {
 	tmpDir := t.TempDir()
 	versionPath := filepath.Join(tmpDir, ".version")
 
-	execCommand = fakeExecCommand("v1.2.3\n")
-	defer func() { execCommand = originalExecCommand }()
+	// Use mock git tag reader that returns a valid tag
+	mockGit := &mockGitTagReader{tag: "v1.2.3\n", err: nil}
+	mgr := NewVersionManager(core.NewOSFileSystem(), mockGit)
+	restore := SetDefaultManager(mgr)
+	defer restore()
 
-	err := InitializeVersionFileFunc(versionPath)
+	err := mgr.Initialize(context.Background(), versionPath)
 	if err != nil {
 		t.Fatalf("expected no error, got %v", err)
 	}
@@ -354,7 +385,7 @@ func TestInitializeVersionFile_NewFile_WithValidGitTag(t *testing.T) {
 	}
 }
 
-func TestInitializeVersionFile_ExistingFile(t *testing.T) {
+func TestInitialize_ExistingFile(t *testing.T) {
 	tmpDir := t.TempDir()
 	versionPath := filepath.Join(tmpDir, ".version")
 
@@ -363,10 +394,13 @@ func TestInitializeVersionFile_ExistingFile(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	execCommand = fakeExecCommand("v9.9.9\n")
-	defer func() { execCommand = exec.Command }()
+	// Use mock git tag reader - should not be called since file exists
+	mockGit := &mockGitTagReader{tag: "v9.9.9\n", err: nil}
+	mgr := NewVersionManager(core.NewOSFileSystem(), mockGit)
+	restore := SetDefaultManager(mgr)
+	defer restore()
 
-	err = InitializeVersionFileFunc(versionPath)
+	err = mgr.Initialize(context.Background(), versionPath)
 	if err != nil {
 		t.Fatalf("expected no error, got %v", err)
 	}
@@ -399,14 +433,17 @@ func TestSaveVersion_MkdirAllFails(t *testing.T) {
 	}
 }
 
-func TestInitializeVersionFile_InvalidGitTagFormat(t *testing.T) {
+func TestInitialize_InvalidGitTagFormat(t *testing.T) {
 	tmpDir := t.TempDir()
 	versionPath := filepath.Join(tmpDir, ".version")
 
-	execCommand = fakeExecCommand("invalid-tag\n")
-	defer func() { execCommand = exec.Command }()
+	// Use mock git tag reader that returns an invalid tag
+	mockGit := &mockGitTagReader{tag: "invalid-tag\n", err: nil}
+	mgr := NewVersionManager(core.NewOSFileSystem(), mockGit)
+	restore := SetDefaultManager(mgr)
+	defer restore()
 
-	err := InitializeVersionFileFunc(versionPath)
+	err := mgr.Initialize(context.Background(), versionPath)
 	if err != nil {
 		t.Fatalf("expected no error, got %v", err)
 	}
@@ -441,26 +478,17 @@ func TestInitializeVersionFileWithFeedback_InitializationFails(t *testing.T) {
 	}
 }
 
-func TestInitializeVersionFileWithFeedback_FileCreatedButInvalidContent(t *testing.T) {
-	tmp := t.TempDir()
-	path := filepath.Join(tmp, ".version")
+func TestReadVersion_InvalidContent(t *testing.T) {
+	// Test that ReadVersion correctly reports an error for invalid version content.
+	// This uses the new dependency injection pattern with MockFileSystem.
+	mockFS := core.NewMockFileSystem()
+	mockFS.SetFile("/test/.version", []byte("not-a-version\n"))
 
-	original := InitializeVersionFileFunc
-	InitializeVersionFileFunc = func(path string) error {
-		return os.WriteFile(path, []byte("not-a-version\n"), 0600)
-	}
-	defer func() { InitializeVersionFileFunc = original }()
+	mgr := NewVersionManager(mockFS, nil)
+	restore := SetDefaultManager(mgr)
+	defer restore()
 
-	created, err := InitializeVersionFileWithFeedback(path)
-	if err != nil {
-		t.Fatalf("unexpected error from init: %v", err)
-	}
-	if !created {
-		t.Errorf("expected created=true, got false")
-	}
-
-	// Must manually read and check failure
-	_, err = ReadVersion(path)
+	_, err := ReadVersion("/test/.version")
 	if err == nil {
 		t.Fatal("expected error from ReadVersion, got nil")
 	}
@@ -574,31 +602,4 @@ func TestBumpByLabel(t *testing.T) {
 			}
 		})
 	}
-}
-
-/* ------------------------------------------------------------------------- */
-/* HELPERS                                                                   */
-/* ------------------------------------------------------------------------- */
-
-func fakeExecCommand(output string) func(string, ...string) *exec.Cmd {
-	return func(command string, args ...string) *exec.Cmd {
-		cs := []string{"-test.run=TestHelperProcess", "--", command}
-		cs = append(cs, args...)
-		cmd := exec.Command(os.Args[0], cs...)
-		cmd.Env = append(os.Environ(),
-			"GO_WANT_HELPER_PROCESS=1",
-			"MOCK_OUTPUT="+output,
-		)
-		return cmd
-	}
-}
-
-// Fake subprocess entrypoint
-func TestHelperProcess(t *testing.T) {
-	if os.Getenv("GO_WANT_HELPER_PROCESS") != "1" {
-		return
-	}
-	t.Log(">>> MOCK HELPER RUNNING <<<")
-	_, _ = os.Stdout.WriteString(os.Getenv("MOCK_OUTPUT"))
-	os.Exit(0)
 }

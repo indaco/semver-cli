@@ -29,29 +29,29 @@
   </a>
 </p>
 
-## 📖 Table of Contents
+## Table of Contents
 
-- [✨ Features](#-features)
-- [❓ Why .version?](#-why-version)
-- [💻 Installation](#-installation)
-- [🛠️ CLI Commands & Options](#️-cli-commands--options)
-- [⚙️ Configuration](#️-configuration)
-- [🛠 Auto-initialization](#-auto-initialization)
-- [🚀 Usage](#-usage)
-- [🤝 Contributing](#-contributing)
-- [🆓 License](#-license)
+- [Features](#features)
+- [Why .version?](#why-version)
+- [Installation](#installation)
+- [CLI Commands & Options](#cli-commands--options)
+- [Configuration](#configuration)
+- [Auto-initialization](#auto-initialization)
+- [Usage](#usage)
+- [Contributing](#contributing)
+- [License](#license)
 
-## ✨ Features
+## Features
 
-- Lightweight `.version` file — SemVer 2.0.0 compliant
-- `init`, `bump`, `set`, `show`, `validate` — intuitive version control
+- Lightweight `.version` file - SemVer 2.0.0 compliant
+- `init`, `bump`, `set`, `show`, `validate` - intuitive version control
 - Pre-release support with auto-increment (`alpha`, `beta.1`, `rc.2`, `--inc`)
-- Works standalone or in CI — `--no-auto-init` for strict mode
+- Works standalone or in CI - `--strict` for strict mode
 - Configurable via flags, env vars, or `.semver.yaml`
 
-## ❓ Why .version?
+## Why .version?
 
-Most projects — especially CLIs, scripts, and internal tools — need a clean way to manage versioning outside of `go.mod` or `package.json`.
+Most projects - especially CLIs, scripts, and internal tools - need a clean way to manage versioning outside of `go.mod` or `package.json`.
 
 The `.version` file:
 
@@ -60,9 +60,9 @@ The `.version` file:
 - Pairs with `getVersion()` or env injection in your app
 - Keeps versioning simple, manual, and under your control
 
-It’s not trying to replace `git tag` or build tools — just making versioning predictable and portable.
+It's not trying to replace `git tag` or build tools - just making versioning predictable and portable.
 
-## 💻 Installation
+## Installation
 
 ### Option 1: Install via `go install` (global)
 
@@ -86,17 +86,17 @@ go tool semver
 
 ### Option 3: Prebuilt binaries
 
-Download the pre-compiled binaries from the [releases page](https://github.com/indaco/semver-cli/releases) and place the binary in your system’s PATH.
+Download the pre-compiled binaries from the [releases page](https://github.com/indaco/semver-cli/releases) and place the binary in your system's PATH.
 
 ### Option 4: Clone and build manually
 
 ```bash
 git clone https://github.com/indaco/semver-cli.git
 cd semver-cli
-make install # or task install
+just install
 ```
 
-## 🛠️ CLI Commands & Options
+## CLI Commands & Options
 
 ```bash
 NAME:
@@ -119,12 +119,12 @@ COMMANDS:
 
 GLOBAL OPTIONS:
    --path string, -p string  Path to .version file (default: ".version")
-   --no-auto-init            Disable auto-initialization of the .version file (default: false)
+   --strict                  Fail if .version file is missing (disable auto-initialization)
    --help, -h                show help
    --version, -v             print the version
 ```
 
-## ⚙️ Configuration
+## Configuration
 
 The CLI determines the `.version` path in the following order:
 
@@ -149,7 +149,7 @@ path: ./my-folder/.version
 
 If both are missing, the CLI uses `.version` in the current directory.
 
-## 🛠 Auto-initialization
+## Auto-initialization
 
 If the `.version` file does not exist when running the CLI:
 
@@ -174,15 +174,15 @@ semver init --path internal/version/.version
 
 This behavior ensures your project always has a valid version starting point.
 
-**To disable auto-initialization**, use the `--no-auto-init` flag.
+**To disable auto-initialization**, use the `--strict` flag.
 This is useful in CI/CD environments or stricter workflows where you want the command to fail if the file is missing:
 
 ```bash
-semver patch --no-auto-init
+semver patch --strict
 # => Error: .version file not found
 ```
 
-## 🚀 Usage
+## Usage
 
 **Display current version**
 
@@ -193,9 +193,9 @@ semver show
 ```
 
 ```bash
-# Fail if .version is missing (no auto-initialization)
-semver show --no-auto-init
-# => Error: failed to read version file at .version: no such file or directory
+# Fail if .version is missing (strict mode)
+semver show --strict
+# => Error: version file not found at .version
 ```
 
 **Set version manually**
@@ -274,30 +274,30 @@ semver bump patch --meta new.build
 # => 1.2.4+new.build (overrides existing metadata)
 ```
 
-**Smart bump logic (`bump next`)**
+**Smart bump logic (`bump auto`)**
 
 Automatically determine the next version:
 
 ```bash
 # .version = 1.2.3-alpha.1
-semver bump next
+semver bump auto
 # => 1.2.3
 
 # .version = 1.2.3
-semver bump next
+semver bump auto
 # => 1.2.4
 ```
 
 Override bump with `--label`:
 
 ```bash
-semver bump next --label minor
+semver bump auto --label minor
 # => 1.3.0
 
-semver bump next --label major --meta ci.9
+semver bump auto --label major --meta ci.9
 # => 2.0.0+ci.9
 
-semver bump next --label patch --preserve-meta
+semver bump auto --label patch --preserve-meta
 # => bumps patch and keeps build metadata
 ```
 
@@ -311,7 +311,7 @@ semver pre --label alpha
 # => 0.2.2-alpha
 ```
 
-If a pre-release is already present, it’s replaced:
+If a pre-release is already present, it's replaced:
 
 ```bash
 # .version = 0.2.2-beta.3
@@ -358,12 +358,12 @@ semver init
 # => Initialized .version with version 0.1.0
 ```
 
-## 🤝 Contributing
+## Contributing
 
 Contributions are welcome!
 
 See the [Contributing Guide](/CONTRIBUTING.md) for setting up the development tools.
 
-## 🆓 License
+## License
 
 This project is licensed under the MIT License - see the [LICENSE](./LICENSE) file for details.

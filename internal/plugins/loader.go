@@ -2,7 +2,7 @@ package plugins
 
 import (
 	"github.com/indaco/semver-cli/internal/config"
-	commitparser "github.com/indaco/semver-cli/internal/plugins/commit-parser"
+	"github.com/indaco/semver-cli/internal/plugins/commitparser"
 )
 
 func RegisterBuiltinPlugins(cfg *config.Config) {

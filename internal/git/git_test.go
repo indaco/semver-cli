@@ -170,6 +170,7 @@ func TestFailCloneRepo(t *testing.T) {
 	expectedErrors := []string{
 		"Failed to clone repository",
 		"command failed: exit status 128",
+		"command \"git\" failed",
 		"fatal",
 		"Could not resolve host",
 	}

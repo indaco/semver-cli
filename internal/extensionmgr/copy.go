@@ -1,4 +1,4 @@
-package extensionmanager
+package extensionmgr
 
 import (
 	"io"

@@ -16,12 +16,13 @@ import (
 
 var tryInferBumpTypeFromCommitParserPluginFn = tryInferBumpTypeFromCommitParserPlugin
 
-// nextCmd returns the "next" subcommand.
-func nextCmd(cfg *config.Config) *cli.Command {
+// autoCmd returns the "auto" subcommand.
+func autoCmd(cfg *config.Config) *cli.Command {
 	return &cli.Command{
-		Name:  "next",
-		Usage: "Smart bump logic (e.g. promote pre-release or bump patch)",
-		UsageText: `semver bump next [--label patch|minor|major] [--meta data] [--preserve-meta] [--since ref] [--until ref] [--no-infer]
+		Name:    "auto",
+		Aliases: []string{"next"},
+		Usage:   "Smart bump logic (e.g. promote pre-release or bump patch)",
+		UsageText: `semver bump auto [--label patch|minor|major] [--meta data] [--preserve-meta] [--since ref] [--until ref] [--no-infer]
 
 By default, semver tries to infer the bump type from recent commit messages using the built-in commit-parser plugin.
 You can override this behavior with the --label flag, disable it explicitly with --no-infer, or disable the plugin via the config file (.semver.yaml).`,
@@ -60,13 +61,13 @@ You can override this behavior with the --label flag, disable it explicitly with
 			},
 		},
 		Action: func(ctx context.Context, cmd *cli.Command) error {
-			return runBumpNext(cfg, cmd)
+			return runBumpAuto(cfg, cmd)
 		},
 	}
 }
 
-// runBumpNext performs smart bumping (e.g. promote, patch, infer).
-func runBumpNext(cfg *config.Config, cmd *cli.Command) error {
+// runBumpAuto performs smart bumping (e.g. promote, patch, infer).
+func runBumpAuto(cfg *config.Config, cmd *cli.Command) error {
 	path := cmd.String("path")
 	label := cmd.String("label")
 	meta := cmd.String("meta")

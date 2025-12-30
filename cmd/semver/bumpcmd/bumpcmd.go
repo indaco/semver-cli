@@ -30,7 +30,7 @@ func Run(cfg *config.Config) *cli.Command {
 			minorCmd(),
 			majorCmd(),
 			releaseCmd(),
-			nextCmd(cfg),
+			autoCmd(cfg),
 		},
 	}
 }

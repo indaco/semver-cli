@@ -19,8 +19,9 @@ func BuildCLIForTests(path string, subCmds []*cli.Command) *cli.Command {
 				Value:   path,
 			},
 			&cli.BoolFlag{
-				Name:  "no-auto-init",
-				Usage: "Disable auto-initialization of the .version file",
+				Name:    "strict",
+				Aliases: []string{"no-auto-init"},
+				Usage:   "Fail if .version file is missing (disable auto-initialization)",
 			},
 		},
 		Commands: subCmds,

@@ -168,8 +168,8 @@ func TestCLI_BumpSubcommands_EarlyFailures(t *testing.T) {
 			expectedErr: "mock pre-release hooks error",
 		},
 		{
-			name: "next - FromCommand fails",
-			args: []string{"semver", "bump", "next"},
+			name: "auto - FromCommand fails",
+			args: []string{"semver", "bump", "auto"},
 			override: func() func() {
 				original := clix.FromCommandFn
 				clix.FromCommandFn = func(cmd *cli.Command) (bool, error) {
@@ -180,8 +180,8 @@ func TestCLI_BumpSubcommands_EarlyFailures(t *testing.T) {
 			expectedErr: "mock FromCommand error",
 		},
 		{
-			name: "next - RunPreReleaseHooks fails",
-			args: []string{"semver", "bump", "next"},
+			name: "auto - RunPreReleaseHooks fails",
+			args: []string{"semver", "bump", "auto"},
 			override: func() func() {
 				original := hooks.RunPreReleaseHooksFn
 				hooks.RunPreReleaseHooksFn = func(skip bool) error {
@@ -285,7 +285,7 @@ func TestCLI_BumpReleaseCmd(t *testing.T) {
 	}
 }
 
-func TestCLI_BumpNextCmd(t *testing.T) {
+func TestCLI_BumpAutoCmd(t *testing.T) {
 	tmpDir := t.TempDir()
 	versionPath := filepath.Join(tmpDir, ".version")
 
@@ -302,43 +302,43 @@ func TestCLI_BumpNextCmd(t *testing.T) {
 		{
 			name:     "promotes alpha to release",
 			initial:  "1.2.3-alpha.1",
-			args:     []string{"semver", "bump", "next"},
+			args:     []string{"semver", "bump", "auto"},
 			expected: "1.2.3",
 		},
 		{
 			name:     "promotes rc to release",
 			initial:  "1.2.3-rc.1",
-			args:     []string{"semver", "bump", "next"},
+			args:     []string{"semver", "bump", "auto"},
 			expected: "1.2.3",
 		},
 		{
 			name:     "default patch bump",
 			initial:  "1.2.3",
-			args:     []string{"semver", "bump", "next"},
+			args:     []string{"semver", "bump", "auto"},
 			expected: "1.2.4",
 		},
 		{
 			name:     "promotes pre-release in 0.x series",
 			initial:  "0.9.0-alpha.1",
-			args:     []string{"semver", "bump", "next"},
+			args:     []string{"semver", "bump", "auto"},
 			expected: "0.9.0",
 		},
 		{
 			name:     "bump minor from 0.9.0 as a special case",
 			initial:  "0.9.0",
-			args:     []string{"semver", "bump", "next"},
+			args:     []string{"semver", "bump", "auto"},
 			expected: "0.10.0",
 		},
 		{
 			name:     "preserve build metadata",
 			initial:  "1.2.3-alpha.1+meta.123",
-			args:     []string{"semver", "bump", "next", "--preserve-meta"},
+			args:     []string{"semver", "bump", "auto", "--preserve-meta"},
 			expected: "1.2.3+meta.123",
 		},
 		{
 			name:     "strip build metadata by default",
 			initial:  "1.2.3-alpha.1+meta.123",
-			args:     []string{"semver", "bump", "next"},
+			args:     []string{"semver", "bump", "auto"},
 			expected: "1.2.3",
 		},
 	}
@@ -356,7 +356,7 @@ func TestCLI_BumpNextCmd(t *testing.T) {
 	}
 }
 
-func TestCLI_BumpNextCmd_InferredBump(t *testing.T) {
+func TestCLI_BumpAutoCmd_InferredBump(t *testing.T) {
 	tmp := t.TempDir()
 	versionPath := testutils.WriteTempVersionFile(t, tmp, "1.2.3")
 
@@ -373,7 +373,7 @@ func TestCLI_BumpNextCmd_InferredBump(t *testing.T) {
 	appCli := testutils.BuildCLIForTests(cfg.Path, []*cli.Command{Run(cfg)})
 
 	err := appCli.Run(context.Background(), []string{
-		"semver", "bump", "next", "--path", versionPath,
+		"semver", "bump", "auto", "--path", versionPath,
 	})
 
 	if err != nil {
@@ -387,7 +387,7 @@ func TestCLI_BumpNextCmd_InferredBump(t *testing.T) {
 	}
 }
 
-func TestCLI_BumpNextCommand_WithLabelAndMeta(t *testing.T) {
+func TestCLI_BumpAutoCommand_WithLabelAndMeta(t *testing.T) {
 	tmpDir := t.TempDir()
 	versionPath := filepath.Join(tmpDir, ".version")
 
@@ -404,37 +404,37 @@ func TestCLI_BumpNextCommand_WithLabelAndMeta(t *testing.T) {
 		{
 			name:    "label=patch",
 			initial: "1.2.3",
-			args:    []string{"semver", "bump", "next", "--label", "patch"},
+			args:    []string{"semver", "bump", "auto", "--label", "patch"},
 			want:    "1.2.4",
 		},
 		{
 			name:    "label=minor",
 			initial: "1.2.3",
-			args:    []string{"semver", "bump", "next", "--label", "minor"},
+			args:    []string{"semver", "bump", "auto", "--label", "minor"},
 			want:    "1.3.0",
 		},
 		{
 			name:    "label=major",
 			initial: "1.2.3",
-			args:    []string{"semver", "bump", "next", "--label", "major"},
+			args:    []string{"semver", "bump", "auto", "--label", "major"},
 			want:    "2.0.0",
 		},
 		{
 			name:    "label=minor with metadata",
 			initial: "1.2.3",
-			args:    []string{"semver", "bump", "next", "--label", "minor", "--meta", "build.42"},
+			args:    []string{"semver", "bump", "auto", "--label", "minor", "--meta", "build.42"},
 			want:    "1.3.0+build.42",
 		},
 		{
 			name:    "preserve existing metadata",
 			initial: "1.2.3+ci.88",
-			args:    []string{"semver", "bump", "next", "--label", "patch", "--preserve-meta"},
+			args:    []string{"semver", "bump", "auto", "--label", "patch", "--preserve-meta"},
 			want:    "1.2.4+ci.88",
 		},
 		{
 			name:    "override existing metadata",
 			initial: "1.2.3+ci.88",
-			args:    []string{"semver", "bump", "next", "--label", "patch", "--meta", "ci.99"},
+			args:    []string{"semver", "bump", "auto", "--label", "patch", "--meta", "ci.99"},
 			want:    "1.2.4+ci.99",
 		},
 	}
@@ -452,7 +452,7 @@ func TestCLI_BumpNextCommand_WithLabelAndMeta(t *testing.T) {
 	}
 }
 
-func TestCLI_BumpNextCmd_InferredPromotion(t *testing.T) {
+func TestCLI_BumpAutoCmd_InferredPromotion(t *testing.T) {
 	tmp := t.TempDir()
 	versionPath := testutils.WriteTempVersionFile(t, tmp, "1.2.3-beta.1")
 
@@ -467,7 +467,7 @@ func TestCLI_BumpNextCmd_InferredPromotion(t *testing.T) {
 	appCli := testutils.BuildCLIForTests(cfg.Path, []*cli.Command{Run(cfg)})
 
 	err := appCli.Run(context.Background(), []string{
-		"semver", "bump", "next", "--path", versionPath,
+		"semver", "bump", "auto", "--path", versionPath,
 	})
 
 	if err != nil {
@@ -481,7 +481,7 @@ func TestCLI_BumpNextCmd_InferredPromotion(t *testing.T) {
 	}
 }
 
-func TestCLI_BumpNextCmd_PromotePreReleaseWithPreserveMeta(t *testing.T) {
+func TestCLI_BumpAutoCmd_PromotePreReleaseWithPreserveMeta(t *testing.T) {
 	tmp := t.TempDir()
 	versionPath := testutils.WriteTempVersionFile(t, tmp, "1.2.3-beta.2+ci.99")
 
@@ -496,7 +496,7 @@ func TestCLI_BumpNextCmd_PromotePreReleaseWithPreserveMeta(t *testing.T) {
 	appCli := testutils.BuildCLIForTests(cfg.Path, []*cli.Command{Run(cfg)})
 
 	err := appCli.Run(context.Background(), []string{
-		"semver", "bump", "next", "--path", versionPath, "--preserve-meta",
+		"semver", "bump", "auto", "--path", versionPath, "--preserve-meta",
 	})
 	if err != nil {
 		t.Fatalf("expected no error, got: %v", err)
@@ -509,7 +509,7 @@ func TestCLI_BumpNextCmd_PromotePreReleaseWithPreserveMeta(t *testing.T) {
 	}
 }
 
-func TestCLI_BumpNextCmd_InferredBumpFails(t *testing.T) {
+func TestCLI_BumpAutoCmd_InferredBumpFails(t *testing.T) {
 	tmp := t.TempDir()
 	versionPath := testutils.WriteTempVersionFile(t, tmp, "1.2.3")
 
@@ -536,7 +536,7 @@ func TestCLI_BumpNextCmd_InferredBumpFails(t *testing.T) {
 	appCli := testutils.BuildCLIForTests(cfg.Path, []*cli.Command{Run(cfg)})
 
 	err := appCli.Run(context.Background(), []string{
-		"semver", "bump", "next", "--path", versionPath,
+		"semver", "bump", "auto", "--path", versionPath,
 	})
 
 	if err == nil || !strings.Contains(err.Error(), "failed to bump inferred version") {
@@ -641,7 +641,7 @@ func TestCLI_BumpReleaseCommand_SaveVersionFails(t *testing.T) {
 	cfg := &config.Config{Path: versionPath}
 	appCli := testutils.BuildCLIForTests(cfg.Path, []*cli.Command{Run(cfg)})
 	err := appCli.Run(context.Background(), []string{
-		"semver", "bump", "release", "--path", versionPath, "--no-auto-init",
+		"semver", "bump", "release", "--path", versionPath, "--strict",
 	})
 
 	if err == nil {
@@ -653,7 +653,7 @@ func TestCLI_BumpReleaseCommand_SaveVersionFails(t *testing.T) {
 	}
 }
 
-func TestCLI_BumpNextCmd_Errors(t *testing.T) {
+func TestCLI_BumpAutoCmd_Errors(t *testing.T) {
 	tests := []struct {
 		name          string
 		setup         func(dir string)
@@ -666,7 +666,7 @@ func TestCLI_BumpNextCmd_Errors(t *testing.T) {
 			setup: func(dir string) {
 				_ = os.WriteFile(filepath.Join(dir, ".version"), []byte("not-a-version\n"), 0600)
 			},
-			args:        []string{"semver", "bump", "next"},
+			args:        []string{"semver", "bump", "auto"},
 			expectedErr: "failed to read version",
 		},
 		{
@@ -676,7 +676,7 @@ func TestCLI_BumpNextCmd_Errors(t *testing.T) {
 				_ = os.WriteFile(path, []byte("1.2.3-alpha\n"), 0444)
 				_ = os.Chmod(path, 0444)
 			},
-			args:          []string{"semver", "bump", "next"},
+			args:          []string{"semver", "bump", "auto"},
 			expectedErr:   "failed to save version",
 			skipOnWindows: true, // permission simulation less reliable on Windows
 		},
@@ -705,7 +705,7 @@ func TestCLI_BumpNextCmd_Errors(t *testing.T) {
 	}
 }
 
-func TestCLI_BumpNextCmd_InitVersionFileFails(t *testing.T) {
+func TestCLI_BumpAutoCmd_InitVersionFileFails(t *testing.T) {
 	tmp := t.TempDir()
 	protected := filepath.Join(tmp, "protected")
 
@@ -722,14 +722,14 @@ func TestCLI_BumpNextCmd_InitVersionFileFails(t *testing.T) {
 	appCli := testutils.BuildCLIForTests(cfg.Path, []*cli.Command{Run(cfg)})
 
 	err := appCli.Run(context.Background(), []string{
-		"semver", "bump", "next", "--path", versionPath,
+		"semver", "bump", "auto", "--path", versionPath,
 	})
 	if err == nil || !strings.Contains(err.Error(), "permission denied") {
 		t.Fatalf("expected permission denied error, got: %v", err)
 	}
 }
 
-func TestCLI_BumpNextCmd_BumpNextFails(t *testing.T) {
+func TestCLI_BumpAutoCmd_BumpNextFails(t *testing.T) {
 	tmp := t.TempDir()
 	versionPath := testutils.WriteTempVersionFile(t, tmp, "1.2.3")
 
@@ -746,7 +746,7 @@ func TestCLI_BumpNextCmd_BumpNextFails(t *testing.T) {
 	appCli := testutils.BuildCLIForTests(cfg.Path, []*cli.Command{Run(cfg)})
 
 	err := appCli.Run(context.Background(), []string{
-		"semver", "bump", "next", "--path", versionPath, "--no-infer",
+		"semver", "bump", "auto", "--path", versionPath, "--no-infer",
 	})
 
 	if err == nil || !strings.Contains(err.Error(), "failed to determine next version") {
@@ -754,7 +754,7 @@ func TestCLI_BumpNextCmd_BumpNextFails(t *testing.T) {
 	}
 }
 
-func TestCLI_BumpNextCmd_SaveVersionFails(t *testing.T) {
+func TestCLI_BumpAutoCmd_SaveVersionFails(t *testing.T) {
 	tmp := t.TempDir()
 	versionPath := filepath.Join(tmp, ".version")
 
@@ -774,7 +774,7 @@ func TestCLI_BumpNextCmd_SaveVersionFails(t *testing.T) {
 	appCli := testutils.BuildCLIForTests(cfg.Path, []*cli.Command{Run(cfg)})
 
 	err := appCli.Run(context.Background(), []string{
-		"semver", "bump", "next", "--path", versionPath, "--no-auto-init",
+		"semver", "bump", "auto", "--path", versionPath, "--strict",
 	})
 
 	if err == nil || !strings.Contains(err.Error(), "failed to save version") {
@@ -782,8 +782,8 @@ func TestCLI_BumpNextCmd_SaveVersionFails(t *testing.T) {
 	}
 }
 
-func TestCLI_BumpNextCommand_InvalidLabel(t *testing.T) {
-	if os.Getenv("TEST_SEMVER_BUMP_NEXT_INVALID_LABEL") == "1" {
+func TestCLI_BumpAutoCommand_InvalidLabel(t *testing.T) {
+	if os.Getenv("TEST_SEMVER_BUMP_AUTO_INVALID_LABEL") == "1" {
 		tmp := t.TempDir()
 		versionPath := testutils.WriteTempVersionFile(t, tmp, "1.2.3")
 
@@ -792,17 +792,17 @@ func TestCLI_BumpNextCommand_InvalidLabel(t *testing.T) {
 		appCli := testutils.BuildCLIForTests(cfg.Path, []*cli.Command{Run(cfg)})
 
 		err := appCli.Run(context.Background(), []string{
-			"semver", "bump", "next", "--label", "banana", "--path", versionPath,
+			"semver", "bump", "auto", "--label", "banana", "--path", versionPath,
 		})
 		if err != nil {
 			fmt.Fprintln(os.Stderr, err)
 			os.Exit(1)
 		}
-		os.Exit(0) // ❌ shouldn't happen
+		os.Exit(0) // shouldn't happen
 	}
 
-	cmd := exec.Command(os.Args[0], "-test.run=TestCLI_BumpNextCommand_InvalidLabel")
-	cmd.Env = append(os.Environ(), "TEST_SEMVER_BUMP_NEXT_INVALID_LABEL=1")
+	cmd := exec.Command(os.Args[0], "-test.run=TestCLI_BumpAutoCommand_InvalidLabel")
+	cmd.Env = append(os.Environ(), "TEST_SEMVER_BUMP_AUTO_INVALID_LABEL=1")
 	output, err := cmd.CombinedOutput()
 
 	if err == nil {
@@ -815,7 +815,7 @@ func TestCLI_BumpNextCommand_InvalidLabel(t *testing.T) {
 	}
 }
 
-func TestCLI_BumpNextCmd_BumpByLabelFails(t *testing.T) {
+func TestCLI_BumpAutoCmd_BumpByLabelFails(t *testing.T) {
 	tmp := t.TempDir()
 	versionPath := testutils.WriteTempVersionFile(t, tmp, "1.2.3")
 
@@ -832,7 +832,7 @@ func TestCLI_BumpNextCmd_BumpByLabelFails(t *testing.T) {
 	appCli := testutils.BuildCLIForTests(cfg.Path, []*cli.Command{Run(cfg)})
 
 	err := appCli.Run(context.Background(), []string{
-		"semver", "bump", "next", "--label", "patch", "--path", versionPath,
+		"semver", "bump", "auto", "--label", "patch", "--path", versionPath,
 	})
 
 	if err == nil || !strings.Contains(err.Error(), "failed to bump version with label") {

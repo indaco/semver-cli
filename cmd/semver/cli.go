@@ -34,8 +34,9 @@ func newCLI(cfg *config.Config) *cli.Command {
 				Value:   cfg.Path,
 			},
 			&cli.BoolFlag{
-				Name:  "no-auto-init",
-				Usage: "Disable auto-initialization of the .version file",
+				Name:    "strict",
+				Aliases: []string{"no-auto-init"},
+				Usage:   "Fail if .version file is missing (disable auto-initialization)",
 			},
 			&cli.BoolFlag{
 				Name:        "no-color",

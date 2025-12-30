@@ -35,8 +35,8 @@ func TestCLI_ShowCommand(t *testing.T) {
 	}
 }
 
-func TestCLI_ShowCommand_NoAutoInit_MissingFile(t *testing.T) {
-	if os.Getenv("TEST_SEMVER_NO_AUTO_INIT") == "1" {
+func TestCLI_ShowCommand_Strict_MissingFile(t *testing.T) {
+	if os.Getenv("TEST_SEMVER_STRICT") == "1" {
 		tmp := t.TempDir()
 		versionPath := filepath.Join(tmp, ".version")
 
@@ -44,15 +44,15 @@ func TestCLI_ShowCommand_NoAutoInit_MissingFile(t *testing.T) {
 		cfg := &config.Config{Path: versionPath}
 		appCli := testutils.BuildCLIForTests(cfg.Path, []*cli.Command{Run()})
 
-		err := appCli.Run(context.Background(), []string{"semver", "show", "--no-auto-init"})
+		err := appCli.Run(context.Background(), []string{"semver", "show", "--strict"})
 		if err != nil {
 			fmt.Fprintln(os.Stderr, err)
 		}
 		return
 	}
 
-	cmd := exec.Command(os.Args[0], "-test.run=TestCLI_ShowCommand_NoAutoInit_MissingFile")
-	cmd.Env = append(os.Environ(), "TEST_SEMVER_NO_AUTO_INIT=1")
+	cmd := exec.Command(os.Args[0], "-test.run=TestCLI_ShowCommand_Strict_MissingFile")
+	cmd.Env = append(os.Environ(), "TEST_SEMVER_STRICT=1")
 	output, err := cmd.CombinedOutput()
 
 	if err == nil {
@@ -64,7 +64,8 @@ func TestCLI_ShowCommand_NoAutoInit_MissingFile(t *testing.T) {
 		t.Errorf("expected output to contain %q, got %q", expected, string(output))
 	}
 }
-func TestCLI_ShowCommand_NoAutoInit_FileExists(t *testing.T) {
+
+func TestCLI_ShowCommand_Strict_FileExists(t *testing.T) {
 	tmpDir := t.TempDir()
 	testutils.WriteTempVersionFile(t, tmpDir, "1.2.3")
 	versionPath := filepath.Join(tmpDir, ".version")
@@ -74,7 +75,7 @@ func TestCLI_ShowCommand_NoAutoInit_FileExists(t *testing.T) {
 	appCli := testutils.BuildCLIForTests(cfg.Path, []*cli.Command{Run()})
 
 	output, err := testutils.CaptureStdout(func() {
-		testutils.RunCLITest(t, appCli, []string{"semver", "show", "--no-auto-init"}, tmpDir)
+		testutils.RunCLITest(t, appCli, []string{"semver", "show", "--strict"}, tmpDir)
 	})
 	if err != nil {
 		t.Fatalf("Failed to capture stdout: %v", err)

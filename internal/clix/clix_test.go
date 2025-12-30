@@ -8,6 +8,7 @@ import (
 	"testing"
 
 	"github.com/indaco/semver-cli/internal/config"
+	"github.com/indaco/semver-cli/internal/core"
 	"github.com/indaco/semver-cli/internal/semver"
 	"github.com/indaco/semver-cli/internal/testutils"
 	"github.com/urfave/cli/v3"
@@ -59,17 +60,15 @@ func TestGetOrInitVersionFile(t *testing.T) {
 }
 
 func TestGetOrInitVersionFile_InitError(t *testing.T) {
-	// Backup the real function
-	originalFunc := semver.InitializeVersionFileFunc
-	defer func() { semver.InitializeVersionFileFunc = originalFunc }()
+	// Use MockFileSystem with write error to simulate initialization failure
+	mockFS := core.NewMockFileSystem()
+	mockFS.WriteErr = errors.New("mock init failure")
 
-	// Override with a function that always fails
-	semver.InitializeVersionFileFunc = func(path string) error {
-		return errors.New("mock init failure")
-	}
+	mgr := semver.NewVersionManager(mockFS, nil)
+	restore := semver.SetDefaultManager(mgr)
+	defer restore()
 
-	tmpDir := t.TempDir()
-	targetPath := filepath.Join(tmpDir, ".version")
+	targetPath := "/test/.version"
 
 	created, err := getOrInitVersionFile(targetPath, false)
 	if err == nil {

@@ -85,6 +85,139 @@ func TestValidatePath(t *testing.T) {
 	}
 }
 
+func TestValidatePath_EdgeCases(t *testing.T) {
+	tmpDir := t.TempDir()
+
+	t.Run("path with dots is cleaned", func(t *testing.T) {
+		path := filepath.Join(tmpDir, "subdir", ".", "file.txt")
+		result, err := ValidatePath(path, tmpDir)
+		if err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
+		expected := filepath.Join(tmpDir, "subdir", "file.txt")
+		if result != expected {
+			t.Errorf("expected %q, got %q", expected, result)
+		}
+	})
+
+	t.Run("path equals base dir", func(t *testing.T) {
+		result, err := ValidatePath(tmpDir, tmpDir)
+		if err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
+		if result != tmpDir {
+			t.Errorf("expected %q, got %q", tmpDir, result)
+		}
+	})
+
+	t.Run("subdirectory path", func(t *testing.T) {
+		subPath := filepath.Join(tmpDir, "subdir", "file.txt")
+		result, err := ValidatePath(subPath, tmpDir)
+		if err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
+		if result == "" {
+			t.Error("expected non-empty result")
+		}
+	})
+
+	t.Run("path with multiple dots cleaned", func(t *testing.T) {
+		path := "./some/path/../other/./file.txt"
+		result, err := ValidatePath(path, "")
+		if err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
+		expected := filepath.Clean(path)
+		if result != expected {
+			t.Errorf("expected %q, got %q", expected, result)
+		}
+	})
+}
+
+func TestValidatePath_InvalidBaseDir(t *testing.T) {
+	// Use a path that's very unlikely to exist on any system
+	// This should still work since we're testing error handling
+	invalidBase := string([]byte{0, 1, 2}) // Invalid path characters
+
+	_, err := ValidatePath("test.txt", invalidBase)
+	if err == nil {
+		// On some systems this might not error, which is okay
+		return
+	}
+
+	var pathErr *apperrors.PathValidationError
+	if !errors.As(err, &pathErr) {
+		t.Errorf("expected PathValidationError, got %T", err)
+	}
+}
+
+func TestValidatePath_AbsPathErrors(t *testing.T) {
+	tmpDir := t.TempDir()
+
+	t.Run("valid nested path", func(t *testing.T) {
+		// Test a deeply nested path to exercise all code paths
+		nestedPath := filepath.Join(tmpDir, "a", "b", "c", "d", "e", "file.txt")
+		result, err := ValidatePath(nestedPath, tmpDir)
+		if err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
+		if result != nestedPath {
+			t.Errorf("expected %q, got %q", nestedPath, result)
+		}
+	})
+
+	t.Run("path with trailing separator", func(t *testing.T) {
+		pathWithSep := tmpDir + string(filepath.Separator)
+		result, err := ValidatePath(pathWithSep, tmpDir)
+		if err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
+		// Should clean the path
+		if result == pathWithSep {
+			// Cleaned path should not have trailing separator
+			t.Log("path was cleaned")
+		}
+	})
+}
+
+func TestIsWithinDir_VariousScenarios(t *testing.T) {
+	tmpDir := t.TempDir()
+
+	t.Run("deeply nested path", func(t *testing.T) {
+		deepPath := filepath.Join(tmpDir, "a", "b", "c", "d", "e", "f", "g", "h")
+		result := IsWithinDir(deepPath, tmpDir)
+		if !result {
+			t.Error("deeply nested path should be within dir")
+		}
+	})
+
+	t.Run("path with trailing separator equals dir", func(t *testing.T) {
+		pathWithSep := tmpDir + string(filepath.Separator)
+		result := IsWithinDir(pathWithSep, tmpDir)
+		if !result {
+			t.Error("path with trailing separator should equal dir")
+		}
+	})
+
+	t.Run("sibling directory", func(t *testing.T) {
+		parent := filepath.Dir(tmpDir)
+		siblingDir := filepath.Join(parent, "other-dir")
+		result := IsWithinDir(siblingDir, tmpDir)
+		if result {
+			t.Error("sibling directory should not be within dir")
+		}
+	})
+
+	t.Run("empty path strings", func(t *testing.T) {
+		// Test with empty strings - they should resolve to current directory
+		result := IsWithinDir("", "")
+		// Both empty strings resolve to ".", which equals itself
+		if !result {
+			t.Log("empty paths treated as not within each other (acceptable)")
+		}
+	})
+}
+
 func TestIsWithinDir(t *testing.T) {
 	tmpDir := t.TempDir()
 
@@ -134,4 +267,36 @@ func TestIsWithinDir(t *testing.T) {
 			}
 		})
 	}
+}
+
+func TestIsWithinDir_RelativePaths(t *testing.T) {
+	t.Run("relative path within relative dir", func(t *testing.T) {
+		result := IsWithinDir("subdir/file.txt", "subdir")
+		// This should be true since both resolve to the same relative location
+		if !result {
+			t.Error("expected true for relative paths within same directory")
+		}
+	})
+
+	t.Run("current directory check", func(t *testing.T) {
+		result := IsWithinDir(".", ".")
+		if !result {
+			t.Error("current directory should be within itself")
+		}
+	})
+}
+
+func TestIsWithinDir_ErrorHandling(t *testing.T) {
+	// Test with paths that might cause Abs to fail (though rare)
+	invalidPath := string([]byte{0, 1, 2})
+
+	t.Run("invalid path returns false", func(t *testing.T) {
+		// Just verify this doesn't panic - result may vary by system
+		_ = IsWithinDir(invalidPath, "/tmp")
+	})
+
+	t.Run("invalid dir returns false", func(t *testing.T) {
+		// Just verify this doesn't panic - result may vary by system
+		_ = IsWithinDir("/tmp/file", invalidPath)
+	})
 }

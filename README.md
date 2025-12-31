@@ -378,6 +378,8 @@ semver init
 
 `semver` supports managing multiple `.version` files across a monorepo or multi-module project. When multiple modules are detected, the CLI automatically enables multi-module mode.
 
+> For more details, see the [Monorepo Guide](docs/MONOREPO.md).
+
 ### Module Discovery
 
 Modules are discovered by searching for `.version` files in the workspace. The CLI uses the directory name containing each `.version` file as the module name.

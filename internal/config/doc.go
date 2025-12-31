@@ -30,6 +30,36 @@
 //	  - command: "make test"
 //	  - command: "make lint"
 //
+// # Workspace Configuration (Monorepo Support)
+//
+// The workspace section configures multi-module/monorepo behavior:
+//
+//	workspace:
+//	  # Auto-discovery settings (all optional, shown with defaults)
+//	  discovery:
+//	    enabled: true      # Enable module auto-discovery
+//	    recursive: true    # Search subdirectories
+//	    max_depth: 10      # Maximum directory depth
+//	    exclude:           # Additional paths to exclude
+//	      - custom_dir
+//
+//	  # Explicit module definitions (overrides discovery)
+//	  modules:
+//	    - name: module-a
+//	      path: ./module-a/.version
+//	    - name: module-b
+//	      path: ./services/module-b/.version
+//	      enabled: false   # Disable this module
+//
+// Discovery is zero-config by default. The following patterns are excluded:
+// node_modules, .git, vendor, tmp, build, dist, .cache, __pycache__
+//
+// Helper methods:
+//   - GetDiscoveryConfig() returns discovery settings with defaults applied
+//   - GetExcludePatterns() returns merged default + configured excludes
+//   - HasExplicitModules() returns true if modules are explicitly defined
+//   - IsModuleEnabled(name) checks if a specific module is enabled
+//
 // # Security
 //
 // Configuration files are created with 0600 permissions (owner read/write only)

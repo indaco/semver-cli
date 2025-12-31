@@ -3,6 +3,7 @@ package core
 import (
 	"context"
 	"io/fs"
+	"path/filepath"
 	"strings"
 	"sync"
 	"time"
@@ -97,6 +98,37 @@ func (m *MockFileSystem) RemoveAll(path string) error {
 	return m.Remove(path)
 }
 
+func (m *MockFileSystem) ReadDir(path string) ([]fs.DirEntry, error) {
+	m.mu.RLock()
+	defer m.mu.RUnlock()
+
+	// Build list of entries in this directory
+	var entries []fs.DirEntry
+
+	// Find all files and dirs under this path
+	for filePath := range m.files {
+		if filepath.Dir(filePath) == path {
+			name := filepath.Base(filePath)
+			entries = append(entries, &mockDirEntry{
+				name:  name,
+				isDir: false,
+			})
+		}
+	}
+
+	for dirPath := range m.dirs {
+		if filepath.Dir(dirPath) == path {
+			name := filepath.Base(dirPath)
+			entries = append(entries, &mockDirEntry{
+				name:  name,
+				isDir: true,
+			})
+		}
+	}
+
+	return entries, nil
+}
+
 // SetFile sets a file's content (for test setup).
 func (m *MockFileSystem) SetFile(path string, content []byte) {
 	m.mu.Lock()
@@ -124,6 +156,18 @@ func (m *mockFileInfo) Mode() fs.FileMode  { return 0644 }
 func (m *mockFileInfo) ModTime() time.Time { return time.Now() }
 func (m *mockFileInfo) IsDir() bool        { return m.isDir }
 func (m *mockFileInfo) Sys() any           { return nil }
+
+type mockDirEntry struct {
+	name  string
+	isDir bool
+}
+
+func (m *mockDirEntry) Name() string      { return m.name }
+func (m *mockDirEntry) IsDir() bool       { return m.isDir }
+func (m *mockDirEntry) Type() fs.FileMode { return 0644 }
+func (m *mockDirEntry) Info() (fs.FileInfo, error) {
+	return &mockFileInfo{name: m.name, isDir: m.isDir}, nil
+}
 
 // MockCommandExecutor is a mock command executor for testing.
 type MockCommandExecutor struct {

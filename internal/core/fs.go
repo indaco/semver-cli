@@ -38,6 +38,10 @@ func (f *OSFileSystem) RemoveAll(path string) error {
 	return os.RemoveAll(path)
 }
 
+func (f *OSFileSystem) ReadDir(path string) ([]fs.DirEntry, error) {
+	return os.ReadDir(path)
+}
+
 // EnsureParentDir creates the parent directory for a file path if it doesn't exist.
 func EnsureParentDir(fs FileSystem, path string, perm fs.FileMode) error {
 	return fs.MkdirAll(filepath.Dir(path), perm)

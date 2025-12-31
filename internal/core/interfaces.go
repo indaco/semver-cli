@@ -26,6 +26,9 @@ type FileSystem interface {
 
 	// RemoveAll removes path and any children it contains.
 	RemoveAll(path string) error
+
+	// ReadDir reads the directory named by path and returns a list of directory entries.
+	ReadDir(path string) ([]fs.DirEntry, error)
 }
 
 // CommandExecutor abstracts command execution for testability.

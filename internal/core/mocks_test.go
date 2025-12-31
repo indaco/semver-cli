@@ -181,52 +181,439 @@ func TestMockGitClient(t *testing.T) {
 	})
 }
 
-func TestOSFileSystem(t *testing.T) {
+func TestOSFileSystem_WriteAndRead(t *testing.T) {
 	osFS := NewOSFileSystem()
 	tmpDir := t.TempDir()
 
-	t.Run("write and read file", func(t *testing.T) {
-		path := tmpDir + "/test.txt"
-		content := []byte("hello world")
+	path := tmpDir + "/test.txt"
+	content := []byte("hello world")
 
-		err := osFS.WriteFile(path, content, 0600)
+	err := osFS.WriteFile(path, content, 0600)
+	if err != nil {
+		t.Fatalf("WriteFile failed: %v", err)
+	}
+
+	data, err := osFS.ReadFile(path)
+	if err != nil {
+		t.Fatalf("ReadFile failed: %v", err)
+	}
+
+	if string(data) != string(content) {
+		t.Errorf("expected %q, got %q", string(content), string(data))
+	}
+}
+
+func TestOSFileSystem_Stat(t *testing.T) {
+	osFS := NewOSFileSystem()
+	tmpDir := t.TempDir()
+
+	info, err := osFS.Stat(tmpDir)
+	if err != nil {
+		t.Fatalf("Stat failed: %v", err)
+	}
+	if !info.IsDir() {
+		t.Error("expected directory")
+	}
+}
+
+func TestOSFileSystem_MkdirAll(t *testing.T) {
+	osFS := NewOSFileSystem()
+	tmpDir := t.TempDir()
+
+	path := tmpDir + "/a/b/c"
+	err := osFS.MkdirAll(path, 0755)
+	if err != nil {
+		t.Fatalf("MkdirAll failed: %v", err)
+	}
+
+	info, err := osFS.Stat(path)
+	if err != nil {
+		t.Fatalf("Stat failed: %v", err)
+	}
+	if !info.IsDir() {
+		t.Error("expected directory")
+	}
+}
+
+func TestOSFileSystem_Remove(t *testing.T) {
+	osFS := NewOSFileSystem()
+	tmpDir := t.TempDir()
+
+	path := tmpDir + "/to-remove.txt"
+	err := osFS.WriteFile(path, []byte("test"), 0644)
+	if err != nil {
+		t.Fatalf("WriteFile failed: %v", err)
+	}
+
+	err = osFS.Remove(path)
+	if err != nil {
+		t.Fatalf("Remove failed: %v", err)
+	}
+
+	_, err = osFS.ReadFile(path)
+	if !errors.Is(err, fs.ErrNotExist) {
+		t.Errorf("expected fs.ErrNotExist after removal, got %v", err)
+	}
+}
+
+func TestOSFileSystem_RemoveAll(t *testing.T) {
+	osFS := NewOSFileSystem()
+	tmpDir := t.TempDir()
+
+	path := tmpDir + "/remove-all-test"
+	err := osFS.MkdirAll(path+"/subdir", 0755)
+	if err != nil {
+		t.Fatalf("MkdirAll failed: %v", err)
+	}
+
+	err = osFS.WriteFile(path+"/file.txt", []byte("test"), 0644)
+	if err != nil {
+		t.Fatalf("WriteFile failed: %v", err)
+	}
+
+	err = osFS.RemoveAll(path)
+	if err != nil {
+		t.Fatalf("RemoveAll failed: %v", err)
+	}
+
+	_, err = osFS.Stat(path)
+	if !errors.Is(err, fs.ErrNotExist) {
+		t.Errorf("expected fs.ErrNotExist after RemoveAll, got %v", err)
+	}
+}
+
+func TestOSFileSystem_ReadDir(t *testing.T) {
+	osFS := NewOSFileSystem()
+	tmpDir := t.TempDir()
+
+	dirPath := tmpDir + "/read-dir-test"
+	err := osFS.MkdirAll(dirPath, 0755)
+	if err != nil {
+		t.Fatalf("MkdirAll failed: %v", err)
+	}
+
+	err = osFS.WriteFile(dirPath+"/file1.txt", []byte("test1"), 0644)
+	if err != nil {
+		t.Fatalf("WriteFile failed: %v", err)
+	}
+
+	err = osFS.WriteFile(dirPath+"/file2.txt", []byte("test2"), 0644)
+	if err != nil {
+		t.Fatalf("WriteFile failed: %v", err)
+	}
+
+	entries, err := osFS.ReadDir(dirPath)
+	if err != nil {
+		t.Fatalf("ReadDir failed: %v", err)
+	}
+
+	if len(entries) != 2 {
+		t.Errorf("expected 2 entries, got %d", len(entries))
+	}
+}
+
+func TestEnsureParentDir(t *testing.T) {
+	mockFS := NewMockFileSystem()
+
+	t.Run("creates parent directory", func(t *testing.T) {
+		filePath := "/a/b/c/file.txt"
+		err := EnsureParentDir(mockFS, filePath, 0755)
 		if err != nil {
-			t.Fatalf("WriteFile failed: %v", err)
+			t.Fatalf("EnsureParentDir failed: %v", err)
 		}
 
-		data, err := osFS.ReadFile(path)
+		// Verify parent directory was created
+		info, err := mockFS.Stat("/a/b/c")
 		if err != nil {
-			t.Fatalf("ReadFile failed: %v", err)
+			t.Fatalf("parent directory not created: %v", err)
 		}
+		if !info.IsDir() {
+			t.Error("expected parent to be a directory")
+		}
+	})
 
+	t.Run("handles root path", func(t *testing.T) {
+		err := EnsureParentDir(mockFS, "/file.txt", 0755)
+		if err != nil {
+			t.Fatalf("EnsureParentDir failed for root: %v", err)
+		}
+	})
+}
+
+func TestMockFileSystem_ErrorInjection(t *testing.T) {
+	mockFS := NewMockFileSystem()
+
+	t.Run("write error", func(t *testing.T) {
+		mockFS.WriteErr = errors.New("write error")
+		err := mockFS.WriteFile("/test", []byte("data"), 0644)
+		if err == nil || err.Error() != "write error" {
+			t.Errorf("expected write error, got %v", err)
+		}
+		mockFS.WriteErr = nil
+	})
+
+	t.Run("stat error", func(t *testing.T) {
+		mockFS.StatErr = errors.New("stat error")
+		_, err := mockFS.Stat("/test")
+		if err == nil || err.Error() != "stat error" {
+			t.Errorf("expected stat error, got %v", err)
+		}
+		mockFS.StatErr = nil
+	})
+
+	t.Run("mkdir error", func(t *testing.T) {
+		mockFS.MkdirErr = errors.New("mkdir error")
+		err := mockFS.MkdirAll("/test", 0755)
+		if err == nil || err.Error() != "mkdir error" {
+			t.Errorf("expected mkdir error, got %v", err)
+		}
+		mockFS.MkdirErr = nil
+	})
+
+	t.Run("remove error", func(t *testing.T) {
+		mockFS.RemoveErr = errors.New("remove error")
+		err := mockFS.Remove("/test")
+		if err == nil || err.Error() != "remove error" {
+			t.Errorf("expected remove error, got %v", err)
+		}
+		mockFS.RemoveErr = nil
+	})
+}
+
+func TestMockFileSystem_GetFile(t *testing.T) {
+	mockFS := NewMockFileSystem()
+
+	t.Run("get existing file", func(t *testing.T) {
+		content := []byte("test content")
+		mockFS.SetFile("/test/file.txt", content)
+
+		data, ok := mockFS.GetFile("/test/file.txt")
+		if !ok {
+			t.Fatal("GetFile() should return true for existing file")
+		}
 		if string(data) != string(content) {
 			t.Errorf("expected %q, got %q", string(content), string(data))
 		}
 	})
 
-	t.Run("stat", func(t *testing.T) {
-		info, err := osFS.Stat(tmpDir)
-		if err != nil {
-			t.Fatalf("Stat failed: %v", err)
+	t.Run("get non-existent file", func(t *testing.T) {
+		_, ok := mockFS.GetFile("/nonexistent")
+		if ok {
+			t.Error("GetFile() should return false for non-existent file")
 		}
-		if !info.IsDir() {
-			t.Error("expected directory")
+	})
+}
+
+func TestMockFileSystem_RemoveAll(t *testing.T) {
+	mockFS := NewMockFileSystem()
+
+	t.Run("remove directory", func(t *testing.T) {
+		mockFS.dirs["/test-dir"] = true
+
+		err := mockFS.RemoveAll("/test-dir")
+		if err != nil {
+			t.Fatalf("RemoveAll failed: %v", err)
+		}
+
+		_, err = mockFS.Stat("/test-dir")
+		if !errors.Is(err, fs.ErrNotExist) {
+			t.Error("directory should be removed")
 		}
 	})
 
-	t.Run("mkdir all", func(t *testing.T) {
-		path := tmpDir + "/a/b/c"
-		err := osFS.MkdirAll(path, 0755)
+	t.Run("remove file", func(t *testing.T) {
+		mockFS.SetFile("/test-file.txt", []byte("content"))
+
+		err := mockFS.RemoveAll("/test-file.txt")
 		if err != nil {
-			t.Fatalf("MkdirAll failed: %v", err)
+			t.Fatalf("RemoveAll failed: %v", err)
 		}
 
-		info, err := osFS.Stat(path)
-		if err != nil {
-			t.Fatalf("Stat failed: %v", err)
-		}
-		if !info.IsDir() {
-			t.Error("expected directory")
+		_, ok := mockFS.GetFile("/test-file.txt")
+		if ok {
+			t.Error("file should be removed")
 		}
 	})
+
+	t.Run("with remove error", func(t *testing.T) {
+		mockFS.RemoveErr = errors.New("remove failed")
+		err := mockFS.RemoveAll("/anything")
+		if err == nil || err.Error() != "remove failed" {
+			t.Errorf("expected remove error, got %v", err)
+		}
+		mockFS.RemoveErr = nil
+	})
+}
+
+func TestMockFileSystem_ReadDir(t *testing.T) {
+	mockFS := NewMockFileSystem()
+
+	// Create some files and directories
+	mockFS.SetFile("/test/file1.txt", []byte("content1"))
+	mockFS.SetFile("/test/file2.txt", []byte("content2"))
+	mockFS.dirs["/test/subdir"] = true
+	mockFS.SetFile("/other/file.txt", []byte("other"))
+
+	entries, err := mockFS.ReadDir("/test")
+	if err != nil {
+		t.Fatalf("ReadDir failed: %v", err)
+	}
+
+	if len(entries) != 3 {
+		t.Errorf("expected 3 entries, got %d", len(entries))
+	}
+
+	// Check entries
+	hasFile1 := false
+	hasFile2 := false
+	hasSubdir := false
+
+	for _, entry := range entries {
+		switch entry.Name() {
+		case "file1.txt":
+			hasFile1 = true
+			if entry.IsDir() {
+				t.Error("file1.txt should not be a directory")
+			}
+		case "file2.txt":
+			hasFile2 = true
+		case "subdir":
+			hasSubdir = true
+			if !entry.IsDir() {
+				t.Error("subdir should be a directory")
+			}
+		}
+	}
+
+	if !hasFile1 || !hasFile2 || !hasSubdir {
+		t.Error("missing expected entries")
+	}
+}
+
+func TestMockFileInfo_Methods(t *testing.T) {
+	info := &mockFileInfo{
+		name:  "test.txt",
+		size:  100,
+		isDir: false,
+	}
+
+	if info.Name() != "test.txt" {
+		t.Errorf("Name() = %q, want %q", info.Name(), "test.txt")
+	}
+
+	if info.Size() != 100 {
+		t.Errorf("Size() = %d, want %d", info.Size(), 100)
+	}
+
+	if info.Mode() != 0644 {
+		t.Errorf("Mode() = %v, want 0644", info.Mode())
+	}
+
+	if info.ModTime().IsZero() {
+		t.Error("ModTime() should not be zero")
+	}
+
+	if info.IsDir() {
+		t.Error("IsDir() should return false")
+	}
+
+	if info.Sys() != nil {
+		t.Error("Sys() should return nil")
+	}
+}
+
+func TestMockDirEntry_Methods(t *testing.T) {
+	entry := &mockDirEntry{
+		name:  "test-dir",
+		isDir: true,
+	}
+
+	if entry.Name() != "test-dir" {
+		t.Errorf("Name() = %q, want %q", entry.Name(), "test-dir")
+	}
+
+	if !entry.IsDir() {
+		t.Error("IsDir() should return true")
+	}
+
+	if entry.Type() != 0644 {
+		t.Errorf("Type() = %v, want 0644", entry.Type())
+	}
+
+	info, err := entry.Info()
+	if err != nil {
+		t.Fatalf("Info() failed: %v", err)
+	}
+	if info == nil {
+		t.Fatal("Info() returned nil")
+	}
+}
+
+func TestMockGitClient_Pull(t *testing.T) {
+	mockGit := NewMockGitClient()
+	ctx := context.Background()
+
+	t.Run("pull success", func(t *testing.T) {
+		err := mockGit.Pull(ctx, "/repo")
+		if err != nil {
+			t.Errorf("Pull() unexpected error: %v", err)
+		}
+	})
+
+	t.Run("pull error", func(t *testing.T) {
+		mockGit.PullError = errors.New("pull failed")
+		err := mockGit.Pull(ctx, "/repo")
+		if err == nil || err.Error() != "pull failed" {
+			t.Errorf("expected pull error, got %v", err)
+		}
+	})
+}
+
+func TestMockGitClient_CloneError(t *testing.T) {
+	mockGit := NewMockGitClient()
+	ctx := context.Background()
+
+	mockGit.CloneError = errors.New("clone failed")
+	err := mockGit.Clone(ctx, "https://example.com/repo.git", "/tmp/repo")
+	if err == nil || err.Error() != "clone failed" {
+		t.Errorf("expected clone error, got %v", err)
+	}
+}
+
+func TestMockCommandExecutor_DefaultOutput(t *testing.T) {
+	mockExec := NewMockCommandExecutor()
+	ctx := context.Background()
+
+	mockExec.DefaultOutput = "default response"
+	output, err := mockExec.Output(ctx, ".", "unknown", "command")
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if output != "default response" {
+		t.Errorf("expected 'default response', got %q", output)
+	}
+}
+
+func TestMockCommandExecutor_Run_CommandKey(t *testing.T) {
+	mockExec := NewMockCommandExecutor()
+	ctx := context.Background()
+
+	expectedErr := errors.New("specific error")
+	mockExec.SetError("git status", expectedErr)
+
+	err := mockExec.Run(ctx, ".", "git", "status")
+	if err != expectedErr {
+		t.Errorf("expected specific error, got %v", err)
+	}
+
+	// Verify call was recorded
+	if len(mockExec.Calls) != 1 {
+		t.Fatalf("expected 1 call, got %d", len(mockExec.Calls))
+	}
+	if mockExec.Calls[0].Command != "git" {
+		t.Errorf("command = %q, want %q", mockExec.Calls[0].Command, "git")
+	}
+	if len(mockExec.Calls[0].Args) != 1 || mockExec.Calls[0].Args[0] != "status" {
+		t.Errorf("args = %v, want [status]", mockExec.Calls[0].Args)
+	}
 }

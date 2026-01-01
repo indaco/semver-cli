@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 
+	"github.com/indaco/semver-cli/cmd/semver/flags"
 	"github.com/indaco/semver-cli/internal/clix"
 	"github.com/indaco/semver-cli/internal/config"
 	"github.com/indaco/semver-cli/internal/core"
@@ -19,6 +20,7 @@ func Run(cfg *config.Config) *cli.Command {
 		Name:      "show",
 		Usage:     "Display current version",
 		UsageText: "semver show [--all] [--module name] [--format text|json|table]",
+		Flags:     flags.MultiModuleFlags(),
 		Action: func(ctx context.Context, cmd *cli.Command) error {
 			return runShowCmd(ctx, cmd, cfg)
 		},

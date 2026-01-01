@@ -112,33 +112,22 @@ VERSION:
    v0.6.0
 
 COMMANDS:
-   show      Display current version
-   set       Set the version manually
-   bump      Bump semantic version (patch, minor, major)
-   pre       Set pre-release label (e.g., alpha, beta.1)
-   validate  Validate the .version file
-   init      Initialize a .version file (auto-detects Git tag or starts from 0.1.0)
-   modules   Discover and list modules in a workspace
-   help, h   Shows a list of commands or help for one command
+   show              Display current version
+   set               Set the version manually
+   bump              Bump semantic version (patch, minor, major)
+   pre               Set pre-release label (e.g., alpha, beta.1)
+   doctor, validate  Validate the .version file
+   init              Initialize a .version file (auto-detects Git tag or starts from 0.1.0)
+   extension         Manage extensions for semver-cli
+   modules, mods     Manage and discover modules in workspace
+   help, h           Shows a list of commands or help for one command
 
 GLOBAL OPTIONS:
-   --path string, -p string  Path to .version file (default: ".version")
-   --strict                  Fail if .version file is missing (disable auto-initialization)
+   --path string, -p string  Path to .version file (default: "internal/version/.version")
+   --strict, --no-auto-init  Fail if .version file is missing (disable auto-initialization)
+   --no-color                Disable colored output
    --help, -h                show help
    --version, -v             print the version
-
-MULTI-MODULE OPTIONS (for show, set, bump commands):
-   --all, -a            Operate on all discovered modules
-   --module string, -m  Operate on a specific module by name
-   --modules string     Operate on multiple modules (comma-separated names)
-   --pattern string     Operate on modules matching glob pattern
-   --yes, -y            Auto-confirm all prompts (select all modules)
-   --non-interactive    Disable interactive prompts (CI mode)
-   --parallel           Execute operations in parallel
-   --fail-fast          Stop on first error (default: true)
-   --continue-on-error  Continue even if some modules fail
-   --quiet, -q          Suppress module-level output, show summary only
-   --format string      Output format: text, json, table (default: "text")
 ```
 
 ## Configuration

@@ -26,10 +26,10 @@ func Run(cfg *config.Config) *cli.Command {
 			},
 		},
 		Commands: []*cli.Command{
-			patchCmd(),
-			minorCmd(),
-			majorCmd(),
-			releaseCmd(),
+			patchCmd(cfg),
+			minorCmd(cfg),
+			majorCmd(cfg),
+			releaseCmd(cfg),
 			autoCmd(cfg),
 		},
 	}

@@ -587,3 +587,460 @@ func TestIntegration_HelpFlag(t *testing.T) {
 		}
 	}
 }
+
+// ============================================================================
+// Multi-Module Integration Tests
+// ============================================================================
+
+// setupMultiModuleWorkspace creates a workspace with multiple modules.
+func setupMultiModuleWorkspace(t *testing.T, dir string, modules map[string]string) {
+	t.Helper()
+	for modulePath, version := range modules {
+		moduleDir := filepath.Join(dir, modulePath)
+		if err := os.MkdirAll(moduleDir, 0755); err != nil {
+			t.Fatalf("failed to create module dir %s: %v", moduleDir, err)
+		}
+		versionFile := filepath.Join(moduleDir, ".version")
+		if err := os.WriteFile(versionFile, []byte(version+"\n"), 0644); err != nil {
+			t.Fatalf("failed to write version file %s: %v", versionFile, err)
+		}
+	}
+}
+
+// readModuleVersion reads the version of a specific module.
+func readModuleVersion(t *testing.T, dir, modulePath string) string {
+	t.Helper()
+	versionFile := filepath.Join(dir, modulePath, ".version")
+	data, err := os.ReadFile(versionFile)
+	if err != nil {
+		t.Fatalf("failed to read version file %s: %v", versionFile, err)
+	}
+	return strings.TrimSpace(string(data))
+}
+
+// TestIntegration_ModulesList tests the modules list command.
+func TestIntegration_ModulesList(t *testing.T) {
+	t.Run("lists discovered modules", func(t *testing.T) {
+		dir := t.TempDir()
+		setupMultiModuleWorkspace(t, dir, map[string]string{
+			"services/api": "1.0.0",
+			"services/web": "2.0.0",
+			"packages/lib": "0.5.0",
+		})
+
+		output, err := runSemver(t, dir, "modules", "list")
+		if err != nil {
+			t.Fatalf("modules list failed: %v, output: %s", err, output)
+		}
+
+		// Should list all modules
+		if !strings.Contains(output, "api") {
+			t.Error("expected output to contain 'api'")
+		}
+		if !strings.Contains(output, "web") {
+			t.Error("expected output to contain 'web'")
+		}
+		if !strings.Contains(output, "lib") {
+			t.Error("expected output to contain 'lib'")
+		}
+	})
+
+	t.Run("lists modules in JSON format", func(t *testing.T) {
+		dir := t.TempDir()
+		setupMultiModuleWorkspace(t, dir, map[string]string{
+			"module-a": "1.0.0",
+			"module-b": "2.0.0",
+		})
+
+		output, err := runSemver(t, dir, "modules", "list", "--format", "json")
+		if err != nil {
+			t.Fatalf("modules list --format json failed: %v, output: %s", err, output)
+		}
+
+		// JSON output is an array of module objects
+		if !strings.Contains(output, `"name"`) {
+			t.Error("expected JSON output with 'name' key")
+		}
+		if !strings.Contains(output, `"version"`) {
+			t.Error("expected JSON output with 'version' key")
+		}
+		if !strings.Contains(output, "module-a") {
+			t.Error("expected JSON output to contain 'module-a'")
+		}
+	})
+
+	t.Run("handles empty workspace", func(t *testing.T) {
+		dir := t.TempDir()
+
+		output, err := runSemver(t, dir, "modules", "list")
+		// Should not error but show no modules found
+		if err != nil {
+			// Check if it's a "no modules found" type message
+			if !strings.Contains(output, "No modules") && !strings.Contains(output, "no modules") {
+				t.Fatalf("modules list failed unexpectedly: %v, output: %s", err, output)
+			}
+		}
+	})
+}
+
+// TestIntegration_ModulesDiscover tests the modules discover command.
+func TestIntegration_ModulesDiscover(t *testing.T) {
+	t.Run("discovers modules in workspace", func(t *testing.T) {
+		dir := t.TempDir()
+		setupMultiModuleWorkspace(t, dir, map[string]string{
+			"app":      "1.0.0",
+			"lib/core": "0.1.0",
+		})
+
+		output, err := runSemver(t, dir, "modules", "discover")
+		if err != nil {
+			t.Fatalf("modules discover failed: %v, output: %s", err, output)
+		}
+
+		// Should show discovery information
+		if !strings.Contains(output, "app") && !strings.Contains(output, "core") {
+			t.Error("expected output to contain discovered module names")
+		}
+	})
+}
+
+// TestIntegration_MultiModule_ShowAll tests show command with --all flag.
+func TestIntegration_MultiModule_ShowAll(t *testing.T) {
+	t.Run("shows all module versions", func(t *testing.T) {
+		dir := t.TempDir()
+		setupMultiModuleWorkspace(t, dir, map[string]string{
+			"api": "1.0.0",
+			"web": "2.0.0",
+		})
+
+		output, err := runSemver(t, dir, "show", "--all", "--non-interactive")
+		if err != nil {
+			t.Fatalf("show --all failed: %v, output: %s", err, output)
+		}
+
+		// Should contain both module versions
+		if !strings.Contains(output, "1.0.0") {
+			t.Error("expected output to contain '1.0.0'")
+		}
+		if !strings.Contains(output, "2.0.0") {
+			t.Error("expected output to contain '2.0.0'")
+		}
+	})
+
+	t.Run("shows versions in JSON format", func(t *testing.T) {
+		dir := t.TempDir()
+		setupMultiModuleWorkspace(t, dir, map[string]string{
+			"api": "1.0.0",
+			"web": "2.0.0",
+		})
+
+		output, err := runSemver(t, dir, "show", "--all", "--non-interactive", "--format", "json")
+		if err != nil {
+			t.Fatalf("show --all --format json failed: %v, output: %s", err, output)
+		}
+
+		// Should be valid JSON with results
+		if !strings.Contains(output, `"results"`) {
+			t.Error("expected JSON output to contain 'results'")
+		}
+		if !strings.Contains(output, `"success": true`) {
+			t.Error("expected JSON output to show success")
+		}
+	})
+}
+
+// TestIntegration_MultiModule_BumpAll tests bump command with --all flag.
+func TestIntegration_MultiModule_BumpAll(t *testing.T) {
+	t.Run("bumps all module versions", func(t *testing.T) {
+		dir := t.TempDir()
+		setupMultiModuleWorkspace(t, dir, map[string]string{
+			"api": "1.0.0",
+			"web": "2.0.0",
+		})
+
+		output, err := runSemver(t, dir, "bump", "patch", "--all", "--non-interactive")
+		if err != nil {
+			t.Fatalf("bump patch --all failed: %v, output: %s", err, output)
+		}
+
+		// Verify both modules were bumped
+		apiVersion := readModuleVersion(t, dir, "api")
+		if apiVersion != "1.0.1" {
+			t.Errorf("expected api version '1.0.1', got %q", apiVersion)
+		}
+
+		webVersion := readModuleVersion(t, dir, "web")
+		if webVersion != "2.0.1" {
+			t.Errorf("expected web version '2.0.1', got %q", webVersion)
+		}
+	})
+
+	t.Run("bumps minor across all modules", func(t *testing.T) {
+		dir := t.TempDir()
+		setupMultiModuleWorkspace(t, dir, map[string]string{
+			"api": "1.0.0",
+			"web": "2.0.0",
+		})
+
+		_, err := runSemver(t, dir, "bump", "minor", "--all", "--non-interactive")
+		if err != nil {
+			t.Fatalf("bump minor --all failed: %v", err)
+		}
+
+		apiVersion := readModuleVersion(t, dir, "api")
+		if apiVersion != "1.1.0" {
+			t.Errorf("expected api version '1.1.0', got %q", apiVersion)
+		}
+
+		webVersion := readModuleVersion(t, dir, "web")
+		if webVersion != "2.1.0" {
+			t.Errorf("expected web version '2.1.0', got %q", webVersion)
+		}
+	})
+}
+
+// TestIntegration_MultiModule_SpecificModule tests --module flag.
+func TestIntegration_MultiModule_SpecificModule(t *testing.T) {
+	t.Run("bumps only specified module", func(t *testing.T) {
+		dir := t.TempDir()
+		setupMultiModuleWorkspace(t, dir, map[string]string{
+			"api": "1.0.0",
+			"web": "2.0.0",
+		})
+
+		_, err := runSemver(t, dir, "bump", "patch", "--module", "api", "--non-interactive")
+		if err != nil {
+			t.Fatalf("bump patch --module api failed: %v", err)
+		}
+
+		// Only api should be bumped
+		apiVersion := readModuleVersion(t, dir, "api")
+		if apiVersion != "1.0.1" {
+			t.Errorf("expected api version '1.0.1', got %q", apiVersion)
+		}
+
+		// web should remain unchanged
+		webVersion := readModuleVersion(t, dir, "web")
+		if webVersion != "2.0.0" {
+			t.Errorf("expected web version '2.0.0', got %q", webVersion)
+		}
+	})
+
+	t.Run("shows only specified module", func(t *testing.T) {
+		dir := t.TempDir()
+		setupMultiModuleWorkspace(t, dir, map[string]string{
+			"api": "1.0.0",
+			"web": "2.0.0",
+		})
+
+		output, err := runSemver(t, dir, "show", "--module", "api", "--non-interactive")
+		if err != nil {
+			t.Fatalf("show --module api failed: %v, output: %s", err, output)
+		}
+
+		// Should show only api version
+		if !strings.Contains(output, "1.0.0") {
+			t.Error("expected output to contain '1.0.0'")
+		}
+	})
+}
+
+// TestIntegration_MultiModule_SetAll tests set command with --all flag.
+func TestIntegration_MultiModule_SetAll(t *testing.T) {
+	t.Run("sets all module versions", func(t *testing.T) {
+		dir := t.TempDir()
+		setupMultiModuleWorkspace(t, dir, map[string]string{
+			"api": "1.0.0",
+			"web": "2.0.0",
+		})
+
+		output, err := runSemver(t, dir, "set", "3.0.0", "--all", "--non-interactive")
+		if err != nil {
+			t.Fatalf("set 3.0.0 --all failed: %v, output: %s", err, output)
+		}
+
+		// Both modules should have version 3.0.0
+		apiVersion := readModuleVersion(t, dir, "api")
+		if apiVersion != "3.0.0" {
+			t.Errorf("expected api version '3.0.0', got %q", apiVersion)
+		}
+
+		webVersion := readModuleVersion(t, dir, "web")
+		if webVersion != "3.0.0" {
+			t.Errorf("expected web version '3.0.0', got %q", webVersion)
+		}
+	})
+}
+
+// TestIntegration_MultiModule_YesFlag tests --yes flag for auto-selection.
+func TestIntegration_MultiModule_YesFlag(t *testing.T) {
+	t.Run("auto-selects all modules with --yes", func(t *testing.T) {
+		dir := t.TempDir()
+		setupMultiModuleWorkspace(t, dir, map[string]string{
+			"api": "1.0.0",
+			"web": "2.0.0",
+		})
+
+		output, err := runSemver(t, dir, "bump", "patch", "--yes")
+		if err != nil {
+			t.Fatalf("bump patch --yes failed: %v, output: %s", err, output)
+		}
+
+		// Both modules should be bumped
+		apiVersion := readModuleVersion(t, dir, "api")
+		if apiVersion != "1.0.1" {
+			t.Errorf("expected api version '1.0.1', got %q", apiVersion)
+		}
+
+		webVersion := readModuleVersion(t, dir, "web")
+		if webVersion != "2.0.1" {
+			t.Errorf("expected web version '2.0.1', got %q", webVersion)
+		}
+	})
+}
+
+// TestIntegration_MultiModule_QuietFlag tests --quiet flag.
+func TestIntegration_MultiModule_QuietFlag(t *testing.T) {
+	t.Run("shows only summary with --quiet", func(t *testing.T) {
+		dir := t.TempDir()
+		setupMultiModuleWorkspace(t, dir, map[string]string{
+			"api": "1.0.0",
+			"web": "2.0.0",
+		})
+
+		output, err := runSemver(t, dir, "bump", "patch", "--all", "--non-interactive", "--quiet")
+		if err != nil {
+			t.Fatalf("bump patch --all --quiet failed: %v, output: %s", err, output)
+		}
+
+		// Should show summary, not individual module results
+		if !strings.Contains(output, "Success") && !strings.Contains(output, "module") {
+			t.Error("expected summary output")
+		}
+	})
+}
+
+// TestIntegration_MultiModule_NestedDirectories tests modules in nested directories.
+func TestIntegration_MultiModule_NestedDirectories(t *testing.T) {
+	t.Run("discovers modules in nested directories", func(t *testing.T) {
+		dir := t.TempDir()
+		setupMultiModuleWorkspace(t, dir, map[string]string{
+			"services/api/v1":      "1.0.0",
+			"services/api/v2":      "2.0.0",
+			"packages/shared/core": "0.1.0",
+			"packages/shared/util": "0.2.0",
+		})
+
+		output, err := runSemver(t, dir, "modules", "list")
+		if err != nil {
+			t.Fatalf("modules list failed: %v, output: %s", err, output)
+		}
+
+		// Should discover all nested modules
+		expectedModules := []string{"v1", "v2", "core", "util"}
+		for _, mod := range expectedModules {
+			if !strings.Contains(output, mod) {
+				t.Errorf("expected output to contain '%s'", mod)
+			}
+		}
+	})
+}
+
+// TestIntegration_MultiModule_SingleModuleFallback tests fallback to single module mode.
+func TestIntegration_MultiModule_SingleModuleFallback(t *testing.T) {
+	t.Run("uses single module mode when only root .version exists", func(t *testing.T) {
+		dir := t.TempDir()
+		writeVersionFile(t, dir, "1.0.0")
+
+		output, err := runSemver(t, dir, "show")
+		if err != nil {
+			t.Fatalf("show failed: %v, output: %s", err, output)
+		}
+
+		if output != "1.0.0" {
+			t.Errorf("expected '1.0.0', got %q", output)
+		}
+	})
+
+	t.Run("prefers --path over multi-module discovery", func(t *testing.T) {
+		dir := t.TempDir()
+		setupMultiModuleWorkspace(t, dir, map[string]string{
+			"api": "1.0.0",
+			"web": "2.0.0",
+		})
+
+		// Also create a root .version file
+		writeVersionFile(t, dir, "0.0.1")
+
+		output, err := runSemver(t, dir, "show", "--path", filepath.Join(dir, ".version"))
+		if err != nil {
+			t.Fatalf("show --path failed: %v, output: %s", err, output)
+		}
+
+		if output != "0.0.1" {
+			t.Errorf("expected '0.0.1' from explicit path, got %q", output)
+		}
+	})
+}
+
+// TestIntegration_MultiModule_ErrorHandling tests error scenarios.
+func TestIntegration_MultiModule_ErrorHandling(t *testing.T) {
+	t.Run("fails when module not found", func(t *testing.T) {
+		dir := t.TempDir()
+		setupMultiModuleWorkspace(t, dir, map[string]string{
+			"api": "1.0.0",
+			"web": "2.0.0",
+		})
+
+		_, err := runSemver(t, dir, "bump", "patch", "--module", "nonexistent")
+		if err == nil {
+			t.Error("expected error for non-existent module")
+		}
+	})
+
+	t.Run("handles no modules gracefully", func(t *testing.T) {
+		dir := t.TempDir()
+		// Empty directory with no .version files
+
+		_, err := runSemver(t, dir, "bump", "patch", "--all")
+		if err == nil {
+			t.Error("expected error when no modules found")
+		}
+	})
+}
+
+// TestIntegration_Doctor tests the doctor command.
+func TestIntegration_Doctor(t *testing.T) {
+	t.Run("runs doctor check successfully", func(t *testing.T) {
+		dir := t.TempDir()
+		writeVersionFile(t, dir, "1.0.0")
+
+		output, err := runSemver(t, dir, "doctor")
+		if err != nil {
+			t.Fatalf("doctor failed: %v, output: %s", err, output)
+		}
+
+		// Doctor should output some diagnostic info
+		if len(output) == 0 {
+			t.Error("expected doctor to produce output")
+		}
+	})
+}
+
+// TestIntegration_NoColorFlag tests --no-color flag.
+func TestIntegration_NoColorFlag(t *testing.T) {
+	t.Run("disables colored output", func(t *testing.T) {
+		dir := t.TempDir()
+		writeVersionFile(t, dir, "1.0.0")
+
+		output, err := runSemver(t, dir, "show", "--no-color")
+		if err != nil {
+			t.Fatalf("show --no-color failed: %v, output: %s", err, output)
+		}
+
+		// Output should not contain ANSI escape codes
+		if strings.Contains(output, "\033[") {
+			t.Error("expected no ANSI escape codes with --no-color")
+		}
+	})
+}

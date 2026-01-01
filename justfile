@@ -32,6 +32,21 @@ clean:
     rm -rf {{ build_dir }}
     {{ goclean }} -cache
 
+# Run go-modernize with auto-fix
+modernize:
+    @echo "* Running go-modernize"
+    modernize --fix ./...
+
+# Run golangci-lint
+lint:
+    @echo "* Running golangci-lint"
+    golangci-lint run ./...
+
+# Run goreportcard-cli
+reportcard:
+    @echo "* Running goreportcard-cli..."
+    goreportcard-cli -v
+
 # Run all tests and generate coverage report
 test:
     @echo "* Run all tests and generate coverage report."
@@ -45,18 +60,8 @@ test-force:
     {{ go }} clean -testcache
     just test
 
-# Run go-modernize with auto-fix
-modernize:
-    @echo "* Running go-modernize"
-    modernize --fix ./...
-
-# Run modernize, lint, and test
-check: modernize lint test
-
-# Run golangci-lint
-lint:
-    @echo "* Running golangci-lint"
-    golangci-lint run ./...
+# Run modernize, lint, and reportcard
+check: modernize lint reportcard
 
 # Build the binary with development metadata
 build:
@@ -65,6 +70,6 @@ build:
     {{ gobuild }} -o {{ build_dir }}/{{ app_name }} ./{{ cmd_dir }}
 
 # Install the binary using Go install
-install: modernize lint test-force
+install: check test-force
     @echo "* Install the binary using Go install"
     cd {{ cmd_dir }} && {{ go }} install .

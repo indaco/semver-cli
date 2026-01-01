@@ -8,6 +8,7 @@ import (
 	"github.com/indaco/semver-cli/internal/clix"
 	"github.com/indaco/semver-cli/internal/config"
 	"github.com/indaco/semver-cli/internal/hooks"
+	"github.com/indaco/semver-cli/internal/operations"
 	"github.com/indaco/semver-cli/internal/plugins/commitparser"
 	"github.com/indaco/semver-cli/internal/plugins/commitparser/gitlog"
 	"github.com/indaco/semver-cli/internal/semver"
@@ -22,7 +23,7 @@ func autoCmd(cfg *config.Config) *cli.Command {
 		Name:    "auto",
 		Aliases: []string{"next"},
 		Usage:   "Smart bump logic (e.g. promote pre-release or bump patch)",
-		UsageText: `semver bump auto [--label patch|minor|major] [--meta data] [--preserve-meta] [--since ref] [--until ref] [--no-infer]
+		UsageText: `semver bump auto [--label patch|minor|major] [--meta data] [--preserve-meta] [--since ref] [--until ref] [--no-infer] [--all] [--module name]
 
 By default, semver tries to infer the bump type from recent commit messages using the built-in commit-parser plugin.
 You can override this behavior with the --label flag, disable it explicitly with --no-infer, or disable the plugin via the config file (.semver.yaml).`,
@@ -61,14 +62,13 @@ You can override this behavior with the --label flag, disable it explicitly with
 			},
 		},
 		Action: func(ctx context.Context, cmd *cli.Command) error {
-			return runBumpAuto(cfg, cmd)
+			return runBumpAuto(ctx, cfg, cmd)
 		},
 	}
 }
 
 // runBumpAuto performs smart bumping (e.g. promote, patch, infer).
-func runBumpAuto(cfg *config.Config, cmd *cli.Command) error {
-	path := cmd.String("path")
+func runBumpAuto(ctx context.Context, cfg *config.Config, cmd *cli.Command) error {
 	label := cmd.String("label")
 	meta := cmd.String("meta")
 	since := cmd.String("since")
@@ -79,6 +79,62 @@ func runBumpAuto(cfg *config.Config, cmd *cli.Command) error {
 
 	disableInfer := isNoInferFlag || (cfg != nil && cfg.Plugins != nil && !cfg.Plugins.CommitParser)
 
+	// Run pre-release hooks first (before any version operations)
+	if err := hooks.RunPreReleaseHooksFn(isSkipHooks); err != nil {
+		return err
+	}
+
+	// Get execution context to determine single vs multi-module mode
+	execCtx, err := clix.GetExecutionContext(ctx, cmd, cfg)
+	if err != nil {
+		return err
+	}
+
+	// Handle single-module mode
+	if execCtx.IsSingleModule() {
+		return runSingleModuleAuto(cmd, execCtx.Path, label, meta, since, until, isPreserveMeta, disableInfer)
+	}
+
+	// Handle multi-module mode
+	// For auto bump, we need to determine the bump type first
+	bumpType := determineBumpType(label, disableInfer, since, until)
+	return runMultiModuleBump(ctx, cmd, execCtx, bumpType, "", meta, isPreserveMeta)
+}
+
+// determineBumpType determines the bump type for multi-module auto bump.
+func determineBumpType(label string, disableInfer bool, since, until string) operations.BumpType {
+	switch label {
+	case "patch":
+		return operations.BumpPatch
+	case "minor":
+		return operations.BumpMinor
+	case "major":
+		return operations.BumpMajor
+	case "":
+		if !disableInfer {
+			inferred := tryInferBumpTypeFromCommitParserPluginFn(since, until)
+			if inferred != "" {
+				fmt.Fprintf(os.Stderr, "Inferred bump type: %s\n", inferred)
+				switch inferred {
+				case "minor":
+					return operations.BumpMinor
+				case "major":
+					return operations.BumpMajor
+				default:
+					return operations.BumpPatch
+				}
+			}
+		}
+		// Default to auto which will handle pre-release promotion or patch bump
+		return operations.BumpAuto
+	default:
+		// Invalid label, will be caught during execution
+		return operations.BumpAuto
+	}
+}
+
+// runSingleModuleAuto handles the single-module auto bump operation.
+func runSingleModuleAuto(cmd *cli.Command, path, label, meta, since, until string, isPreserveMeta, disableInfer bool) error {
 	if _, err := clix.FromCommandFn(cmd); err != nil {
 		return err
 	}
@@ -86,10 +142,6 @@ func runBumpAuto(cfg *config.Config, cmd *cli.Command) error {
 	current, err := semver.ReadVersion(path)
 	if err != nil {
 		return fmt.Errorf("failed to read version: %w", err)
-	}
-
-	if err := hooks.RunPreReleaseHooksFn(isSkipHooks); err != nil {
-		return err
 	}
 
 	next, err := getNextVersion(current, label, disableInfer, since, until, isPreserveMeta)
@@ -130,7 +182,7 @@ func getNextVersion(
 		if !disableInfer {
 			inferred := tryInferBumpTypeFromCommitParserPluginFn(since, until)
 			if inferred != "" {
-				fmt.Fprintf(os.Stderr, "🔍 Inferred bump type: %s\n", inferred)
+				fmt.Fprintf(os.Stderr, "Inferred bump type: %s\n", inferred)
 
 				if current.PreRelease != "" {
 					return promotePreRelease(current, preserveMeta), nil

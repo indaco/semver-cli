@@ -20,7 +20,7 @@ func TestCLI_SetVersionCommandVariants(t *testing.T) {
 
 	// Prepare and run the CLI command
 	cfg := &config.Config{Path: versionPath}
-	appCli := testutils.BuildCLIForTests(cfg.Path, []*cli.Command{Run()})
+	appCli := testutils.BuildCLIForTests(cfg.Path, []*cli.Command{Run(cfg)})
 
 	tests := []struct {
 		name     string
@@ -50,7 +50,7 @@ func TestCLI_SetVersionCommand_InvalidFormat(t *testing.T) {
 
 	// Prepare and run the CLI command
 	cfg := &config.Config{Path: versionPath}
-	appCli := testutils.BuildCLIForTests(cfg.Path, []*cli.Command{Run()})
+	appCli := testutils.BuildCLIForTests(cfg.Path, []*cli.Command{Run(cfg)})
 
 	err := appCli.Run(context.Background(), []string{"semver", "set", "invalid.version"})
 	if err == nil {
@@ -68,7 +68,7 @@ func TestCLI_SetVersionCommand_MissingArgument(t *testing.T) {
 
 		// Prepare and run the CLI command
 		cfg := &config.Config{Path: versionPath}
-		appCli := testutils.BuildCLIForTests(cfg.Path, []*cli.Command{Run()})
+		appCli := testutils.BuildCLIForTests(cfg.Path, []*cli.Command{Run(cfg)})
 
 		err := appCli.Run(context.Background(), []string{"semver", "set", "--path", versionPath})
 		if err != nil {
@@ -107,7 +107,7 @@ func TestCLI_SetVersionCommand_SaveError(t *testing.T) {
 
 	// Prepare and run the CLI command
 	cfg := &config.Config{Path: versionPath}
-	appCli := testutils.BuildCLIForTests(cfg.Path, []*cli.Command{Run()})
+	appCli := testutils.BuildCLIForTests(cfg.Path, []*cli.Command{Run(cfg)})
 
 	err := appCli.Run(context.Background(), []string{
 		"semver", "set", "3.0.0", "--path", versionPath,

@@ -5,17 +5,19 @@ import (
 	"fmt"
 
 	"github.com/indaco/semver-cli/internal/clix"
+	"github.com/indaco/semver-cli/internal/config"
 	"github.com/indaco/semver-cli/internal/hooks"
+	"github.com/indaco/semver-cli/internal/operations"
 	"github.com/indaco/semver-cli/internal/semver"
 	"github.com/urfave/cli/v3"
 )
 
 // releaseCmd returns the "release" subcommand.
-func releaseCmd() *cli.Command {
+func releaseCmd(cfg *config.Config) *cli.Command {
 	return &cli.Command{
 		Name:      "release",
-		Usage:     "Promote pre-release to final version (e.g. 1.2.3-alpha → 1.2.3)",
-		UsageText: "semver bump release [--preserve-meta]",
+		Usage:     "Promote pre-release to final version (e.g. 1.2.3-alpha -> 1.2.3)",
+		UsageText: "semver bump release [--preserve-meta] [--all] [--module name]",
 		Flags: []cli.Flag{
 			&cli.BoolFlag{
 				Name:  "skip-hooks",
@@ -23,17 +25,44 @@ func releaseCmd() *cli.Command {
 			},
 		},
 		Action: func(ctx context.Context, cmd *cli.Command) error {
-			return runBumpRelease(cmd)
+			return runBumpRelease(ctx, cmd, cfg)
 		},
 	}
 }
 
 // runBumpRelease promotes a pre-release version to a final release.
-func runBumpRelease(cmd *cli.Command) error {
-	path := cmd.String("path")
+func runBumpRelease(ctx context.Context, cmd *cli.Command, cfg *config.Config) error {
 	isPreserveMeta := cmd.Bool("preserve-meta")
 	isSkipHooks := cmd.Bool("skip-hooks")
 
+	// Run pre-release hooks first (before any version operations)
+	if err := hooks.RunPreReleaseHooksFn(isSkipHooks); err != nil {
+		return err
+	}
+
+	// Get execution context to determine single vs multi-module mode
+	execCtx, err := clix.GetExecutionContext(ctx, cmd, cfg)
+	if err != nil {
+		return err
+	}
+
+	// Handle single-module mode
+	if execCtx.IsSingleModule() {
+		return runSingleModuleRelease(cmd, execCtx.Path, isPreserveMeta)
+	}
+
+	// Handle multi-module mode
+	// For release, we pass empty pre-release and metadata, preserveMetadata flag controls the behavior
+	meta := ""
+	if isPreserveMeta {
+		// The BumpOperation will handle preserve-meta correctly
+		meta = ""
+	}
+	return runMultiModuleBump(ctx, cmd, execCtx, operations.BumpRelease, "", meta, isPreserveMeta)
+}
+
+// runSingleModuleRelease handles the single-module release operation.
+func runSingleModuleRelease(cmd *cli.Command, path string, isPreserveMeta bool) error {
 	if _, err := clix.FromCommandFn(cmd); err != nil {
 		return err
 	}
@@ -41,10 +70,6 @@ func runBumpRelease(cmd *cli.Command) error {
 	version, err := semver.ReadVersion(path)
 	if err != nil {
 		return fmt.Errorf("failed to read version: %w", err)
-	}
-
-	if err := hooks.RunPreReleaseHooksFn(isSkipHooks); err != nil {
-		return err
 	}
 
 	version.PreRelease = ""

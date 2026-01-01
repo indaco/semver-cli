@@ -21,7 +21,7 @@ func TestCLI_ShowCommand(t *testing.T) {
 
 	// Prepare and run the CLI command
 	cfg := &config.Config{Path: versionPath}
-	appCli := testutils.BuildCLIForTests(cfg.Path, []*cli.Command{Run()})
+	appCli := testutils.BuildCLIForTests(cfg.Path, []*cli.Command{Run(cfg)})
 
 	output, err := testutils.CaptureStdout(func() {
 		testutils.RunCLITest(t, appCli, []string{"semver", "show"}, tmpDir)
@@ -42,7 +42,7 @@ func TestCLI_ShowCommand_Strict_MissingFile(t *testing.T) {
 
 		// Prepare and run the CLI command
 		cfg := &config.Config{Path: versionPath}
-		appCli := testutils.BuildCLIForTests(cfg.Path, []*cli.Command{Run()})
+		appCli := testutils.BuildCLIForTests(cfg.Path, []*cli.Command{Run(cfg)})
 
 		err := appCli.Run(context.Background(), []string{"semver", "show", "--strict"})
 		if err != nil {
@@ -72,7 +72,7 @@ func TestCLI_ShowCommand_Strict_FileExists(t *testing.T) {
 
 	// Prepare and run the CLI command
 	cfg := &config.Config{Path: versionPath}
-	appCli := testutils.BuildCLIForTests(cfg.Path, []*cli.Command{Run()})
+	appCli := testutils.BuildCLIForTests(cfg.Path, []*cli.Command{Run(cfg)})
 
 	output, err := testutils.CaptureStdout(func() {
 		testutils.RunCLITest(t, appCli, []string{"semver", "show", "--strict"}, tmpDir)
@@ -97,7 +97,7 @@ func TestCLI_ShowCommand_InvalidVersionContent(t *testing.T) {
 
 	// Prepare and run the CLI command
 	cfg := &config.Config{Path: versionPath}
-	appCli := testutils.BuildCLIForTests(cfg.Path, []*cli.Command{Run()})
+	appCli := testutils.BuildCLIForTests(cfg.Path, []*cli.Command{Run(cfg)})
 
 	err := appCli.Run(context.Background(), []string{"semver", "show"})
 	if err == nil {

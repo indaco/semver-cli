@@ -2,9 +2,11 @@ package bumpcmd
 
 import (
 	"context"
+	"fmt"
 
 	"github.com/indaco/semver-cli/internal/config"
 	"github.com/indaco/semver-cli/internal/extensionmgr"
+	"github.com/indaco/semver-cli/internal/plugins/tagmanager"
 	"github.com/indaco/semver-cli/internal/semver"
 )
 
@@ -52,4 +54,50 @@ func calculateNewBuild(meta string, preserveMeta bool, currentBuild string) stri
 		return currentBuild
 	}
 	return ""
+}
+
+// validateTagAvailable checks if a tag can be created for the version.
+// Returns nil if tag manager is not enabled or tag is available.
+func validateTagAvailable(version semver.SemVersion) error {
+	tm := tagmanager.GetTagManagerFn()
+	if tm == nil {
+		return nil
+	}
+
+	// Check if the plugin is enabled and auto-create is on
+	if plugin, ok := tm.(*tagmanager.TagManagerPlugin); ok {
+		if !plugin.IsEnabled() {
+			return nil
+		}
+	}
+
+	return tm.ValidateTagAvailable(version)
+}
+
+// createTagAfterBump creates a git tag for the version if tag manager is enabled.
+func createTagAfterBump(version semver.SemVersion, bumpType string) error {
+	tm := tagmanager.GetTagManagerFn()
+	if tm == nil {
+		return nil
+	}
+
+	// Check if the plugin is enabled and auto-create is on
+	plugin, ok := tm.(*tagmanager.TagManagerPlugin)
+	if !ok || !plugin.IsEnabled() {
+		return nil
+	}
+
+	message := fmt.Sprintf("Release %s (%s bump)", version.String(), bumpType)
+	if err := tm.CreateTag(version, message); err != nil {
+		return fmt.Errorf("failed to create tag: %w", err)
+	}
+
+	tagName := tm.FormatTagName(version)
+	fmt.Printf("Created tag: %s\n", tagName)
+
+	if plugin.GetConfig().Push {
+		fmt.Printf("Pushed tag: %s\n", tagName)
+	}
+
+	return nil
 }

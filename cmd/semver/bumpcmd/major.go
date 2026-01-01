@@ -63,13 +63,18 @@ func runSingleModuleMajorBump(ctx context.Context, cmd *cli.Command, cfg *config
 		return err
 	}
 
-	// Calculate and run pre-bump hooks
+	// Calculate new version
 	newVersion := previousVersion
 	newVersion.Major++
 	newVersion.Minor = 0
 	newVersion.Patch = 0
 	newVersion.PreRelease = pre
 	newVersion.Build = calculateNewBuild(meta, isPreserveMeta, previousVersion.Build)
+
+	// Validate tag availability before bumping
+	if err := validateTagAvailable(newVersion); err != nil {
+		return err
+	}
 
 	if err := runPreBumpExtensionHooks(ctx, cfg, newVersion.String(), previousVersion.String(), "major", isSkipHooks); err != nil {
 		return err
@@ -79,5 +84,10 @@ func runSingleModuleMajorBump(ctx context.Context, cmd *cli.Command, cfg *config
 		return err
 	}
 
-	return runPostBumpExtensionHooks(ctx, cfg, execCtx.Path, previousVersion.String(), "major", isSkipHooks)
+	if err := runPostBumpExtensionHooks(ctx, cfg, execCtx.Path, previousVersion.String(), "major", isSkipHooks); err != nil {
+		return err
+	}
+
+	// Create tag after successful bump
+	return createTagAfterBump(newVersion, "major")
 }

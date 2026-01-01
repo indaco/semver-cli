@@ -89,16 +89,97 @@ Supported types:
 | `feat!` or `fix!`        | major | Breaking change         |
 | Any + `BREAKING CHANGE:` | major | Breaking change in body |
 
+### tagmanager Plugin
+
+**Status**: Built-in, disabled by default
+
+The `tagmanager` plugin automatically creates and manages git tags synchronized with version bumps. It validates tag availability before bumping and creates tags after successful version updates.
+
+#### How It Works
+
+1. Before a version bump, validates that the target tag doesn't already exist (fail-fast)
+2. After a successful bump, creates a git tag for the new version
+3. Optionally pushes the tag to the remote repository
+
+#### Configuration
+
+Enable and configure in `.semver.yaml`:
+
+```yaml
+plugins:
+  tag-manager:
+    enabled: true # Enable the plugin (required)
+    auto-create: true # Create tags automatically after bumps (default: true)
+    prefix: "v" # Tag prefix (default: "v")
+    annotate: true # Create annotated tags with message (default: true)
+    push: false # Push tags to remote after creation (default: false)
+```
+
+#### Tag Formats
+
+| Version       | Prefix     | Tag Name         |
+| ------------- | ---------- | ---------------- |
+| 1.2.3         | `v`        | `v1.2.3`         |
+| 1.2.3         | `release-` | `release-1.2.3`  |
+| 1.2.3         | (empty)    | `1.2.3`          |
+| 1.0.0-alpha.1 | `v`        | `v1.0.0-alpha.1` |
+
+#### Usage
+
+Once enabled, the plugin works automatically with all bump commands:
+
+```bash
+# Bump patch version and create tag
+semver bump patch
+# Output: Version bumped from 1.2.3 to 1.2.4
+# Output: Created tag: v1.2.4
+
+# Bump with push enabled
+semver bump minor  # With push: true in config
+# Output: Version bumped from 1.2.4 to 1.3.0
+# Output: Created tag: v1.3.0
+# Output: Pushed tag: v1.3.0
+```
+
+#### Tag Validation
+
+The plugin validates tag availability **before** bumping:
+
+```bash
+# If v1.3.0 already exists:
+semver bump minor
+# Error: tag v1.3.0 already exists
+# Version file remains unchanged
+```
+
+This fail-fast behavior prevents version file updates when the corresponding tag cannot be created.
+
+#### Annotated vs Lightweight Tags
+
+With `annotate: true` (default):
+
+```bash
+git tag -a v1.2.3 -m "Release 1.2.3 (patch bump)"
+```
+
+With `annotate: false`:
+
+```bash
+git tag v1.2.3
+```
+
+Annotated tags include metadata (author, date, message) and are recommended for release tags.
+
 ## Plugin vs Extension Comparison
 
-| Feature           | Plugins                        | Extensions                          |
-| ----------------- | ------------------------------ | ----------------------------------- |
-| **Compilation**   | Built-in, compiled with CLI    | External scripts                    |
-| **Performance**   | Native Go, <1ms                | Shell/Python/Node, ~50-100ms        |
-| **Installation**  | None required                  | `semver extension install`          |
-| **Configuration** | `.semver.yaml` plugins section | `.semver.yaml` extensions section   |
-| **Use Case**      | Core version logic             | Hook-based automation               |
-| **Examples**      | `commitparser`                 | `changelog-generator`, `git-tagger` |
+| Feature           | Plugins                        | Extensions                        |
+| ----------------- | ------------------------------ | --------------------------------- |
+| **Compilation**   | Built-in, compiled with CLI    | External scripts                  |
+| **Performance**   | Native Go, <1ms                | Shell/Python/Node, ~50-100ms      |
+| **Installation**  | None required                  | `semver extension install`        |
+| **Configuration** | `.semver.yaml` plugins section | `.semver.yaml` extensions section |
+| **Use Case**      | Core version logic             | Hook-based automation             |
+| **Examples**      | `commitparser`, `tagmanager`   | `changelog-generator`             |
 
 ## Plugins + Extensions: Powerful Combinations
 
@@ -138,15 +219,11 @@ semver bump auto
 ```yaml
 plugins:
   commit-parser: true
-
-extensions:
-  - name: git-tagger
+  tag-manager:
     enabled: true
-    hooks: [post-bump]
-    config:
-      prefix: "v"
-      annotated: true
-      push: true
+    prefix: "v"
+    annotate: true
+    push: true
 ```
 
 Workflow:
@@ -154,9 +231,10 @@ Workflow:
 ```bash
 semver bump auto
 # 1. Plugin analyzes: feat commits -> minor bump
-# 2. Version: 1.2.3 -> 1.3.0
-# 3. Extension creates tag: v1.3.0
-# 4. Extension pushes tag to remote
+# 2. tagmanager validates: v1.3.0 doesn't exist
+# 3. Version: 1.2.3 -> 1.3.0
+# 4. tagmanager creates tag: v1.3.0
+# 5. tagmanager pushes tag to remote
 ```
 
 ### Pattern 3: Full CI/CD Automation
@@ -164,6 +242,10 @@ semver bump auto
 ```yaml
 plugins:
   commit-parser: true
+  tag-manager:
+    enabled: true
+    prefix: "v"
+    push: true
 
 extensions:
   - name: commit-validator
@@ -188,31 +270,25 @@ extensions:
       files:
         - path: package.json
           json_paths: [version]
-
-  - name: git-tagger
-    enabled: true
-    hooks: [post-bump]
-    config:
-      prefix: "v"
-      push: true
 ```
 
 CI Workflow:
 
 ```bash
 semver bump auto
-# Pre-bump hooks:
-#   1. commit-validator: All commits valid
-#   2. version-policy: Clean workdir, correct branch
+# Pre-bump validation:
+#   1. tagmanager: Validates tag doesn't exist
+#   2. commit-validator: All commits valid
+#   3. version-policy: Clean workdir, correct branch
 #
 # Bump operation:
-#   3. Plugin determines: feat commits -> minor
-#   4. Version: 1.2.3 -> 1.3.0
+#   4. Plugin determines: feat commits -> minor
+#   5. Version: 1.2.3 -> 1.3.0
 #
-# Post-bump hooks:
-#   5. Changelog generated
-#   6. package.json updated
-#   7. Git tag v1.3.0 created and pushed
+# Post-bump actions:
+#   6. Changelog generated
+#   7. package.json updated
+#   8. tagmanager creates and pushes tag v1.3.0
 ```
 
 ## Disabling the commitparser Plugin

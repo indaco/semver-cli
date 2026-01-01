@@ -50,6 +50,13 @@ func TestCommitParser_Parse(t *testing.T) {
 		{"Only unrelated", []string{"docs: update", "chore: clean"}, "", true},
 		{"Empty list", []string{}, "", true},
 		{"Case insensitive", []string{"Feat: Add X"}, "minor", false},
+		// Extended conventional commit tests
+		{"feat! breaking change", []string{"feat!: redesign API"}, "major", false},
+		{"fix! breaking change", []string{"fix!: change error format"}, "major", false},
+		{"feat(scope)! breaking", []string{"feat(auth)!: change token format"}, "major", false},
+		{"fix(scope): scoped fix", []string{"fix(api): handle null"}, "patch", false},
+		{"feat(scope): scoped feature", []string{"feat(ui): add button"}, "minor", false},
+		{"BREAKING-CHANGE footer", []string{"refactor: update\n\nBREAKING-CHANGE: new format"}, "major", false},
 	}
 
 	for _, tt := range tests {

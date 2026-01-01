@@ -2,7 +2,7 @@ package gitlog
 
 import (
 	"bytes"
-	"errors"
+	"fmt"
 	"os/exec"
 	"strings"
 )
@@ -34,7 +34,11 @@ func getCommits(since string, until string) ([]string, error) {
 
 	output, err := cmd.Output()
 	if err != nil {
-		return nil, errors.New(stderr.String())
+		stderrMsg := strings.TrimSpace(stderr.String())
+		if stderrMsg != "" {
+			return nil, fmt.Errorf("git log failed: %s: %w", stderrMsg, err)
+		}
+		return nil, fmt.Errorf("git log failed: %w", err)
 	}
 
 	lines := strings.Split(strings.TrimSpace(string(output)), "\n")
@@ -51,12 +55,16 @@ func getLastTag() (string, error) {
 
 	out, err := cmd.Output()
 	if err != nil {
-		return "", errors.New(stderr.String())
+		stderrMsg := strings.TrimSpace(stderr.String())
+		if stderrMsg != "" {
+			return "", fmt.Errorf("git describe failed: %s: %w", stderrMsg, err)
+		}
+		return "", fmt.Errorf("git describe failed: %w", err)
 	}
 
 	tag := strings.TrimSpace(string(out))
 	if tag == "" {
-		return "", errors.New("no tags found")
+		return "", fmt.Errorf("no tags found")
 	}
 
 	return tag, nil

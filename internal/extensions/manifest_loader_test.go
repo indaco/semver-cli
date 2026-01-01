@@ -69,7 +69,7 @@ entry: ""
 	writeExtensionYAML(t, dir, content)
 
 	_, err := LoadExtensionManifestFn(dir)
-	if err == nil || !strings.Contains(err.Error(), "plugin manifest: missing") {
+	if err == nil || !strings.Contains(err.Error(), "extension manifest: missing") {
 		t.Fatalf("expected validation error, got %v", err)
 	}
 }

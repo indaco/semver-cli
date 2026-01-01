@@ -57,3 +57,34 @@ No additional configuration required. The extension runs on the `post-bump` hook
 
 - Shell environment with standard Unix tools (grep, awk, date)
 - Write permissions in the project directory
+
+## Integration with commitparser Plugin
+
+Combine with the `commitparser` plugin for fully automated changelog generation:
+
+```yaml
+# .semver.yaml
+plugins:
+  commit-parser: true # Auto-detect bump type from commits
+
+extensions:
+  - name: changelog-generator
+    enabled: true
+    hooks: [post-bump]
+```
+
+Workflow:
+
+```bash
+# Make conventional commits
+git commit -m "feat: add user dashboard"
+git commit -m "fix: resolve API timeout"
+
+# Automatic bump + changelog update
+semver bump auto
+# -> Plugin infers "minor" bump from feat commits
+# -> Version: 1.2.3 -> 1.3.0
+# -> Extension updates CHANGELOG.md with new version
+```
+
+See [docs/PLUGINS.md](../../../docs/PLUGINS.md) for more plugin integration patterns.

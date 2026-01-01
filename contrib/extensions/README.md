@@ -21,6 +21,7 @@ Automatically updates CHANGELOG.md when version is bumped.
 Automatically creates annotated git tags after version bumps.
 
 Features:
+
 - Configurable tag prefix (default: "v")
 - Optional GPG signing
 - Optional automatic push to remote
@@ -36,6 +37,7 @@ Features:
 Synchronizes version to package.json and other JSON files.
 
 Features:
+
 - Updates multiple JSON files
 - Supports nested JSON paths
 - Preserves file formatting
@@ -50,6 +52,7 @@ Features:
 Enforces versioning policies and organizational rules.
 
 Features:
+
 - Prevents prereleases on main/master branches
 - Requires clean git working directory
 - Limits prerelease iteration numbers
@@ -65,6 +68,7 @@ Features:
 Validates commits follow conventional commit format.
 
 Features:
+
 - Validates commits since last tag
 - Configurable allowed types
 - Works with `bump auto` workflow
@@ -82,6 +86,39 @@ Features:
 | package-sync        | Node.js  | None (stdlib only)   | ~100ms       |
 | version-policy      | Go       | None (compiled)      | <5ms         |
 | commit-validator    | Python 3 | None (stdlib only)   | ~50ms        |
+
+## Plugin Integration
+
+Extensions work seamlessly with built-in plugins for complete automation.
+
+### Example: Auto-Bump Workflow
+
+The `commitparser` plugin analyzes commits, extensions handle the rest:
+
+```yaml
+# .semver.yaml
+plugins:
+  commit-parser: true # Built-in commit analysis
+
+extensions:
+  - name: commit-validator # Validates commit format
+    hooks: [pre-bump]
+  - name: changelog-generator # Updates changelog
+    hooks: [post-bump]
+  - name: git-tagger # Creates git tag
+    hooks: [post-bump]
+```
+
+```bash
+semver bump auto
+# 1. commit-validator: Ensures commits are valid
+# 2. commitparser: Analyzes commits -> determines bump type
+# 3. Version bumped
+# 4. changelog-generator: Updates CHANGELOG.md
+# 5. git-tagger: Creates and pushes tag
+```
+
+See [docs/PLUGINS.md](../../docs/PLUGINS.md) for detailed plugin documentation.
 
 ## Installing Extensions
 

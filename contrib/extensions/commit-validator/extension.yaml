@@ -1,0 +1,8 @@
+name: commit-validator
+version: 1.0.0
+description: Validates that commits follow conventional commit format
+author: semver-cli
+repository: https://github.com/indaco/semver-cli/tree/main/contrib/extensions/commit-validator
+entry: hook.py
+hooks:
+  - pre-bump

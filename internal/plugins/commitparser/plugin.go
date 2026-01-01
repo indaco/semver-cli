@@ -2,7 +2,20 @@ package commitparser
 
 import (
 	"errors"
+	"regexp"
 	"strings"
+)
+
+// Conventional commit patterns for parsing.
+var (
+	// Matches breaking change indicator: type! or type(scope)!
+	breakingExclamationRe = regexp.MustCompile(`^[a-z]+(\([a-z0-9_-]+\))?!:`)
+	// Matches BREAKING CHANGE: or BREAKING-CHANGE: footer in commit body
+	breakingFooterRe = regexp.MustCompile(`(?i)\nBREAKING[- ]CHANGE:`)
+	// Matches feat or feat(scope):
+	featRe = regexp.MustCompile(`^feat(\([a-z0-9_-]+\))?:`)
+	// Matches fix or fix(scope):
+	fixRe = regexp.MustCompile(`^fix(\([a-z0-9_-]+\))?:`)
 )
 
 /* ------------------------------------------------------------------------- */
@@ -42,19 +55,29 @@ func (p *CommitParserPlugin) Parse(commits []string) (string, error) {
 	hasFix := false
 
 	for _, commit := range commits {
-		commit = strings.ToLower(commit)
+		lowerCommit := strings.ToLower(commit)
 
-		if strings.Contains(commit, "breaking change") {
+		// Check for breaking changes: feat!:, fix!:, or BREAKING CHANGE: footer
+		if breakingExclamationRe.MatchString(lowerCommit) || breakingFooterRe.MatchString(commit) {
 			hasBreaking = true
 			continue
 		}
-		if strings.HasPrefix(commit, "feat") {
+
+		// Check for feat or feat(scope):
+		if featRe.MatchString(lowerCommit) {
 			hasFeat = true
 			continue
 		}
-		if strings.HasPrefix(commit, "fix") {
+
+		// Check for fix or fix(scope):
+		if fixRe.MatchString(lowerCommit) {
 			hasFix = true
 			continue
+		}
+
+		// Fallback: check for "breaking change" anywhere in message
+		if strings.Contains(lowerCommit, "breaking change") {
+			hasBreaking = true
 		}
 	}
 

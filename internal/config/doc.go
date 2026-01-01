@@ -20,10 +20,20 @@
 //	  commit-parser: true
 //
 //	# Extension configuration
+//	# Extensions are external scripts that hook into version lifecycle events.
+//	# See docs/EXTENSIONS.md for details on creating extensions.
 //	extensions:
-//	  - name: my-extension
-//	    path: ./extensions/my-extension
+//	  - name: my-extension        # Extension identifier
+//	    path: ./extensions/my-ext # Path to extension directory
+//	    enabled: true             # Whether extension is active
+//
+//	  - name: git-changelog
+//	    path: /home/user/.semver-extensions/git-changelog
 //	    enabled: true
+//
+//	  - name: legacy-notifier
+//	    path: ./extensions/notifier
+//	    enabled: false            # Disabled extensions are ignored
 //
 //	# Pre-release hooks (executed before version bumps)
 //	pre-release-hooks:

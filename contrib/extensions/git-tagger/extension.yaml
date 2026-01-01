@@ -1,0 +1,8 @@
+name: git-tagger
+version: 1.0.0
+description: Automatically creates annotated git tags after version bumps
+author: semver-cli
+repository: https://github.com/indaco/semver-cli/tree/main/contrib/extensions/git-tagger
+entry: hook.py
+hooks:
+  - post-bump

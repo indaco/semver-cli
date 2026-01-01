@@ -173,7 +173,7 @@ func TestExtensionRegisterCmd_MissingPathArgument(t *testing.T) {
 	}
 
 	// Define the expected error message
-	expected := "missing --path (or --url) for extension registration"
+	expected := "missing --path or --url for extension installation"
 
 	// Check if the expected error message is in the captured output
 	if !strings.Contains(string(output), expected) {

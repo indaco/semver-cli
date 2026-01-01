@@ -36,25 +36,47 @@ func runBumpMinor(ctx context.Context, cmd *cli.Command, cfg *config.Config) err
 	isPreserveMeta := cmd.Bool("preserve-meta")
 	isSkipHooks := cmd.Bool("skip-hooks")
 
-	// Run pre-release hooks first (before any version operations)
 	if err := hooks.RunPreReleaseHooksFn(isSkipHooks); err != nil {
 		return err
 	}
 
-	// Get execution context to determine single vs multi-module mode
 	execCtx, err := clix.GetExecutionContext(ctx, cmd, cfg)
 	if err != nil {
 		return err
 	}
 
-	// Handle single-module mode
-	if execCtx.IsSingleModule() {
-		if _, err := clix.FromCommandFn(cmd); err != nil {
-			return err
-		}
-		return semver.UpdateVersion(execCtx.Path, "minor", pre, meta, isPreserveMeta)
+	if !execCtx.IsSingleModule() {
+		return runMultiModuleBump(ctx, cmd, execCtx, operations.BumpMinor, pre, meta, isPreserveMeta)
 	}
 
-	// Handle multi-module mode
-	return runMultiModuleBump(ctx, cmd, execCtx, operations.BumpMinor, pre, meta, isPreserveMeta)
+	return runSingleModuleMinorBump(ctx, cmd, cfg, execCtx, pre, meta, isPreserveMeta, isSkipHooks)
+}
+
+// runSingleModuleMinorBump handles minor bump for single-module mode.
+func runSingleModuleMinorBump(ctx context.Context, cmd *cli.Command, cfg *config.Config, execCtx *clix.ExecutionContext, pre, meta string, isPreserveMeta, isSkipHooks bool) error {
+	if _, err := clix.FromCommandFn(cmd); err != nil {
+		return err
+	}
+
+	previousVersion, err := semver.ReadVersion(execCtx.Path)
+	if err != nil {
+		return err
+	}
+
+	// Calculate and run pre-bump hooks
+	newVersion := previousVersion
+	newVersion.Minor++
+	newVersion.Patch = 0
+	newVersion.PreRelease = pre
+	newVersion.Build = calculateNewBuild(meta, isPreserveMeta, previousVersion.Build)
+
+	if err := runPreBumpExtensionHooks(ctx, cfg, newVersion.String(), previousVersion.String(), "minor", isSkipHooks); err != nil {
+		return err
+	}
+
+	if err := semver.UpdateVersion(execCtx.Path, "minor", pre, meta, isPreserveMeta); err != nil {
+		return err
+	}
+
+	return runPostBumpExtensionHooks(ctx, cfg, execCtx.Path, previousVersion.String(), "minor", isSkipHooks)
 }

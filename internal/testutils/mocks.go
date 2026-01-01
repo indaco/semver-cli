@@ -18,11 +18,15 @@ type MockExtension struct {
 	NameValue        string
 	VersionValue     string
 	DescriptionValue string
+	HooksValue       []string
+	EntryValue       string
 }
 
 func (m MockExtension) Name() string        { return m.NameValue }
 func (m MockExtension) Version() string     { return m.VersionValue }
 func (m MockExtension) Description() string { return m.DescriptionValue }
+func (m MockExtension) Hooks() []string     { return m.HooksValue }
+func (m MockExtension) Entry() string       { return m.EntryValue }
 
 // MockCommitParser implements the plugins.CommitParser interface for testing.
 type MockCommitParser struct {

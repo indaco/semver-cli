@@ -38,6 +38,7 @@
 - [Configuration](#configuration)
 - [Auto-initialization](#auto-initialization)
 - [Usage](#usage)
+- [Extension System](#extension-system)
 - [Monorepo / Multi-Module Support](#monorepo--multi-module-support)
 - [Contributing](#contributing)
 - [License](#license)
@@ -111,33 +112,22 @@ VERSION:
    v0.6.0
 
 COMMANDS:
-   show      Display current version
-   set       Set the version manually
-   bump      Bump semantic version (patch, minor, major)
-   pre       Set pre-release label (e.g., alpha, beta.1)
-   validate  Validate the .version file
-   init      Initialize a .version file (auto-detects Git tag or starts from 0.1.0)
-   modules   Discover and list modules in a workspace
-   help, h   Shows a list of commands or help for one command
+   show              Display current version
+   set               Set the version manually
+   bump              Bump semantic version (patch, minor, major)
+   pre               Set pre-release label (e.g., alpha, beta.1)
+   doctor, validate  Validate the .version file
+   init              Initialize a .version file (auto-detects Git tag or starts from 0.1.0)
+   extension         Manage extensions for semver-cli
+   modules, mods     Manage and discover modules in workspace
+   help, h           Shows a list of commands or help for one command
 
 GLOBAL OPTIONS:
-   --path string, -p string  Path to .version file (default: ".version")
-   --strict                  Fail if .version file is missing (disable auto-initialization)
+   --path string, -p string  Path to .version file (default: "internal/version/.version")
+   --strict, --no-auto-init  Fail if .version file is missing (disable auto-initialization)
+   --no-color                Disable colored output
    --help, -h                show help
    --version, -v             print the version
-
-MULTI-MODULE OPTIONS (for show, set, bump commands):
-   --all, -a            Operate on all discovered modules
-   --module string, -m  Operate on a specific module by name
-   --modules string     Operate on multiple modules (comma-separated names)
-   --pattern string     Operate on modules matching glob pattern
-   --yes, -y            Auto-confirm all prompts (select all modules)
-   --non-interactive    Disable interactive prompts (CI mode)
-   --parallel           Execute operations in parallel
-   --fail-fast          Stop on first error (default: true)
-   --continue-on-error  Continue even if some modules fail
-   --quiet, -q          Suppress module-level output, show summary only
-   --format string      Output format: text, json, table (default: "text")
 ```
 
 ## Configuration
@@ -374,177 +364,49 @@ semver init
 # => Initialized .version with version 0.1.0
 ```
 
+## Extension System
+
+`semver` supports extensions - external scripts that hook into the version lifecycle for automation tasks like updating changelogs, creating git tags, or enforcing version policies.
+
+```bash
+# Install an extension
+semver extension install --path ./path/to/extension
+
+# List installed extensions
+semver extension list
+
+# Remove an extension
+semver extension remove my-extension
+```
+
+Ready-to-use extensions are available in [contrib/extensions/](contrib/extensions/).
+
+For detailed documentation on hooks, JSON interface, and creating extensions, see [docs/EXTENSIONS.md](docs/EXTENSIONS.md).
+
 ## Monorepo / Multi-Module Support
 
-`semver` supports managing multiple `.version` files across a monorepo or multi-module project. When multiple modules are detected, the CLI automatically enables multi-module mode.
-
-> For more details, see the [Monorepo Guide](docs/MONOREPO.md).
-
-### Module Discovery
-
-Modules are discovered by searching for `.version` files in the workspace. The CLI uses the directory name containing each `.version` file as the module name.
-
-**List discovered modules:**
+`semver` supports managing multiple `.version` files across a monorepo. When multiple modules are detected, the CLI automatically enables multi-module mode.
 
 ```bash
+# List discovered modules
 semver modules list
-# api     ./services/api/.version    1.2.3
-# web     ./apps/web/.version        2.0.0
-# shared  ./packages/shared/.version 0.5.1
 
-semver modules list --format json
-# [{"name":"api","path":"./services/api/.version","version":"1.2.3"},...]
-
-semver modules list --verbose
-# Shows detailed module information
-```
-
-**Test discovery configuration:**
-
-```bash
-semver modules discover
-# Detection mode: auto-discovery
-# Found 3 modules:
-#   - api (./services/api/.version)
-#   - web (./apps/web/.version)
-#   - shared (./packages/shared/.version)
-```
-
-### Multi-Module Operations
-
-**Show versions for all modules:**
-
-```bash
+# Show all module versions
 semver show --all
-# api     1.2.3
-# web     2.0.0
-# shared  0.5.1
 
-semver show --all --format json
-# [{"module":"api","version":"1.2.3"},{"module":"web","version":"2.0.0"},...]
-
-semver show --all --format table
-# +--------+---------+
-# | MODULE | VERSION |
-# +--------+---------+
-# | api    | 1.2.3   |
-# | web    | 2.0.0   |
-# | shared | 0.5.1   |
-# +--------+---------+
-```
-
-**Show version for a specific module:**
-
-```bash
-semver show --module api
-# 1.2.3
-```
-
-**Bump all modules:**
-
-```bash
+# Bump all modules
 semver bump patch --all
-# Bump patch
-#   api: 1.2.3 -> 1.2.4
-#   web: 2.0.0 -> 2.0.1
-#   shared: 0.5.1 -> 0.5.2
-# Success: 3 modules updated
 
-semver bump minor --all --parallel
-# Executes bumps in parallel for faster operation
-```
-
-**Bump specific modules:**
-
-```bash
-# Single module
+# Bump specific module
 semver bump patch --module api
 
-# Multiple modules by name
+# Bump multiple modules
 semver bump patch --modules api,web
-
-# Modules matching a pattern
-semver bump patch --pattern "services/*"
 ```
 
-**Set version for all modules:**
+For CI/CD, use `--non-interactive` or set `CI=true` to disable prompts.
 
-```bash
-semver set 1.0.0 --all
-# Sets all modules to version 1.0.0
-```
-
-### Interactive Mode
-
-When running in a terminal without `--all` or `--module`, the CLI presents an interactive selector:
-
-```bash
-semver bump patch
-# ? Select modules to bump:
-#   [x] api (1.2.3)
-#   [x] web (2.0.0)
-#   [ ] shared (0.5.1)
-# Press enter to confirm...
-```
-
-Use `--yes` to auto-select all modules without prompting:
-
-```bash
-semver bump patch --yes
-```
-
-### CI/CD Usage
-
-For CI/CD pipelines, use `--non-interactive` to disable prompts:
-
-```bash
-semver bump patch --all --non-interactive
-```
-
-Or set the `CI` environment variable (automatically detected):
-
-```bash
-CI=true semver bump patch --all
-```
-
-### Configuration
-
-Configure workspace discovery in `.semver.yaml`:
-
-```yaml
-# Auto-discovery settings
-workspace:
-  discovery:
-    enabled: true
-    exclude:
-      - "vendor"
-      - "node_modules"
-      - "testdata"
-
-# Or explicitly define modules
-workspace:
-  modules:
-    - name: api
-      path: ./services/api/.version
-    - name: web
-      path: ./apps/web/.version
-      enabled: true
-    - name: legacy
-      path: ./legacy/.version
-      enabled: false  # Skip this module
-```
-
-### Ignore Patterns
-
-Create a `.semverignore` file to exclude directories from module discovery:
-
-```
-# .semverignore
-vendor/
-node_modules/
-testdata/
-**/fixtures/
-```
+For detailed documentation on module discovery, configuration, and patterns, see [docs/MONOREPO.md](docs/MONOREPO.md).
 
 ## Contributing
 

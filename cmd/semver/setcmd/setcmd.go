@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 
+	"github.com/indaco/semver-cli/cmd/semver/flags"
 	"github.com/indaco/semver-cli/internal/clix"
 	"github.com/indaco/semver-cli/internal/config"
 	"github.com/indaco/semver-cli/internal/core"
@@ -15,20 +16,23 @@ import (
 
 // Run returns the "set" command.
 func Run(cfg *config.Config) *cli.Command {
+	cmdFlags := []cli.Flag{
+		&cli.StringFlag{
+			Name:  "pre",
+			Usage: "Optional pre-release label",
+		},
+		&cli.StringFlag{
+			Name:  "meta",
+			Usage: "Optional build metadata",
+		},
+	}
+	cmdFlags = append(cmdFlags, flags.MultiModuleFlags()...)
+
 	return &cli.Command{
 		Name:      "set",
 		Usage:     "Set the version manually",
 		UsageText: "semver set <version> [--pre label] [--all] [--module name]",
-		Flags: []cli.Flag{
-			&cli.StringFlag{
-				Name:  "pre",
-				Usage: "Optional pre-release label",
-			},
-			&cli.StringFlag{
-				Name:  "meta",
-				Usage: "Optional build metadata",
-			},
-		},
+		Flags:     cmdFlags,
 		Action: func(ctx context.Context, cmd *cli.Command) error {
 			return runSetCmd(ctx, cmd, cfg)
 		},

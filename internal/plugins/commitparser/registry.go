@@ -14,7 +14,7 @@ var (
 func registerCommitParser(p CommitParser) {
 	if defaultCommitParser != nil {
 		fmt.Fprintf(os.Stderr,
-			"⚠️  Ignoring commit parser %q: another parser (%q) is already registered.\n",
+			"WARNING: Ignoring commit parser %q: another parser (%q) is already registered.\n",
 			p.Name(), defaultCommitParser.Name(),
 		)
 		return

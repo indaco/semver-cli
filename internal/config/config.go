@@ -10,7 +10,50 @@ import (
 )
 
 type PluginConfig struct {
-	CommitParser bool `yaml:"commit-parser"`
+	CommitParser bool              `yaml:"commit-parser"`
+	TagManager   *TagManagerConfig `yaml:"tag-manager,omitempty"`
+}
+
+// TagManagerConfig holds configuration for the tag manager plugin.
+type TagManagerConfig struct {
+	// Enabled controls whether the plugin is active.
+	Enabled bool `yaml:"enabled"`
+
+	// AutoCreate automatically creates tags after version bumps.
+	AutoCreate *bool `yaml:"auto-create,omitempty"`
+
+	// Prefix is the tag prefix (default: "v").
+	Prefix string `yaml:"prefix,omitempty"`
+
+	// Annotate creates annotated tags instead of lightweight tags.
+	Annotate *bool `yaml:"annotate,omitempty"`
+
+	// Push automatically pushes tags to remote after creation.
+	Push bool `yaml:"push,omitempty"`
+}
+
+// GetAutoCreate returns the auto-create setting with default true.
+func (c *TagManagerConfig) GetAutoCreate() bool {
+	if c.AutoCreate == nil {
+		return true
+	}
+	return *c.AutoCreate
+}
+
+// GetAnnotate returns the annotate setting with default true.
+func (c *TagManagerConfig) GetAnnotate() bool {
+	if c.Annotate == nil {
+		return true
+	}
+	return *c.Annotate
+}
+
+// GetPrefix returns the prefix with default "v".
+func (c *TagManagerConfig) GetPrefix() string {
+	if c.Prefix == "" {
+		return "v"
+	}
+	return c.Prefix
 }
 
 type ExtensionConfig struct {

@@ -1080,6 +1080,114 @@ func TestSaveConfig_WithExtensions(t *testing.T) {
 /* BACKWARD COMPATIBILITY                                                    */
 /* ------------------------------------------------------------------------- */
 
+/* ------------------------------------------------------------------------- */
+/* TAG MANAGER CONFIG                                                        */
+/* ------------------------------------------------------------------------- */
+
+func TestTagManagerConfig_GetAutoCreate(t *testing.T) {
+	tests := []struct {
+		name     string
+		config   *TagManagerConfig
+		expected bool
+	}{
+		{
+			name:     "nil AutoCreate - defaults to true",
+			config:   &TagManagerConfig{AutoCreate: nil},
+			expected: true,
+		},
+		{
+			name:     "explicit true",
+			config:   &TagManagerConfig{AutoCreate: boolPtr(true)},
+			expected: true,
+		},
+		{
+			name:     "explicit false",
+			config:   &TagManagerConfig{AutoCreate: boolPtr(false)},
+			expected: false,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			result := tt.config.GetAutoCreate()
+			if result != tt.expected {
+				t.Errorf("GetAutoCreate() = %v, want %v", result, tt.expected)
+			}
+		})
+	}
+}
+
+func TestTagManagerConfig_GetAnnotate(t *testing.T) {
+	tests := []struct {
+		name     string
+		config   *TagManagerConfig
+		expected bool
+	}{
+		{
+			name:     "nil Annotate - defaults to true",
+			config:   &TagManagerConfig{Annotate: nil},
+			expected: true,
+		},
+		{
+			name:     "explicit true",
+			config:   &TagManagerConfig{Annotate: boolPtr(true)},
+			expected: true,
+		},
+		{
+			name:     "explicit false",
+			config:   &TagManagerConfig{Annotate: boolPtr(false)},
+			expected: false,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			result := tt.config.GetAnnotate()
+			if result != tt.expected {
+				t.Errorf("GetAnnotate() = %v, want %v", result, tt.expected)
+			}
+		})
+	}
+}
+
+func TestTagManagerConfig_GetPrefix(t *testing.T) {
+	tests := []struct {
+		name     string
+		config   *TagManagerConfig
+		expected string
+	}{
+		{
+			name:     "empty prefix - defaults to v",
+			config:   &TagManagerConfig{Prefix: ""},
+			expected: "v",
+		},
+		{
+			name:     "custom prefix",
+			config:   &TagManagerConfig{Prefix: "release-"},
+			expected: "release-",
+		},
+		{
+			name:     "v prefix explicit",
+			config:   &TagManagerConfig{Prefix: "v"},
+			expected: "v",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			result := tt.config.GetPrefix()
+			if result != tt.expected {
+				t.Errorf("GetPrefix() = %q, want %q", result, tt.expected)
+			}
+		})
+	}
+}
+
+// boolPtr is a helper to create a pointer to a bool value
+func boolPtr(b bool) *bool {
+	return &b
+}
+
 func TestConfig_BackwardCompatibility(t *testing.T) {
 	tests := []struct {
 		name      string

@@ -6,374 +6,80 @@ Plugins are **built-in** features that extend semver-cli's core functionality. U
 
 ## Available Plugins
 
-### commitparser Plugin
+| Plugin                                              | Description                                            | Default  |
+| --------------------------------------------------- | ------------------------------------------------------ | -------- |
+| [commit-parser](./plugins/COMMIT_PARSER.md)         | Analyzes conventional commits to determine bump type   | Enabled  |
+| [tag-manager](./plugins/TAG_MANAGER.md)             | Automatically creates git tags synchronized with bumps | Disabled |
+| [version-validator](./plugins/VERSION_VALIDATOR.md) | Enforces versioning policies and constraints           | Disabled |
+| [dependency-check](./plugins/DEPENDENCY_CHECK.md)   | Validates and syncs versions across multiple files     | Disabled |
 
-**Status**: Built-in, enabled by default
+## Quick Start
 
-The `commitparser` plugin analyzes git commit messages following the Conventional Commits specification and automatically determines the appropriate version bump type.
-
-#### How It Works
-
-1. Retrieves commits since the last git tag (or HEAD~10 if no tags exist)
-2. Parses commit messages for conventional commit types:
-   - `feat:` or `feat!:` -> minor bump (major if breaking)
-   - `fix:` or `fix!:` -> patch bump (major if breaking)
-   - `BREAKING CHANGE:` in commit body -> major bump
-3. Returns the highest-priority bump type found
-
-#### Configuration
-
-Enable/disable in `.semver.yaml`:
+Enable plugins in your `.semver.yaml`:
 
 ```yaml
 plugins:
-  commit-parser: true # Enabled by default
-```
+  # Analyze commits for automatic bump type detection
+  commit-parser: true
 
-#### Usage with `bump auto`
-
-The plugin integrates with the `bump auto` command:
-
-```bash
-# Automatic bump based on conventional commits
-semver bump auto
-
-# Manual override with --label
-semver bump auto --label minor
-
-# Disable plugin inference
-semver bump auto --no-infer
-```
-
-#### Example Workflow
-
-```bash
-# Make commits following conventional format
-git commit -m "feat: add user authentication"
-git commit -m "fix: resolve login timeout"
-git commit -m "feat!: redesign API endpoints"
-
-# Plugin analyzes commits and determines major bump
-semver bump auto
-# Output: Inferred bump type: major
-# Version bumped from 1.2.3 to 2.0.0
-```
-
-#### Conventional Commit Format
-
-Valid commit message formats:
-
-```
-type: description
-type(scope): description
-type!: description          # Breaking change
-type(scope)!: description   # Breaking change with scope
-```
-
-Examples:
-
-```
-feat: add user dashboard
-fix(api): handle null response
-docs: update installation guide
-feat!: redesign authentication flow
-fix(auth)!: change token format
-```
-
-Supported types:
-
-| Type                     | Bump  | Description             |
-| ------------------------ | ----- | ----------------------- |
-| `feat`                   | minor | New feature             |
-| `fix`                    | patch | Bug fix                 |
-| `feat!` or `fix!`        | major | Breaking change         |
-| Any + `BREAKING CHANGE:` | major | Breaking change in body |
-
-#### Disabling the commitparser Plugin
-
-When you need manual control:
-
-```yaml
-# .semver.yaml
-plugins:
-  commit-parser: false
-```
-
-Or use flags:
-
-```bash
-semver bump auto --no-infer  # Always bumps patch
-semver bump auto --label minor  # Manual override
-```
-
-### tagmanager Plugin
-
-**Status**: Built-in, disabled by default
-
-The `tagmanager` plugin automatically creates and manages git tags synchronized with version bumps. It validates tag availability before bumping and creates tags after successful version updates.
-
-#### How It Works
-
-1. Before a version bump, validates that the target tag doesn't already exist (fail-fast)
-2. After a successful bump, creates a git tag for the new version
-3. Optionally pushes the tag to the remote repository
-
-#### Configuration
-
-Enable and configure in `.semver.yaml`:
-
-```yaml
-plugins:
-  tag-manager:
-    enabled: true # Enable the plugin (required)
-    auto-create: true # Create tags automatically after bumps (default: true)
-    prefix: "v" # Tag prefix (default: "v")
-    annotate: true # Create annotated tags with message (default: true)
-    push: false # Push tags to remote after creation (default: false)
-```
-
-#### Tag Formats
-
-| Version       | Prefix     | Tag Name         |
-| ------------- | ---------- | ---------------- |
-| 1.2.3         | `v`        | `v1.2.3`         |
-| 1.2.3         | `release-` | `release-1.2.3`  |
-| 1.2.3         | (empty)    | `1.2.3`          |
-| 1.0.0-alpha.1 | `v`        | `v1.0.0-alpha.1` |
-
-#### Usage
-
-Once enabled, the plugin works automatically with all bump commands:
-
-```bash
-# Bump patch version and create tag
-semver bump patch
-# Output: Version bumped from 1.2.3 to 1.2.4
-# Output: Created tag: v1.2.4
-
-# Bump with push enabled
-semver bump minor  # With push: true in config
-# Output: Version bumped from 1.2.4 to 1.3.0
-# Output: Created tag: v1.3.0
-# Output: Pushed tag: v1.3.0
-```
-
-#### Tag Validation
-
-The plugin validates tag availability **before** bumping:
-
-```bash
-# If v1.3.0 already exists:
-semver bump minor
-# Error: tag v1.3.0 already exists
-# Version file remains unchanged
-```
-
-This fail-fast behavior prevents version file updates when the corresponding tag cannot be created.
-
-#### Annotated vs Lightweight Tags
-
-With `annotate: true` (default):
-
-```bash
-git tag -a v1.2.3 -m "Release 1.2.3 (patch bump)"
-```
-
-With `annotate: false`:
-
-```bash
-git tag v1.2.3
-```
-
-Annotated tags include metadata (author, date, message) and are recommended for release tags.
-
-### versionvalidator Plugin
-
-**Status**: Built-in, disabled by default
-
-The `versionvalidator` plugin enforces versioning policies and constraints beyond basic SemVer syntax validation. It validates version bumps against configurable rules before the version file is updated.
-
-#### How It Works
-
-1. Before a version bump, validates the new version against all configured rules
-2. If any rule fails, the bump is rejected with a descriptive error message
-3. Rules are evaluated in order; first failure stops the validation
-
-#### Configuration
-
-Enable and configure in `.semver.yaml`:
-
-```yaml
-plugins:
-  version-validator:
-    enabled: true
-    rules:
-      - type: "pre-release-format"
-        pattern: "^(alpha|beta|rc)(\\.[0-9]+)?$"
-      - type: "major-version-max"
-        value: 10
-      - type: "require-pre-release-for-0x"
-        enabled: true
-      - type: "branch-constraint"
-        branch: "release/*"
-        allowed: ["patch"]
-```
-
-#### Available Rule Types
-
-| Rule Type                    | Description                                         | Parameters                          |
-| ---------------------------- | --------------------------------------------------- | ----------------------------------- |
-| `pre-release-format`         | Validates pre-release label matches a regex pattern | `pattern`: regex                    |
-| `major-version-max`          | Limits maximum major version number                 | `value`: int                        |
-| `minor-version-max`          | Limits maximum minor version number                 | `value`: int                        |
-| `patch-version-max`          | Limits maximum patch version number                 | `value`: int                        |
-| `require-pre-release-for-0x` | Requires pre-release label for 0.x versions         | `enabled`: bool                     |
-| `branch-constraint`          | Restricts bump types on specific branches           | `branch`: glob, `allowed`: []string |
-| `no-major-bump`              | Disallows major version bumps                       | `enabled`: bool                     |
-| `no-minor-bump`              | Disallows minor version bumps                       | `enabled`: bool                     |
-| `no-patch-bump`              | Disallows patch version bumps                       | `enabled`: bool                     |
-
-#### Rule Examples
-
-**Pre-release Format Validation**
-
-Only allow standard pre-release labels:
-
-```yaml
-rules:
-  - type: "pre-release-format"
-    pattern: "^(alpha|beta|rc)(\\.[0-9]+)?$"
-```
-
-```bash
-semver bump minor --pre alpha.1   # OK
-semver bump minor --pre beta      # OK
-semver bump minor --pre preview   # Error: pre-release label "preview" does not match required pattern
-```
-
-**Version Number Limits**
-
-Prevent version numbers from growing too large:
-
-```yaml
-rules:
-  - type: "major-version-max"
-    value: 10
-  - type: "minor-version-max"
-    value: 99
-```
-
-```bash
-# At version 10.0.0:
-semver bump major
-# Error: major version 11 exceeds maximum allowed value 10
-```
-
-**0.x Pre-release Requirement**
-
-Ensure unstable versions always have pre-release labels:
-
-```yaml
-rules:
-  - type: "require-pre-release-for-0x"
-    enabled: true
-```
-
-```bash
-# At version 0.1.0-alpha:
-semver bump minor              # Error: version 0.x.x requires a pre-release label
-semver bump minor --pre beta   # OK: 0.2.0-beta
-```
-
-**Branch-Based Constraints**
-
-Restrict bump types on release branches:
-
-```yaml
-rules:
-  - type: "branch-constraint"
-    branch: "release/*"
-    allowed: ["patch"]
-  - type: "branch-constraint"
-    branch: "main"
-    allowed: ["minor", "patch"]
-```
-
-```bash
-# On branch release/1.0:
-semver bump minor   # Error: bump type "minor" is not allowed on branch "release/1.0"
-semver bump patch   # OK
-
-# On branch main:
-semver bump major   # Error: bump type "major" is not allowed on branch "main"
-```
-
-**Disabling Bump Types**
-
-Temporarily or permanently disallow certain bump types:
-
-```yaml
-rules:
-  - type: "no-major-bump"
-    enabled: true # Freeze major version
-```
-
-```bash
-semver bump major   # Error: major bumps are not allowed by policy
-semver bump minor   # OK
-```
-
-#### Multiple Rules
-
-Rules are evaluated in order. All must pass for the bump to succeed:
-
-```yaml
-plugins:
-  version-validator:
-    enabled: true
-    rules:
-      - type: "major-version-max"
-        value: 10
-      - type: "pre-release-format"
-        pattern: "^(alpha|beta|rc)(\\.[0-9]+)?$"
-      - type: "require-pre-release-for-0x"
-        enabled: true
-```
-
-#### Integration with Other Plugins
-
-The version validator runs **before** the tag manager, ensuring invalid versions are never tagged:
-
-```yaml
-plugins:
-  version-validator:
-    enabled: true
-    rules:
-      - type: "major-version-max"
-        value: 10
+  # Automatically create git tags after bumps
   tag-manager:
     enabled: true
     prefix: "v"
+    annotate: true
+    push: false
+
+  # Enforce versioning policies
+  version-validator:
+    enabled: true
+    rules:
+      - type: "major-version-max"
+        value: 10
+      - type: "branch-constraint"
+        branch: "release/*"
+        allowed: ["patch"]
+
+  # Sync versions across multiple files
+  dependency-check:
+    enabled: true
+    auto-sync: true
+    files:
+      - path: "package.json"
+        field: "version"
+        format: "json"
 ```
 
-```bash
-semver bump major
-# 1. versionvalidator: Checks if major version is within limit
-# 2. tagmanager: Validates tag doesn't exist
-# 3. Version file updated
-# 4. Tag created
+## Plugin Execution Order
+
+During a version bump, plugins execute in a specific order:
+
 ```
+semver bump patch
+  |
+  +-- 1. version-validator: Validates version policy
+  |
+  +-- 2. dependency-check: Validates file consistency
+  |
+  +-- 3. tag-manager: Validates tag doesn't exist
+  |
+  +-- 4. Version file updated
+  |
+  +-- 5. dependency-check: Syncs version to configured files
+  |
+  +-- 6. tag-manager: Creates git tag
+```
+
+If any validation step fails, the bump is aborted and no changes are made.
 
 ## Plugin vs Extension Comparison
 
-| Feature           | Plugins                                          | Extensions                        |
-| ----------------- | ------------------------------------------------ | --------------------------------- |
-| **Compilation**   | Built-in, compiled with CLI                      | External scripts                  |
-| **Performance**   | Native Go, <1ms                                  | Shell/Python/Node, ~50-100ms      |
-| **Installation**  | None required                                    | `semver extension install`        |
-| **Configuration** | `.semver.yaml` plugins section                   | `.semver.yaml` extensions section |
-| **Use Case**      | Core version logic                               | Hook-based automation             |
-| **Examples**      | `commitparser`, `tagmanager`, `versionvalidator` | `changelog-generator`             |
+| Feature           | Plugins                              | Extensions                        |
+| ----------------- | ------------------------------------ | --------------------------------- |
+| **Compilation**   | Built-in, compiled with CLI          | External scripts                  |
+| **Performance**   | Native Go, <1ms                      | Shell/Python/Node, ~50-100ms      |
+| **Installation**  | None required                        | `semver extension install`        |
+| **Configuration** | `.semver.yaml` plugins section       | `.semver.yaml` extensions section |
+| **Use Case**      | Core version logic, validation, sync | Hook-based automation             |
 
 ## Plugins + Extensions: Powerful Combinations
 
@@ -403,7 +109,7 @@ Workflow:
 ```bash
 semver bump auto
 # 1. commit-validator: Ensures all commits follow conventional format
-# 2. commitparser plugin: Analyzes commits -> determines "minor" bump
+# 2. commit-parser plugin: Analyzes commits -> determines "minor" bump
 # 3. Version bumped: 1.2.3 -> 1.3.0
 # 4. changelog-generator: Updates CHANGELOG.md with new version
 ```
@@ -424,11 +130,11 @@ Workflow:
 
 ```bash
 semver bump auto
-# 1. Plugin analyzes: feat commits -> minor bump
-# 2. tagmanager validates: v1.3.0 doesn't exist
+# 1. commit-parser analyzes: feat commits -> minor bump
+# 2. tag-manager validates: v1.3.0 doesn't exist
 # 3. Version: 1.2.3 -> 1.3.0
-# 4. tagmanager creates tag: v1.3.0
-# 5. tagmanager pushes tag to remote
+# 4. tag-manager creates tag: v1.3.0
+# 5. tag-manager pushes tag to remote
 ```
 
 ### Pattern 3: Full CI/CD Automation
@@ -444,27 +150,22 @@ plugins:
         allowed: ["patch"]
       - type: "major-version-max"
         value: 10
+  dependency-check:
+    enabled: true
+    auto-sync: true
+    files:
+      - path: "package.json"
+        field: "version"
+        format: "json"
   tag-manager:
     enabled: true
     prefix: "v"
     push: true
 
 extensions:
-  - name: commit-validator
-    enabled: true
-    hooks: [pre-bump]
-
   - name: changelog-generator
     enabled: true
     hooks: [post-bump]
-
-  - name: package-sync
-    enabled: true
-    hooks: [post-bump]
-    config:
-      files:
-        - path: package.json
-          json_paths: [version]
 ```
 
 CI Workflow:
@@ -472,21 +173,33 @@ CI Workflow:
 ```bash
 semver bump auto
 # Pre-bump validation:
-#   1. versionvalidator: Checks branch constraints and version limits
-#   2. tagmanager: Validates tag doesn't exist
-#   3. commit-validator: All commits valid
+#   1. version-validator: Checks branch constraints and version limits
+#   2. dependency-check: Validates file consistency
+#   3. tag-manager: Validates tag doesn't exist
 #
 # Bump operation:
-#   4. Plugin determines: feat commits -> minor
+#   4. commit-parser determines: feat commits -> minor
 #   5. Version: 1.2.3 -> 1.3.0
 #
 # Post-bump actions:
-#   6. Changelog generated
-#   7. package.json updated
-#   8. tagmanager creates and pushes tag v1.3.0
+#   6. dependency-check syncs package.json
+#   7. Changelog generated
+#   8. tag-manager creates and pushes tag v1.3.0
 ```
 
 ## See Also
 
 - [Extension System](./EXTENSIONS.md) - External hook-based scripts
 - [Monorepo Support](./MONOREPO.md) - Multi-module workflows
+
+### Individual Plugin Documentation
+
+- [Commit Parser](./plugins/COMMIT_PARSER.md) - Conventional commit analysis
+- [Tag Manager](./plugins/TAG_MANAGER.md) - Git tag automation
+- [Version Validator](./plugins/VERSION_VALIDATOR.md) - Policy enforcement
+- [Dependency Check](./plugins/DEPENDENCY_CHECK.md) - Cross-file version sync
+
+### Example Configurations
+
+- [Full Configuration](./plugins/examples/full-config.yaml) - All plugins working together
+- [Dependency Check](./plugins/examples/dependency-check.yaml) - Multi-format file sync

@@ -10,8 +10,9 @@ import (
 )
 
 type PluginConfig struct {
-	CommitParser bool              `yaml:"commit-parser"`
-	TagManager   *TagManagerConfig `yaml:"tag-manager,omitempty"`
+	CommitParser     bool                    `yaml:"commit-parser"`
+	TagManager       *TagManagerConfig       `yaml:"tag-manager,omitempty"`
+	VersionValidator *VersionValidatorConfig `yaml:"version-validator,omitempty"`
 }
 
 // TagManagerConfig holds configuration for the tag manager plugin.
@@ -54,6 +55,36 @@ func (c *TagManagerConfig) GetPrefix() string {
 		return "v"
 	}
 	return c.Prefix
+}
+
+// VersionValidatorConfig holds configuration for the version validator plugin.
+type VersionValidatorConfig struct {
+	// Enabled controls whether the plugin is active.
+	Enabled bool `yaml:"enabled"`
+
+	// Rules defines the validation rules to apply.
+	Rules []ValidationRule `yaml:"rules,omitempty"`
+}
+
+// ValidationRule defines a single validation rule.
+type ValidationRule struct {
+	// Type is the rule type (e.g., "pre-release-format", "major-version-max").
+	Type string `yaml:"type"`
+
+	// Pattern is a regex pattern for format validation rules.
+	Pattern string `yaml:"pattern,omitempty"`
+
+	// Value is a numeric limit for max-version rules.
+	Value int `yaml:"value,omitempty"`
+
+	// Enabled controls whether this specific rule is active.
+	Enabled bool `yaml:"enabled,omitempty"`
+
+	// Branch is a glob pattern for branch-constraint rules.
+	Branch string `yaml:"branch,omitempty"`
+
+	// Allowed lists allowed bump types for branch-constraint rules.
+	Allowed []string `yaml:"allowed,omitempty"`
 }
 
 type ExtensionConfig struct {

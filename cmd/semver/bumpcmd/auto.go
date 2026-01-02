@@ -9,13 +9,17 @@ import (
 	"github.com/indaco/semver-cli/internal/config"
 	"github.com/indaco/semver-cli/internal/hooks"
 	"github.com/indaco/semver-cli/internal/operations"
+	"github.com/indaco/semver-cli/internal/plugins/changelogparser"
 	"github.com/indaco/semver-cli/internal/plugins/commitparser"
 	"github.com/indaco/semver-cli/internal/plugins/commitparser/gitlog"
 	"github.com/indaco/semver-cli/internal/semver"
 	"github.com/urfave/cli/v3"
 )
 
-var tryInferBumpTypeFromCommitParserPluginFn = tryInferBumpTypeFromCommitParserPlugin
+var (
+	tryInferBumpTypeFromCommitParserPluginFn    = tryInferBumpTypeFromCommitParserPlugin
+	tryInferBumpTypeFromChangelogParserPluginFn = tryInferBumpTypeFromChangelogParserPlugin
+)
 
 // autoCmd returns the "auto" subcommand.
 func autoCmd(cfg *config.Config) *cli.Command {
@@ -112,7 +116,13 @@ func determineBumpType(label string, disableInfer bool, since, until string) ope
 		return operations.BumpMajor
 	case "":
 		if !disableInfer {
-			inferred := tryInferBumpTypeFromCommitParserPluginFn(since, until)
+			// Try changelog parser first if it should take precedence
+			inferred := tryInferBumpTypeFromChangelogParserPluginFn()
+			if inferred == "" {
+				// Fall back to commit parser
+				inferred = tryInferBumpTypeFromCommitParserPluginFn(since, until)
+			}
+
 			if inferred != "" {
 				fmt.Fprintf(os.Stderr, "Inferred bump type: %s\n", inferred)
 				switch inferred {
@@ -180,7 +190,13 @@ func getNextVersion(
 		}
 	case "":
 		if !disableInfer {
-			inferred := tryInferBumpTypeFromCommitParserPluginFn(since, until)
+			// Try changelog parser first if it should take precedence
+			inferred := tryInferBumpTypeFromChangelogParserPluginFn()
+			if inferred == "" {
+				// Fall back to commit parser
+				inferred = tryInferBumpTypeFromCommitParserPluginFn(since, until)
+			}
+
 			if inferred != "" {
 				fmt.Fprintf(os.Stderr, "Inferred bump type: %s\n", inferred)
 
@@ -251,5 +267,33 @@ func tryInferBumpTypeFromCommitParserPlugin(since, until string) string {
 		return ""
 	}
 
+	return label
+}
+
+// tryInferBumpTypeFromChangelogParserPlugin tries to infer bump type from CHANGELOG.md.
+func tryInferBumpTypeFromChangelogParserPlugin() string {
+	parser := changelogparser.GetChangelogParserFn()
+	if parser == nil {
+		return ""
+	}
+
+	// Check if changelog parser is enabled
+	plugin, ok := parser.(*changelogparser.ChangelogParserPlugin)
+	if !ok || !plugin.IsEnabled() {
+		return ""
+	}
+
+	// Only use changelog parser if it should take precedence
+	if !plugin.ShouldTakePrecedence() {
+		return ""
+	}
+
+	label, err := parser.InferBumpType()
+	if err != nil {
+		// Don't print error if changelog is not found or empty - fall back to commits
+		return ""
+	}
+
+	fmt.Fprintf(os.Stderr, "Inferred from changelog: %s\n", label)
 	return label
 }

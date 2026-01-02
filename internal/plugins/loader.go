@@ -2,6 +2,7 @@ package plugins
 
 import (
 	"github.com/indaco/semver-cli/internal/config"
+	"github.com/indaco/semver-cli/internal/plugins/changelogparser"
 	"github.com/indaco/semver-cli/internal/plugins/commitparser"
 	"github.com/indaco/semver-cli/internal/plugins/dependencycheck"
 	"github.com/indaco/semver-cli/internal/plugins/tagmanager"
@@ -40,6 +41,11 @@ func RegisterBuiltinPlugins(cfg *config.Config) {
 		dcCfg := convertDependencyCheckConfig(cfg.Plugins.DependencyCheck)
 		dependencycheck.Register(dcCfg)
 	}
+
+	if cfg.Plugins.ChangelogParser != nil && cfg.Plugins.ChangelogParser.Enabled {
+		clCfg := convertChangelogParserConfig(cfg.Plugins.ChangelogParser)
+		changelogparser.Register(clCfg)
+	}
 }
 
 // convertValidationRules converts config rules to versionvalidator rules.
@@ -73,5 +79,16 @@ func convertDependencyCheckConfig(cfg *config.DependencyCheckConfig) *dependency
 		Enabled:  cfg.Enabled,
 		AutoSync: cfg.AutoSync,
 		Files:    files,
+	}
+}
+
+// convertChangelogParserConfig converts config to changelogparser config.
+func convertChangelogParserConfig(cfg *config.ChangelogParserConfig) *changelogparser.Config {
+	return &changelogparser.Config{
+		Enabled:                  cfg.Enabled,
+		Path:                     cfg.Path,
+		RequireUnreleasedSection: cfg.RequireUnreleasedSection,
+		InferBumpType:            cfg.InferBumpType,
+		Priority:                 cfg.Priority,
 	}
 }

@@ -89,6 +89,23 @@ Supported types:
 | `feat!` or `fix!`        | major | Breaking change         |
 | Any + `BREAKING CHANGE:` | major | Breaking change in body |
 
+#### Disabling the commitparser Plugin
+
+When you need manual control:
+
+```yaml
+# .semver.yaml
+plugins:
+  commit-parser: false
+```
+
+Or use flags:
+
+```bash
+semver bump auto --no-infer  # Always bumps patch
+semver bump auto --label minor  # Manual override
+```
+
 ### tagmanager Plugin
 
 **Status**: Built-in, disabled by default
@@ -170,16 +187,193 @@ git tag v1.2.3
 
 Annotated tags include metadata (author, date, message) and are recommended for release tags.
 
+### versionvalidator Plugin
+
+**Status**: Built-in, disabled by default
+
+The `versionvalidator` plugin enforces versioning policies and constraints beyond basic SemVer syntax validation. It validates version bumps against configurable rules before the version file is updated.
+
+#### How It Works
+
+1. Before a version bump, validates the new version against all configured rules
+2. If any rule fails, the bump is rejected with a descriptive error message
+3. Rules are evaluated in order; first failure stops the validation
+
+#### Configuration
+
+Enable and configure in `.semver.yaml`:
+
+```yaml
+plugins:
+  version-validator:
+    enabled: true
+    rules:
+      - type: "pre-release-format"
+        pattern: "^(alpha|beta|rc)(\\.[0-9]+)?$"
+      - type: "major-version-max"
+        value: 10
+      - type: "require-pre-release-for-0x"
+        enabled: true
+      - type: "branch-constraint"
+        branch: "release/*"
+        allowed: ["patch"]
+```
+
+#### Available Rule Types
+
+| Rule Type                    | Description                                         | Parameters                          |
+| ---------------------------- | --------------------------------------------------- | ----------------------------------- |
+| `pre-release-format`         | Validates pre-release label matches a regex pattern | `pattern`: regex                    |
+| `major-version-max`          | Limits maximum major version number                 | `value`: int                        |
+| `minor-version-max`          | Limits maximum minor version number                 | `value`: int                        |
+| `patch-version-max`          | Limits maximum patch version number                 | `value`: int                        |
+| `require-pre-release-for-0x` | Requires pre-release label for 0.x versions         | `enabled`: bool                     |
+| `branch-constraint`          | Restricts bump types on specific branches           | `branch`: glob, `allowed`: []string |
+| `no-major-bump`              | Disallows major version bumps                       | `enabled`: bool                     |
+| `no-minor-bump`              | Disallows minor version bumps                       | `enabled`: bool                     |
+| `no-patch-bump`              | Disallows patch version bumps                       | `enabled`: bool                     |
+
+#### Rule Examples
+
+**Pre-release Format Validation**
+
+Only allow standard pre-release labels:
+
+```yaml
+rules:
+  - type: "pre-release-format"
+    pattern: "^(alpha|beta|rc)(\\.[0-9]+)?$"
+```
+
+```bash
+semver bump minor --pre alpha.1   # OK
+semver bump minor --pre beta      # OK
+semver bump minor --pre preview   # Error: pre-release label "preview" does not match required pattern
+```
+
+**Version Number Limits**
+
+Prevent version numbers from growing too large:
+
+```yaml
+rules:
+  - type: "major-version-max"
+    value: 10
+  - type: "minor-version-max"
+    value: 99
+```
+
+```bash
+# At version 10.0.0:
+semver bump major
+# Error: major version 11 exceeds maximum allowed value 10
+```
+
+**0.x Pre-release Requirement**
+
+Ensure unstable versions always have pre-release labels:
+
+```yaml
+rules:
+  - type: "require-pre-release-for-0x"
+    enabled: true
+```
+
+```bash
+# At version 0.1.0-alpha:
+semver bump minor              # Error: version 0.x.x requires a pre-release label
+semver bump minor --pre beta   # OK: 0.2.0-beta
+```
+
+**Branch-Based Constraints**
+
+Restrict bump types on release branches:
+
+```yaml
+rules:
+  - type: "branch-constraint"
+    branch: "release/*"
+    allowed: ["patch"]
+  - type: "branch-constraint"
+    branch: "main"
+    allowed: ["minor", "patch"]
+```
+
+```bash
+# On branch release/1.0:
+semver bump minor   # Error: bump type "minor" is not allowed on branch "release/1.0"
+semver bump patch   # OK
+
+# On branch main:
+semver bump major   # Error: bump type "major" is not allowed on branch "main"
+```
+
+**Disabling Bump Types**
+
+Temporarily or permanently disallow certain bump types:
+
+```yaml
+rules:
+  - type: "no-major-bump"
+    enabled: true # Freeze major version
+```
+
+```bash
+semver bump major   # Error: major bumps are not allowed by policy
+semver bump minor   # OK
+```
+
+#### Multiple Rules
+
+Rules are evaluated in order. All must pass for the bump to succeed:
+
+```yaml
+plugins:
+  version-validator:
+    enabled: true
+    rules:
+      - type: "major-version-max"
+        value: 10
+      - type: "pre-release-format"
+        pattern: "^(alpha|beta|rc)(\\.[0-9]+)?$"
+      - type: "require-pre-release-for-0x"
+        enabled: true
+```
+
+#### Integration with Other Plugins
+
+The version validator runs **before** the tag manager, ensuring invalid versions are never tagged:
+
+```yaml
+plugins:
+  version-validator:
+    enabled: true
+    rules:
+      - type: "major-version-max"
+        value: 10
+  tag-manager:
+    enabled: true
+    prefix: "v"
+```
+
+```bash
+semver bump major
+# 1. versionvalidator: Checks if major version is within limit
+# 2. tagmanager: Validates tag doesn't exist
+# 3. Version file updated
+# 4. Tag created
+```
+
 ## Plugin vs Extension Comparison
 
-| Feature           | Plugins                        | Extensions                        |
-| ----------------- | ------------------------------ | --------------------------------- |
-| **Compilation**   | Built-in, compiled with CLI    | External scripts                  |
-| **Performance**   | Native Go, <1ms                | Shell/Python/Node, ~50-100ms      |
-| **Installation**  | None required                  | `semver extension install`        |
-| **Configuration** | `.semver.yaml` plugins section | `.semver.yaml` extensions section |
-| **Use Case**      | Core version logic             | Hook-based automation             |
-| **Examples**      | `commitparser`, `tagmanager`   | `changelog-generator`             |
+| Feature           | Plugins                                          | Extensions                        |
+| ----------------- | ------------------------------------------------ | --------------------------------- |
+| **Compilation**   | Built-in, compiled with CLI                      | External scripts                  |
+| **Performance**   | Native Go, <1ms                                  | Shell/Python/Node, ~50-100ms      |
+| **Installation**  | None required                                    | `semver extension install`        |
+| **Configuration** | `.semver.yaml` plugins section                   | `.semver.yaml` extensions section |
+| **Use Case**      | Core version logic                               | Hook-based automation             |
+| **Examples**      | `commitparser`, `tagmanager`, `versionvalidator` | `changelog-generator`             |
 
 ## Plugins + Extensions: Powerful Combinations
 
@@ -242,6 +436,14 @@ semver bump auto
 ```yaml
 plugins:
   commit-parser: true
+  version-validator:
+    enabled: true
+    rules:
+      - type: "branch-constraint"
+        branch: "release/*"
+        allowed: ["patch"]
+      - type: "major-version-max"
+        value: 10
   tag-manager:
     enabled: true
     prefix: "v"
@@ -251,13 +453,6 @@ extensions:
   - name: commit-validator
     enabled: true
     hooks: [pre-bump]
-
-  - name: version-policy
-    enabled: true
-    hooks: [pre-bump]
-    config:
-      require_clean_workdir: true
-      no_prerelease_on_main: true
 
   - name: changelog-generator
     enabled: true
@@ -277,9 +472,9 @@ CI Workflow:
 ```bash
 semver bump auto
 # Pre-bump validation:
-#   1. tagmanager: Validates tag doesn't exist
-#   2. commit-validator: All commits valid
-#   3. version-policy: Clean workdir, correct branch
+#   1. versionvalidator: Checks branch constraints and version limits
+#   2. tagmanager: Validates tag doesn't exist
+#   3. commit-validator: All commits valid
 #
 # Bump operation:
 #   4. Plugin determines: feat commits -> minor
@@ -289,23 +484,6 @@ semver bump auto
 #   6. Changelog generated
 #   7. package.json updated
 #   8. tagmanager creates and pushes tag v1.3.0
-```
-
-## Disabling the commitparser Plugin
-
-When you need manual control:
-
-```yaml
-# .semver.yaml
-plugins:
-  commit-parser: false
-```
-
-Or use flags:
-
-```bash
-semver bump auto --no-infer  # Always bumps patch
-semver bump auto --label minor  # Manual override
 ```
 
 ## See Also

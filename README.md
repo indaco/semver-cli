@@ -377,6 +377,7 @@ semver init
 | `commit-parser`     | Analyzes conventional commits to determine bump type   | Enabled  |
 | `tag-manager`       | Automatically creates git tags synchronized with bumps | Disabled |
 | `version-validator` | Enforces versioning policies and constraints           | Disabled |
+| `dependency-check`  | Validates and syncs versions across multiple files     | Disabled |
 
 ### Quick Example
 
@@ -397,6 +398,13 @@ plugins:
       - type: "branch-constraint"
         branch: "release/*"
         allowed: ["patch"]
+  dependency-check:
+    enabled: true
+    auto-sync: true
+    files:
+      - path: "package.json"
+        field: "version"
+        format: "json"
 ```
 
 For detailed documentation on all plugins and their configuration, see [docs/PLUGINS.md](docs/PLUGINS.md).

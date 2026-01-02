@@ -7,6 +7,7 @@ import (
 	"github.com/indaco/semver-cli/internal/config"
 	"github.com/indaco/semver-cli/internal/extensionmgr"
 	"github.com/indaco/semver-cli/internal/plugins/tagmanager"
+	"github.com/indaco/semver-cli/internal/plugins/versionvalidator"
 	"github.com/indaco/semver-cli/internal/semver"
 )
 
@@ -100,4 +101,22 @@ func createTagAfterBump(version semver.SemVersion, bumpType string) error {
 	}
 
 	return nil
+}
+
+// validateVersionPolicy checks if the version bump is allowed by configured policies.
+// Returns nil if version validator is not enabled or validation passes.
+func validateVersionPolicy(newVersion, previousVersion semver.SemVersion, bumpType string) error {
+	vv := versionvalidator.GetVersionValidatorFn()
+	if vv == nil {
+		return nil
+	}
+
+	// Check if the plugin is enabled
+	if plugin, ok := vv.(*versionvalidator.VersionValidatorPlugin); ok {
+		if !plugin.IsEnabled() {
+			return nil
+		}
+	}
+
+	return vv.Validate(newVersion, previousVersion, bumpType)
 }

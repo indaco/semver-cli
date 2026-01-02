@@ -12,6 +12,7 @@ Plugins are **built-in** features that extend semver-cli's core functionality. U
 | [tag-manager](./plugins/TAG_MANAGER.md)             | Automatically creates git tags synchronized with bumps | Disabled |
 | [version-validator](./plugins/VERSION_VALIDATOR.md) | Enforces versioning policies and constraints           | Disabled |
 | [dependency-check](./plugins/DEPENDENCY_CHECK.md)   | Validates and syncs versions across multiple files     | Disabled |
+| [changelog-parser](./plugins/CHANGELOG_PARSER.md)   | Infers bump type from CHANGELOG.md entries             | Disabled |
 
 ## Quick Start
 
@@ -198,8 +199,10 @@ semver bump auto
 - [Tag Manager](./plugins/TAG_MANAGER.md) - Git tag automation
 - [Version Validator](./plugins/VERSION_VALIDATOR.md) - Policy enforcement
 - [Dependency Check](./plugins/DEPENDENCY_CHECK.md) - Cross-file version sync
+- [Changelog Parser](./plugins/CHANGELOG_PARSER.md) - CHANGELOG.md analysis
 
 ### Example Configurations
 
 - [Full Configuration](./plugins/examples/full-config.yaml) - All plugins working together
 - [Dependency Check](./plugins/examples/dependency-check.yaml) - Multi-format file sync
+- [Changelog Parser](./plugins/examples/changelog-parser.yaml) - Changelog-based versioning

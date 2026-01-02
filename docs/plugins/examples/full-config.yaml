@@ -47,6 +47,14 @@ plugins:
         field: tool.poetry.version
         format: toml
 
+  # Changelog Parser - Infers bump type from CHANGELOG.md
+  changelog-parser:
+    enabled: true
+    path: CHANGELOG.md
+    require-unreleased-section: true
+    infer-bump-type: true
+    priority: commits  # "changelog" to prefer changelog over commits
+
   # Tag Manager - Automatically creates git tags
   tag-manager:
     enabled: true

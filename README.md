@@ -378,6 +378,7 @@ semver init
 | `tag-manager`       | Automatically creates git tags synchronized with bumps | Disabled |
 | `version-validator` | Enforces versioning policies and constraints           | Disabled |
 | `dependency-check`  | Validates and syncs versions across multiple files     | Disabled |
+| `changelog-parser`  | Infers bump type from CHANGELOG.md entries             | Disabled |
 
 ### Quick Example
 

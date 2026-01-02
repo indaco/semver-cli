@@ -76,6 +76,11 @@ func runSingleModuleMajorBump(ctx context.Context, cmd *cli.Command, cfg *config
 		return err
 	}
 
+	// Validate dependency consistency before bumping
+	if err := validateDependencyConsistency(newVersion); err != nil {
+		return err
+	}
+
 	// Validate tag availability before bumping
 	if err := validateTagAvailable(newVersion); err != nil {
 		return err
@@ -86,6 +91,11 @@ func runSingleModuleMajorBump(ctx context.Context, cmd *cli.Command, cfg *config
 	}
 
 	if err := semver.UpdateVersion(execCtx.Path, "major", pre, meta, isPreserveMeta); err != nil {
+		return err
+	}
+
+	// Sync dependency files after updating .version
+	if err := syncDependencies(newVersion); err != nil {
 		return err
 	}
 

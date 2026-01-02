@@ -3,9 +3,11 @@ package bumpcmd
 import (
 	"context"
 	"fmt"
+	"strings"
 
 	"github.com/indaco/semver-cli/internal/config"
 	"github.com/indaco/semver-cli/internal/extensionmgr"
+	"github.com/indaco/semver-cli/internal/plugins/dependencycheck"
 	"github.com/indaco/semver-cli/internal/plugins/tagmanager"
 	"github.com/indaco/semver-cli/internal/plugins/versionvalidator"
 	"github.com/indaco/semver-cli/internal/semver"
@@ -119,4 +121,56 @@ func validateVersionPolicy(newVersion, previousVersion semver.SemVersion, bumpTy
 	}
 
 	return vv.Validate(newVersion, previousVersion, bumpType)
+}
+
+// validateDependencyConsistency checks if all dependency files match the current version.
+// Returns nil if dependency checker is not enabled or all files are consistent.
+func validateDependencyConsistency(version semver.SemVersion) error {
+	dc := dependencycheck.GetDependencyCheckerFn()
+	if dc == nil {
+		return nil
+	}
+
+	plugin, ok := dc.(*dependencycheck.DependencyCheckerPlugin)
+	if !ok || !plugin.IsEnabled() {
+		return nil
+	}
+
+	inconsistencies, err := dc.CheckConsistency(version.String())
+	if err != nil {
+		return fmt.Errorf("dependency check failed: %w", err)
+	}
+
+	if len(inconsistencies) > 0 {
+		var details strings.Builder
+		details.WriteString("version inconsistencies detected:\n")
+		for _, inc := range inconsistencies {
+			details.WriteString(fmt.Sprintf("  - %s\n", inc.String()))
+		}
+		details.WriteString("\nRun with auto-sync enabled to fix automatically, or update files manually.")
+		return fmt.Errorf("%s", details.String())
+	}
+
+	return nil
+}
+
+// syncDependencies updates all configured dependency files to match the new version.
+// Returns nil if dependency checker is not enabled or auto-sync is disabled.
+func syncDependencies(version semver.SemVersion) error {
+	dc := dependencycheck.GetDependencyCheckerFn()
+	if dc == nil {
+		return nil
+	}
+
+	plugin, ok := dc.(*dependencycheck.DependencyCheckerPlugin)
+	if !ok || !plugin.IsEnabled() || !plugin.GetConfig().AutoSync {
+		return nil
+	}
+
+	if err := dc.SyncVersions(version.String()); err != nil {
+		return fmt.Errorf("failed to sync dependency versions: %w", err)
+	}
+
+	fmt.Printf("Synced version to %d dependency file(s)\n", len(plugin.GetConfig().Files))
+	return nil
 }

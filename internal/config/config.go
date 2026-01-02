@@ -13,6 +13,7 @@ type PluginConfig struct {
 	CommitParser     bool                    `yaml:"commit-parser"`
 	TagManager       *TagManagerConfig       `yaml:"tag-manager,omitempty"`
 	VersionValidator *VersionValidatorConfig `yaml:"version-validator,omitempty"`
+	DependencyCheck  *DependencyCheckConfig  `yaml:"dependency-check,omitempty"`
 }
 
 // TagManagerConfig holds configuration for the tag manager plugin.
@@ -85,6 +86,33 @@ type ValidationRule struct {
 
 	// Allowed lists allowed bump types for branch-constraint rules.
 	Allowed []string `yaml:"allowed,omitempty"`
+}
+
+// DependencyCheckConfig holds configuration for the dependency check plugin.
+type DependencyCheckConfig struct {
+	// Enabled controls whether the plugin is active.
+	Enabled bool `yaml:"enabled"`
+
+	// AutoSync automatically syncs versions after bumps.
+	AutoSync bool `yaml:"auto-sync,omitempty"`
+
+	// Files lists the files to check and sync.
+	Files []DependencyFileConfig `yaml:"files,omitempty"`
+}
+
+// DependencyFileConfig defines a single file to check/sync.
+type DependencyFileConfig struct {
+	// Path is the file path relative to repository root.
+	Path string `yaml:"path"`
+
+	// Field is the dot-notation path to the version field (for JSON/YAML/TOML).
+	Field string `yaml:"field,omitempty"`
+
+	// Format specifies the file format: json, yaml, toml, raw, regex
+	Format string `yaml:"format"`
+
+	// Pattern is the regex pattern for "regex" format.
+	Pattern string `yaml:"pattern,omitempty"`
 }
 
 type ExtensionConfig struct {

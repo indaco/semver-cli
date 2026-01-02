@@ -1,0 +1,64 @@
+# Full plugin configuration example
+# This demonstrates all available plugins working together
+
+path: .version
+
+plugins:
+  # Commit Parser - Analyzes conventional commits to determine bump type
+  # Enabled by default
+  commit-parser: true
+
+  # Version Validator - Enforces versioning policies
+  version-validator:
+    enabled: true
+    rules:
+      # Only allow standard pre-release labels
+      - type: pre-release-format
+        pattern: "^(alpha|beta|rc)(\\.[0-9]+)?$"
+
+      # Limit major version growth
+      - type: major-version-max
+        value: 10
+
+      # Release branches: patch only
+      - type: branch-constraint
+        branch: "release/*"
+        allowed: ["patch"]
+
+      # Main branch: no major bumps
+      - type: branch-constraint
+        branch: "main"
+        allowed: ["minor", "patch"]
+
+  # Dependency Check - Validates and syncs versions across files
+  dependency-check:
+    enabled: true
+    auto-sync: true
+    files:
+      - path: package.json
+        field: version
+        format: json
+
+      - path: Chart.yaml
+        field: version
+        format: yaml
+
+      - path: pyproject.toml
+        field: tool.poetry.version
+        format: toml
+
+  # Changelog Parser - Infers bump type from CHANGELOG.md
+  changelog-parser:
+    enabled: true
+    path: CHANGELOG.md
+    require-unreleased-section: true
+    infer-bump-type: true
+    priority: commits  # "changelog" to prefer changelog over commits
+
+  # Tag Manager - Automatically creates git tags
+  tag-manager:
+    enabled: true
+    auto-create: true
+    prefix: v
+    annotate: true
+    push: false  # Set to true for CI/CD pipelines

@@ -38,6 +38,7 @@
 - [Configuration](#configuration)
 - [Auto-initialization](#auto-initialization)
 - [Usage](#usage)
+- [Plugin System](#plugin-system)
 - [Extension System](#extension-system)
 - [Monorepo / Multi-Module Support](#monorepo--multi-module-support)
 - [Contributing](#contributing)
@@ -48,6 +49,7 @@
 - Lightweight `.version` file - SemVer 2.0.0 compliant
 - `init`, `bump`, `set`, `show`, `validate` - intuitive version control
 - Pre-release support with auto-increment (`alpha`, `beta.1`, `rc.2`, `--inc`)
+- Built-in plugins - automatic git tagging, version policy enforcement, commit parsing
 - Monorepo/multi-module support - manage multiple `.version` files at once
 - Works standalone or in CI - `--strict` for strict mode
 - Configurable via flags, env vars, or `.semver.yaml`
@@ -363,6 +365,50 @@ semver validate
 semver init
 # => Initialized .version with version 0.1.0
 ```
+
+## Plugin System
+
+`semver` includes built-in plugins that provide deep integration with version bump logic. Unlike extensions (external scripts), plugins are compiled into the binary for native performance.
+
+### Available Plugins
+
+| Plugin              | Description                                            | Default  |
+| ------------------- | ------------------------------------------------------ | -------- |
+| `commit-parser`     | Analyzes conventional commits to determine bump type   | Enabled  |
+| `tag-manager`       | Automatically creates git tags synchronized with bumps | Disabled |
+| `version-validator` | Enforces versioning policies and constraints           | Disabled |
+| `dependency-check`  | Validates and syncs versions across multiple files     | Disabled |
+| `changelog-parser`  | Infers bump type from CHANGELOG.md entries             | Disabled |
+
+### Quick Example
+
+```yaml
+# .semver.yaml
+plugins:
+  commit-parser: true
+  tag-manager:
+    enabled: true
+    prefix: "v"
+    annotate: true
+    push: false
+  version-validator:
+    enabled: true
+    rules:
+      - type: "major-version-max"
+        value: 10
+      - type: "branch-constraint"
+        branch: "release/*"
+        allowed: ["patch"]
+  dependency-check:
+    enabled: true
+    auto-sync: true
+    files:
+      - path: "package.json"
+        field: "version"
+        format: "json"
+```
+
+For detailed documentation on all plugins and their configuration, see [docs/PLUGINS.md](docs/PLUGINS.md).
 
 ## Extension System
 

@@ -2,9 +2,14 @@ package bumpcmd
 
 import (
 	"context"
+	"fmt"
+	"strings"
 
 	"github.com/indaco/semver-cli/internal/config"
 	"github.com/indaco/semver-cli/internal/extensionmgr"
+	"github.com/indaco/semver-cli/internal/plugins/dependencycheck"
+	"github.com/indaco/semver-cli/internal/plugins/tagmanager"
+	"github.com/indaco/semver-cli/internal/plugins/versionvalidator"
 	"github.com/indaco/semver-cli/internal/semver"
 )
 
@@ -52,4 +57,120 @@ func calculateNewBuild(meta string, preserveMeta bool, currentBuild string) stri
 		return currentBuild
 	}
 	return ""
+}
+
+// validateTagAvailable checks if a tag can be created for the version.
+// Returns nil if tag manager is not enabled or tag is available.
+func validateTagAvailable(version semver.SemVersion) error {
+	tm := tagmanager.GetTagManagerFn()
+	if tm == nil {
+		return nil
+	}
+
+	// Check if the plugin is enabled and auto-create is on
+	if plugin, ok := tm.(*tagmanager.TagManagerPlugin); ok {
+		if !plugin.IsEnabled() {
+			return nil
+		}
+	}
+
+	return tm.ValidateTagAvailable(version)
+}
+
+// createTagAfterBump creates a git tag for the version if tag manager is enabled.
+func createTagAfterBump(version semver.SemVersion, bumpType string) error {
+	tm := tagmanager.GetTagManagerFn()
+	if tm == nil {
+		return nil
+	}
+
+	// Check if the plugin is enabled and auto-create is on
+	plugin, ok := tm.(*tagmanager.TagManagerPlugin)
+	if !ok || !plugin.IsEnabled() {
+		return nil
+	}
+
+	message := fmt.Sprintf("Release %s (%s bump)", version.String(), bumpType)
+	if err := tm.CreateTag(version, message); err != nil {
+		return fmt.Errorf("failed to create tag: %w", err)
+	}
+
+	tagName := tm.FormatTagName(version)
+	fmt.Printf("Created tag: %s\n", tagName)
+
+	if plugin.GetConfig().Push {
+		fmt.Printf("Pushed tag: %s\n", tagName)
+	}
+
+	return nil
+}
+
+// validateVersionPolicy checks if the version bump is allowed by configured policies.
+// Returns nil if version validator is not enabled or validation passes.
+func validateVersionPolicy(newVersion, previousVersion semver.SemVersion, bumpType string) error {
+	vv := versionvalidator.GetVersionValidatorFn()
+	if vv == nil {
+		return nil
+	}
+
+	// Check if the plugin is enabled
+	if plugin, ok := vv.(*versionvalidator.VersionValidatorPlugin); ok {
+		if !plugin.IsEnabled() {
+			return nil
+		}
+	}
+
+	return vv.Validate(newVersion, previousVersion, bumpType)
+}
+
+// validateDependencyConsistency checks if all dependency files match the current version.
+// Returns nil if dependency checker is not enabled or all files are consistent.
+func validateDependencyConsistency(version semver.SemVersion) error {
+	dc := dependencycheck.GetDependencyCheckerFn()
+	if dc == nil {
+		return nil
+	}
+
+	plugin, ok := dc.(*dependencycheck.DependencyCheckerPlugin)
+	if !ok || !plugin.IsEnabled() {
+		return nil
+	}
+
+	inconsistencies, err := dc.CheckConsistency(version.String())
+	if err != nil {
+		return fmt.Errorf("dependency check failed: %w", err)
+	}
+
+	if len(inconsistencies) > 0 {
+		var details strings.Builder
+		details.WriteString("version inconsistencies detected:\n")
+		for _, inc := range inconsistencies {
+			details.WriteString(fmt.Sprintf("  - %s\n", inc.String()))
+		}
+		details.WriteString("\nRun with auto-sync enabled to fix automatically, or update files manually.")
+		return fmt.Errorf("%s", details.String())
+	}
+
+	return nil
+}
+
+// syncDependencies updates all configured dependency files to match the new version.
+// Returns nil if dependency checker is not enabled or auto-sync is disabled.
+func syncDependencies(version semver.SemVersion) error {
+	dc := dependencycheck.GetDependencyCheckerFn()
+	if dc == nil {
+		return nil
+	}
+
+	plugin, ok := dc.(*dependencycheck.DependencyCheckerPlugin)
+	if !ok || !plugin.IsEnabled() || !plugin.GetConfig().AutoSync {
+		return nil
+	}
+
+	if err := dc.SyncVersions(version.String()); err != nil {
+		return fmt.Errorf("failed to sync dependency versions: %w", err)
+	}
+
+	fmt.Printf("Synced version to %d dependency file(s)\n", len(plugin.GetConfig().Files))
+	return nil
 }

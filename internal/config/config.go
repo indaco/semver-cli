@@ -10,7 +10,128 @@ import (
 )
 
 type PluginConfig struct {
-	CommitParser bool `yaml:"commit-parser"`
+	CommitParser     bool                    `yaml:"commit-parser"`
+	TagManager       *TagManagerConfig       `yaml:"tag-manager,omitempty"`
+	VersionValidator *VersionValidatorConfig `yaml:"version-validator,omitempty"`
+	DependencyCheck  *DependencyCheckConfig  `yaml:"dependency-check,omitempty"`
+	ChangelogParser  *ChangelogParserConfig  `yaml:"changelog-parser,omitempty"`
+}
+
+// TagManagerConfig holds configuration for the tag manager plugin.
+type TagManagerConfig struct {
+	// Enabled controls whether the plugin is active.
+	Enabled bool `yaml:"enabled"`
+
+	// AutoCreate automatically creates tags after version bumps.
+	AutoCreate *bool `yaml:"auto-create,omitempty"`
+
+	// Prefix is the tag prefix (default: "v").
+	Prefix string `yaml:"prefix,omitempty"`
+
+	// Annotate creates annotated tags instead of lightweight tags.
+	Annotate *bool `yaml:"annotate,omitempty"`
+
+	// Push automatically pushes tags to remote after creation.
+	Push bool `yaml:"push,omitempty"`
+}
+
+// GetAutoCreate returns the auto-create setting with default true.
+func (c *TagManagerConfig) GetAutoCreate() bool {
+	if c.AutoCreate == nil {
+		return true
+	}
+	return *c.AutoCreate
+}
+
+// GetAnnotate returns the annotate setting with default true.
+func (c *TagManagerConfig) GetAnnotate() bool {
+	if c.Annotate == nil {
+		return true
+	}
+	return *c.Annotate
+}
+
+// GetPrefix returns the prefix with default "v".
+func (c *TagManagerConfig) GetPrefix() string {
+	if c.Prefix == "" {
+		return "v"
+	}
+	return c.Prefix
+}
+
+// VersionValidatorConfig holds configuration for the version validator plugin.
+type VersionValidatorConfig struct {
+	// Enabled controls whether the plugin is active.
+	Enabled bool `yaml:"enabled"`
+
+	// Rules defines the validation rules to apply.
+	Rules []ValidationRule `yaml:"rules,omitempty"`
+}
+
+// ValidationRule defines a single validation rule.
+type ValidationRule struct {
+	// Type is the rule type (e.g., "pre-release-format", "major-version-max").
+	Type string `yaml:"type"`
+
+	// Pattern is a regex pattern for format validation rules.
+	Pattern string `yaml:"pattern,omitempty"`
+
+	// Value is a numeric limit for max-version rules.
+	Value int `yaml:"value,omitempty"`
+
+	// Enabled controls whether this specific rule is active.
+	Enabled bool `yaml:"enabled,omitempty"`
+
+	// Branch is a glob pattern for branch-constraint rules.
+	Branch string `yaml:"branch,omitempty"`
+
+	// Allowed lists allowed bump types for branch-constraint rules.
+	Allowed []string `yaml:"allowed,omitempty"`
+}
+
+// DependencyCheckConfig holds configuration for the dependency check plugin.
+type DependencyCheckConfig struct {
+	// Enabled controls whether the plugin is active.
+	Enabled bool `yaml:"enabled"`
+
+	// AutoSync automatically syncs versions after bumps.
+	AutoSync bool `yaml:"auto-sync,omitempty"`
+
+	// Files lists the files to check and sync.
+	Files []DependencyFileConfig `yaml:"files,omitempty"`
+}
+
+// DependencyFileConfig defines a single file to check/sync.
+type DependencyFileConfig struct {
+	// Path is the file path relative to repository root.
+	Path string `yaml:"path"`
+
+	// Field is the dot-notation path to the version field (for JSON/YAML/TOML).
+	Field string `yaml:"field,omitempty"`
+
+	// Format specifies the file format: json, yaml, toml, raw, regex
+	Format string `yaml:"format"`
+
+	// Pattern is the regex pattern for "regex" format.
+	Pattern string `yaml:"pattern,omitempty"`
+}
+
+// ChangelogParserConfig holds configuration for the changelog parser plugin.
+type ChangelogParserConfig struct {
+	// Enabled controls whether the plugin is active.
+	Enabled bool `yaml:"enabled"`
+
+	// Path is the path to the changelog file (default: "CHANGELOG.md").
+	Path string `yaml:"path,omitempty"`
+
+	// RequireUnreleasedSection enforces presence of Unreleased section.
+	RequireUnreleasedSection bool `yaml:"require-unreleased-section,omitempty"`
+
+	// InferBumpType enables automatic bump type inference from changelog.
+	InferBumpType bool `yaml:"infer-bump-type,omitempty"`
+
+	// Priority determines which parser takes precedence: "changelog" or "commits"
+	Priority string `yaml:"priority,omitempty"`
 }
 
 type ExtensionConfig struct {

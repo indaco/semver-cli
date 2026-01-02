@@ -14,6 +14,7 @@ type PluginConfig struct {
 	TagManager       *TagManagerConfig       `yaml:"tag-manager,omitempty"`
 	VersionValidator *VersionValidatorConfig `yaml:"version-validator,omitempty"`
 	DependencyCheck  *DependencyCheckConfig  `yaml:"dependency-check,omitempty"`
+	ChangelogParser  *ChangelogParserConfig  `yaml:"changelog-parser,omitempty"`
 }
 
 // TagManagerConfig holds configuration for the tag manager plugin.
@@ -113,6 +114,24 @@ type DependencyFileConfig struct {
 
 	// Pattern is the regex pattern for "regex" format.
 	Pattern string `yaml:"pattern,omitempty"`
+}
+
+// ChangelogParserConfig holds configuration for the changelog parser plugin.
+type ChangelogParserConfig struct {
+	// Enabled controls whether the plugin is active.
+	Enabled bool `yaml:"enabled"`
+
+	// Path is the path to the changelog file (default: "CHANGELOG.md").
+	Path string `yaml:"path,omitempty"`
+
+	// RequireUnreleasedSection enforces presence of Unreleased section.
+	RequireUnreleasedSection bool `yaml:"require-unreleased-section,omitempty"`
+
+	// InferBumpType enables automatic bump type inference from changelog.
+	InferBumpType bool `yaml:"infer-bump-type,omitempty"`
+
+	// Priority determines which parser takes precedence: "changelog" or "commits"
+	Priority string `yaml:"priority,omitempty"`
 }
 
 type ExtensionConfig struct {

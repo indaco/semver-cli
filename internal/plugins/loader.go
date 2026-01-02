@@ -3,6 +3,7 @@ package plugins
 import (
 	"github.com/indaco/semver-cli/internal/config"
 	"github.com/indaco/semver-cli/internal/plugins/commitparser"
+	"github.com/indaco/semver-cli/internal/plugins/dependencycheck"
 	"github.com/indaco/semver-cli/internal/plugins/tagmanager"
 	"github.com/indaco/semver-cli/internal/plugins/versionvalidator"
 )
@@ -34,6 +35,11 @@ func RegisterBuiltinPlugins(cfg *config.Config) {
 		}
 		versionvalidator.Register(vvCfg)
 	}
+
+	if cfg.Plugins.DependencyCheck != nil && cfg.Plugins.DependencyCheck.Enabled {
+		dcCfg := convertDependencyCheckConfig(cfg.Plugins.DependencyCheck)
+		dependencycheck.Register(dcCfg)
+	}
 }
 
 // convertValidationRules converts config rules to versionvalidator rules.
@@ -50,4 +56,22 @@ func convertValidationRules(configRules []config.ValidationRule) []versionvalida
 		}
 	}
 	return rules
+}
+
+// convertDependencyCheckConfig converts config to dependencycheck config.
+func convertDependencyCheckConfig(cfg *config.DependencyCheckConfig) *dependencycheck.Config {
+	files := make([]dependencycheck.FileConfig, len(cfg.Files))
+	for i, f := range cfg.Files {
+		files[i] = dependencycheck.FileConfig{
+			Path:    f.Path,
+			Field:   f.Field,
+			Format:  f.Format,
+			Pattern: f.Pattern,
+		}
+	}
+	return &dependencycheck.Config{
+		Enabled:  cfg.Enabled,
+		AutoSync: cfg.AutoSync,
+		Files:    files,
+	}
 }

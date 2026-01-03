@@ -75,7 +75,7 @@ func TestCLI_SetVersionCommand_MissingArgument(t *testing.T) {
 			fmt.Fprintln(os.Stderr, err)
 			os.Exit(1) // expected non-zero exit
 		}
-		os.Exit(0) // ❌ should not happen
+		os.Exit(0) // should not happen
 	}
 
 	cmd := exec.Command(os.Args[0], "-test.run=TestCLI_SetVersionCommand_MissingArgument")

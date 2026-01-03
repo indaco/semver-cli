@@ -34,12 +34,12 @@ func runPreReleaseHooks(skip bool) error {
 	}
 
 	for _, hook := range GetPreReleaseHooks() {
-		fmt.Printf("🔧 Running pre-release hook: %s... ", hook.HookName())
+		fmt.Printf("Running pre-release hook: %s... ", hook.HookName())
 		if err := hook.Run(); err != nil {
-			console.PrintFailure("❌ FAIL")
+			console.PrintFailure("FAIL")
 			return fmt.Errorf("pre-release hook %q failed: %w", hook.HookName(), err)
 		}
-		console.PrintSuccess("✅ OK")
+		console.PrintSuccess("OK")
 	}
 
 	return nil

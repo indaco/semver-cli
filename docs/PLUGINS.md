@@ -14,6 +14,8 @@ Plugins are **built-in** features that extend semver-cli's core functionality. U
 | [dependency-check](./plugins/DEPENDENCY_CHECK.md)       | Validates and syncs versions across multiple files     | Disabled |
 | [changelog-parser](./plugins/CHANGELOG_PARSER.md)       | Infers bump type from CHANGELOG.md entries             | Disabled |
 | [changelog-generator](./plugins/CHANGELOG_GENERATOR.md) | Generates changelog from conventional commits          | Disabled |
+| [release-gate](./plugins/RELEASE_GATE.md)               | Pre-bump validation (clean worktree, branch, WIP)      | Disabled |
+| [audit-log](./plugins/AUDIT_LOG.md)                     | Records version changes with metadata to a log file    | Disabled |
 
 ## Quick Start
 
@@ -58,20 +60,27 @@ During a version bump, plugins execute in a specific order:
 ```
 semver bump patch
   |
-  +-- 1. version-validator: Validates version policy
+  +-- 1. release-gate: Validates pre-conditions (clean worktree, branch, WIP)
   |
-  +-- 2. dependency-check: Validates file consistency
+  +-- 2. version-validator: Validates version policy
   |
-  +-- 3. tag-manager: Validates tag doesn't exist
+  +-- 3. dependency-check: Validates file consistency
   |
-  +-- 4. Version file updated
+  +-- 4. tag-manager: Validates tag doesn't exist
   |
-  +-- 5. dependency-check: Syncs version to configured files
+  +-- 5. Version file updated
   |
-  +-- 6. tag-manager: Creates git tag
+  +-- 6. dependency-check: Syncs version to configured files
+  |
+  +-- 7. changelog-generator: Creates changelog entry
+  |
+  +-- 8. audit-log: Records version change to log file
+  |
+  +-- 9. tag-manager: Creates git tag
 ```
 
-If any validation step fails, the bump is aborted and no changes are made.
+If any pre-bump validation step fails (1-4), the bump is aborted and no changes are made.
+Post-bump actions (6-9) are non-blocking - failures are logged but don't fail the bump.
 
 ## Plugin vs Extension Comparison
 
@@ -195,6 +204,8 @@ semver bump auto
 - [Dependency Check](./plugins/DEPENDENCY_CHECK.md) - Cross-file version sync
 - [Changelog Parser](./plugins/CHANGELOG_PARSER.md) - CHANGELOG.md analysis
 - [Changelog Generator](./plugins/CHANGELOG_GENERATOR.md) - Changelog generation from commits
+- [Release Gate](./plugins/RELEASE_GATE.md) - Pre-bump validation and quality gates
+- [Audit Log](./plugins/AUDIT_LOG.md) - Version change history tracking
 
 ### Example Configurations
 
@@ -202,3 +213,5 @@ semver bump auto
 - [Changelog Generator](./plugins/examples/changelog-generator.yaml) - Changelog generation from commits
 - [Changelog Parser](./plugins/examples/changelog-parser.yaml) - Changelog-based versioning
 - [Dependency Check](./plugins/examples/dependency-check.yaml) - Multi-format file sync
+- [Release Gate](./plugins/examples/release-gate.yaml) - Quality gates and branch constraints
+- [Audit Log](./plugins/examples/audit-log.yaml) - Version history tracking

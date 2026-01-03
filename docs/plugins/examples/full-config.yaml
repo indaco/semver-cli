@@ -104,3 +104,13 @@ plugins:
     prefix: v
     annotate: true
     push: false # Set to true for CI/CD pipelines
+
+  # Audit Log - Records version changes with metadata
+  audit-log:
+    enabled: true
+    path: ".version-history.json"
+    format: "json"
+    include-author: true
+    include-timestamp: true
+    include-commit-sha: true
+    include-branch: true

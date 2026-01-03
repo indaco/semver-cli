@@ -118,29 +118,51 @@ func BumpByLabel(v SemVersion, label string) (SemVersion, error) {
 }
 
 // IncrementPreRelease increments the numeric suffix of a pre-release label.
-// If current == base, or current doesn't match base, returns base.1.
-// If current is base.N, returns base.(N+1).
+// Preserves the original separator style:
+// - "rc.1" -> "rc.2" (dot separator)
+// - "rc-1" -> "rc-2" (dash separator)
+// - "rc1" -> "rc2" (no separator)
+// - "rc" -> "rc.1" (no number, defaults to dot)
+// If current doesn't match base, returns base.1.
 func IncrementPreRelease(current, base string) string {
 	if current == base {
-		return formatPreRelease(base, 1)
+		return formatPreReleaseWithSep(base, 1, ".")
 	}
 
-	re := regexp.MustCompile(`^` + regexp.QuoteMeta(base) + `(?:\.(\d*))?$`)
-	matches := re.FindStringSubmatch(current)
+	// Try to match with different separators: dot, dash, or no separator
+	// Pattern: base + optional(separator + digits)
+	reDot := regexp.MustCompile(`^` + regexp.QuoteMeta(base) + `\.(\d+)$`)
+	reDash := regexp.MustCompile(`^` + regexp.QuoteMeta(base) + `-(\d+)$`)
+	reNoSep := regexp.MustCompile(`^` + regexp.QuoteMeta(base) + `(\d+)$`)
 
-	if len(matches) == 2 {
-		if matches[1] == "" {
-			return formatPreRelease(base, 1)
-		}
+	// Check dot separator (e.g., rc.1)
+	if matches := reDot.FindStringSubmatch(current); len(matches) == 2 {
 		n, err := strconv.Atoi(matches[1])
 		if err == nil {
-			return formatPreRelease(base, n+1)
+			return formatPreReleaseWithSep(base, n+1, ".")
 		}
 	}
 
-	return formatPreRelease(base, 1)
+	// Check dash separator (e.g., rc-1)
+	if matches := reDash.FindStringSubmatch(current); len(matches) == 2 {
+		n, err := strconv.Atoi(matches[1])
+		if err == nil {
+			return formatPreReleaseWithSep(base, n+1, "-")
+		}
+	}
+
+	// Check no separator (e.g., rc1)
+	if matches := reNoSep.FindStringSubmatch(current); len(matches) == 2 {
+		n, err := strconv.Atoi(matches[1])
+		if err == nil {
+			return formatPreReleaseWithSep(base, n+1, "")
+		}
+	}
+
+	// Default: start with base.1
+	return formatPreReleaseWithSep(base, 1, ".")
 }
 
-func formatPreRelease(base string, num int) string {
-	return fmt.Sprintf("%s.%d", base, num)
+func formatPreReleaseWithSep(base string, num int, sep string) string {
+	return fmt.Sprintf("%s%s%d", base, sep, num)
 }

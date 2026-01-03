@@ -126,7 +126,7 @@ USAGE:
    semver [global options] [command [command options]]
 
 VERSION:
-   v0.6.0-rc1
+   v0.6.0-rc2
 
 COMMANDS:
    show              Display current version
@@ -267,6 +267,25 @@ semver bump major
 # .version = 1.3.0-alpha.1+build.123
 semver bump release
 # => 1.3.0
+```
+
+**Increment pre-release (`bump pre`)**
+
+Increment only the pre-release portion without bumping the version number:
+
+```bash
+# .version = 1.0.0-rc.1
+semver bump pre
+# => 1.0.0-rc.2
+
+# .version = 1.0.0-rc1
+semver bump pre
+# => 1.0.0-rc2
+
+# Switch to a different pre-release label
+# .version = 1.0.0-alpha.3
+semver bump pre --label beta
+# => 1.0.0-beta.1
 ```
 
 You can also pass `--pre` and/or `--meta` flags to any bump:

@@ -25,3 +25,12 @@ func SaveVersion(path string, version SemVersion) error {
 func UpdateVersion(path string, bumpType string, pre string, meta string, preserve bool) error {
 	return defaultManager.Update(path, bumpType, pre, meta, preserve)
 }
+
+// UpdatePreRelease updates only the pre-release portion of the version.
+// If label is provided, it switches to that label (starting at .1).
+// If label is empty, it increments the existing pre-release number.
+// This is a convenience function that uses the default VersionManager.
+// For better testability, use VersionManager.UpdatePreRelease() instead.
+func UpdatePreRelease(path string, label string, meta string, preserve bool) error {
+	return defaultManager.UpdatePreRelease(path, label, meta, preserve)
+}

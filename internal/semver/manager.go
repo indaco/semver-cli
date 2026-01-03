@@ -119,6 +119,74 @@ func (m *VersionManager) Update(path string, bumpType string, pre string, meta s
 	return m.Save(path, version)
 }
 
+// UpdatePreRelease updates only the pre-release portion of the version.
+// If label is provided, it switches to that label (starting at .1).
+// If label is empty, it increments the existing pre-release number.
+// Returns an error if no label is provided and the version has no pre-release.
+func (m *VersionManager) UpdatePreRelease(path string, label string, meta string, preserve bool) error {
+	version, err := m.Read(path)
+	if err != nil {
+		return err
+	}
+
+	if label != "" {
+		// Switch to new label or increment if same base label
+		version.PreRelease = IncrementPreRelease(version.PreRelease, label)
+	} else {
+		// Increment existing pre-release
+		if version.PreRelease == "" {
+			return fmt.Errorf("current version has no pre-release; use --label to specify one")
+		}
+		// Extract base label and increment
+		base := extractPreReleaseBase(version.PreRelease)
+		version.PreRelease = IncrementPreRelease(version.PreRelease, base)
+	}
+
+	if meta != "" {
+		version.Build = meta
+	} else if !preserve {
+		version.Build = ""
+	}
+
+	return m.Save(path, version)
+}
+
+// extractPreReleaseBase extracts the base label from a pre-release string.
+// e.g., "rc.1" -> "rc", "beta.2" -> "beta", "alpha" -> "alpha", "rc1" -> "rc"
+func extractPreReleaseBase(pre string) string {
+	// First, check for dot followed by a number
+	for i := len(pre) - 1; i >= 0; i-- {
+		if pre[i] == '.' {
+			// Check if everything after the dot is numeric
+			suffix := pre[i+1:]
+			isNumeric := true
+			for _, c := range suffix {
+				if c < '0' || c > '9' {
+					isNumeric = false
+					break
+				}
+			}
+			if isNumeric && len(suffix) > 0 {
+				return pre[:i]
+			}
+		}
+	}
+
+	// Check for trailing digits without dot (e.g., "rc1" -> "rc")
+	lastNonDigit := -1
+	for i := len(pre) - 1; i >= 0; i-- {
+		if pre[i] < '0' || pre[i] > '9' {
+			lastNonDigit = i
+			break
+		}
+	}
+	if lastNonDigit >= 0 && lastNonDigit < len(pre)-1 {
+		return pre[:lastNonDigit+1]
+	}
+
+	return pre
+}
+
 // realGitClient implements GitTagReader using actual git commands.
 type realGitClient struct{}
 

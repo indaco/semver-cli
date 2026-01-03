@@ -33,6 +33,7 @@ func Run(cfg *config.Config) *cli.Command {
 			patchCmd(cfg),
 			minorCmd(cfg),
 			majorCmd(cfg),
+			preCmd(cfg),
 			releaseCmd(cfg),
 			autoCmd(cfg),
 		},

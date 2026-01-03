@@ -8,6 +8,17 @@ plugins:
   # Enabled by default
   commit-parser: true
 
+  # Release Gate - Pre-bump validation and quality gates
+  release-gate:
+    enabled: true
+    require-clean-worktree: true
+    blocked-on-wip-commits: true
+    allowed-branches:
+      - "main"
+      - "release/*"
+    blocked-branches:
+      - "experimental/*"
+
   # Version Validator - Enforces versioning policies
   version-validator:
     enabled: true

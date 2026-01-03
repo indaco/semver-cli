@@ -117,10 +117,11 @@ func (ec *ExecutionContext) IsMultiModule() bool {
 // GetExecutionContext determines the execution context for a command.
 // It follows this logic:
 //  1. If --path flag provided -> single-module mode
-//  2. If --all or --module flags -> multi-module mode (skip TUI)
-//  3. Detect context using workspace.Detector
-//  4. If MultiModule detected and interactive -> show TUI prompt
-//  5. If MultiModule detected and non-interactive (CI or --yes) -> auto-select all
+//  2. If .semver.yaml has explicit path (not default) -> single-module mode
+//  3. If --all or --module flags -> multi-module mode (skip TUI)
+//  4. Detect context using workspace.Detector
+//  5. If MultiModule detected and interactive -> show TUI prompt
+//  6. If MultiModule detected and non-interactive (CI or --yes) -> auto-select all
 //
 // The context parameter is used for cancellation and timeouts.
 // The cmd parameter provides access to CLI flags.
@@ -132,6 +133,15 @@ func GetExecutionContext(ctx context.Context, cmd *cli.Command, cfg *config.Conf
 		return &ExecutionContext{
 			Mode: SingleModuleMode,
 			Path: path,
+		}, nil
+	}
+
+	// Check if .semver.yaml has an explicit path configured (not default ".version")
+	// This takes precedence over multi-module detection
+	if cfg != nil && cfg.Path != "" && cfg.Path != ".version" {
+		return &ExecutionContext{
+			Mode: SingleModuleMode,
+			Path: cfg.Path,
 		}, nil
 	}
 

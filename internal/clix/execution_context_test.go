@@ -517,6 +517,48 @@ func TestGetExecutionContext_PathFlagSet(t *testing.T) {
 	}
 }
 
+func TestGetExecutionContext_ConfigPathSet(t *testing.T) {
+	// When .semver.yaml has an explicit path (not default), use single-module mode
+	tmpDir := t.TempDir()
+	versionPath := tmpDir + "/custom/path/.version"
+
+	// Create the version file
+	if err := os.MkdirAll(tmpDir+"/custom/path", 0755); err != nil {
+		t.Fatalf("failed to create dir: %v", err)
+	}
+	if err := os.WriteFile(versionPath, []byte("1.0.0"), 0644); err != nil {
+		t.Fatalf("failed to create version file: %v", err)
+	}
+
+	cfg := &config.Config{
+		Path: versionPath, // Explicit path set in config
+	}
+
+	cmd := &cli.Command{
+		Name: "test",
+		Flags: []cli.Flag{
+			&cli.StringFlag{
+				Name:  "path",
+				Value: ".version", // Default value, not explicitly set
+			},
+		},
+	}
+
+	ctx := context.Background()
+	execCtx, err := GetExecutionContext(ctx, cmd, cfg)
+	if err != nil {
+		t.Fatalf("GetExecutionContext() error = %v", err)
+	}
+
+	if execCtx.Mode != SingleModuleMode {
+		t.Errorf("Mode = %v, want SingleModuleMode (config path should override detection)", execCtx.Mode)
+	}
+
+	if execCtx.Path != versionPath {
+		t.Errorf("Path = %v, want %v", execCtx.Path, versionPath)
+	}
+}
+
 func TestGetExecutionContext_AllFlag(t *testing.T) {
 	tmpDir := t.TempDir()
 

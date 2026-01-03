@@ -341,11 +341,31 @@ func TestIncrementPreRelease(t *testing.T) {
 		base    string
 		want    string
 	}{
+		// Dot separator (e.g., rc.1)
 		{"alpha", "alpha", "alpha.1"},
 		{"alpha.", "alpha", "alpha.1"},
 		{"alpha.1", "alpha", "alpha.2"},
 		{"alpha.9", "alpha", "alpha.10"},
+		{"rc.1", "rc", "rc.2"},
+		{"rc.99", "rc", "rc.100"},
+
+		// Dash separator (e.g., rc-1)
+		{"rc-1", "rc", "rc-2"},
+		{"rc-9", "rc", "rc-10"},
+		{"beta-5", "beta", "beta-6"},
+
+		// No separator (e.g., rc1)
+		{"rc1", "rc", "rc2"},
+		{"rc9", "rc", "rc10"},
+		{"beta5", "beta", "beta6"},
+
+		// Label switch (different base)
 		{"beta", "alpha", "alpha.1"},
+		{"beta.3", "alpha", "alpha.1"},
+		{"rc1", "beta", "beta.1"},
+		{"rc-2", "beta", "beta.1"},
+
+		// Empty current
 		{"", "rc", "rc.1"},
 	}
 

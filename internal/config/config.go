@@ -16,6 +16,7 @@ type PluginConfig struct {
 	DependencyCheck    *DependencyCheckConfig    `yaml:"dependency-check,omitempty"`
 	ChangelogParser    *ChangelogParserConfig    `yaml:"changelog-parser,omitempty"`
 	ChangelogGenerator *ChangelogGeneratorConfig `yaml:"changelog-generator,omitempty"`
+	ReleaseGate        *ReleaseGateConfig        `yaml:"release-gate,omitempty"`
 }
 
 // TagManagerConfig holds configuration for the tag manager plugin.
@@ -223,6 +224,27 @@ type ContributorsConfig struct {
 
 	// Format is a Go template for contributor formatting.
 	Format string `yaml:"format,omitempty"`
+}
+
+// ReleaseGateConfig holds configuration for the release gate plugin.
+type ReleaseGateConfig struct {
+	// Enabled controls whether the plugin is active.
+	Enabled bool `yaml:"enabled"`
+
+	// RequireCleanWorktree blocks bumps if git has uncommitted changes.
+	RequireCleanWorktree bool `yaml:"require-clean-worktree,omitempty"`
+
+	// RequireCIPass checks CI status before allowing bumps (disabled by default).
+	RequireCIPass bool `yaml:"require-ci-pass,omitempty"`
+
+	// BlockedOnWIPCommits blocks if recent commits contain WIP/fixup/squash.
+	BlockedOnWIPCommits bool `yaml:"blocked-on-wip-commits,omitempty"`
+
+	// AllowedBranches lists branches where bumps are allowed (empty = all allowed).
+	AllowedBranches []string `yaml:"allowed-branches,omitempty"`
+
+	// BlockedBranches lists branches where bumps are never allowed.
+	BlockedBranches []string `yaml:"blocked-branches,omitempty"`
 }
 
 // GetChangesDir returns the changes directory with default ".changes".

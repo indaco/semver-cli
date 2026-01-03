@@ -161,6 +161,26 @@ func runSingleModuleAuto(cmd *cli.Command, path, label, meta, since, until strin
 
 	next = setBuildMetadata(current, next, meta, isPreserveMeta)
 
+	// Validate release gates before bumping
+	if err := validateReleaseGate(next, current, "auto"); err != nil {
+		return err
+	}
+
+	// Validate version policy before bumping
+	if err := validateVersionPolicy(next, current, "auto"); err != nil {
+		return err
+	}
+
+	// Validate dependency consistency before bumping
+	if err := validateDependencyConsistency(next); err != nil {
+		return err
+	}
+
+	// Validate tag availability before bumping
+	if err := validateTagAvailable(next); err != nil {
+		return err
+	}
+
 	if err := semver.SaveVersion(path, next); err != nil {
 		return fmt.Errorf("failed to save version: %w", err)
 	}

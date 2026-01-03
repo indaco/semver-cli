@@ -120,13 +120,13 @@ just install
 
 ```bash
 NAME:
-   semver - Manage semantic versioning with a .version file
+   semver - Semantic versioning with a .version file
 
 USAGE:
    semver [global options] [command [command options]]
 
 VERSION:
-   v0.6.0
+   v0.6.0-rc1
 
 COMMANDS:
    show              Display current version

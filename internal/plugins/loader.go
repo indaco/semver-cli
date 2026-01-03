@@ -2,6 +2,7 @@ package plugins
 
 import (
 	"github.com/indaco/semver-cli/internal/config"
+	"github.com/indaco/semver-cli/internal/plugins/changeloggenerator"
 	"github.com/indaco/semver-cli/internal/plugins/changelogparser"
 	"github.com/indaco/semver-cli/internal/plugins/commitparser"
 	"github.com/indaco/semver-cli/internal/plugins/dependencycheck"
@@ -45,6 +46,10 @@ func RegisterBuiltinPlugins(cfg *config.Config) {
 	if cfg.Plugins.ChangelogParser != nil && cfg.Plugins.ChangelogParser.Enabled {
 		clCfg := convertChangelogParserConfig(cfg.Plugins.ChangelogParser)
 		changelogparser.Register(clCfg)
+	}
+
+	if cfg.Plugins.ChangelogGenerator != nil && cfg.Plugins.ChangelogGenerator.Enabled {
+		changeloggenerator.Register(cfg.Plugins.ChangelogGenerator)
 	}
 }
 

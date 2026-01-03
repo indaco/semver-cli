@@ -67,20 +67,26 @@ func runSingleModuleRelease(cmd *cli.Command, path string, isPreserveMeta bool) 
 		return err
 	}
 
-	version, err := semver.ReadVersion(path)
+	previousVersion, err := semver.ReadVersion(path)
 	if err != nil {
 		return fmt.Errorf("failed to read version: %w", err)
 	}
 
-	version.PreRelease = ""
+	newVersion := previousVersion
+	newVersion.PreRelease = ""
 	if !isPreserveMeta {
-		version.Build = ""
+		newVersion.Build = ""
 	}
 
-	if err := semver.SaveVersion(path, version); err != nil {
+	if err := semver.SaveVersion(path, newVersion); err != nil {
 		return fmt.Errorf("failed to save version: %w", err)
 	}
 
-	fmt.Printf("Promoted to release version: %s\n", version.String())
+	// Generate changelog entry
+	if err := generateChangelogAfterBump(newVersion, previousVersion, "release"); err != nil {
+		return err
+	}
+
+	fmt.Printf("Promoted to release version: %s\n", newVersion.String())
 	return nil
 }

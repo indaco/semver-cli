@@ -1,0 +1,427 @@
+package changeloggenerator
+
+import (
+	"fmt"
+	"os"
+	"path/filepath"
+	"strings"
+	"time"
+)
+
+// Generator handles changelog content generation.
+type Generator struct {
+	config *Config
+	remote *RemoteInfo
+}
+
+// NewGenerator creates a new changelog generator.
+func NewGenerator(config *Config) *Generator {
+	return &Generator{config: config}
+}
+
+// resolveRemote resolves repository info from config or git remote.
+func (g *Generator) resolveRemote() (*RemoteInfo, error) {
+	if g.remote != nil {
+		return g.remote, nil
+	}
+
+	if g.config.Repository != nil {
+		if g.config.Repository.Owner != "" && g.config.Repository.Repo != "" {
+			g.remote = &RemoteInfo{
+				Provider: g.config.Repository.Provider,
+				Host:     g.config.Repository.Host,
+				Owner:    g.config.Repository.Owner,
+				Repo:     g.config.Repository.Repo,
+			}
+			// Fill in defaults if not specified
+			if g.remote.Host == "" {
+				g.remote.Host = getDefaultHost(g.remote.Provider)
+			}
+			if g.remote.Provider == "" {
+				g.remote.Provider = getProviderFromHost(g.remote.Host)
+			}
+			return g.remote, nil
+		}
+
+		if g.config.Repository.AutoDetect {
+			remote, err := GetRemoteInfoFn()
+			if err != nil {
+				return nil, err
+			}
+			g.remote = remote
+			return g.remote, nil
+		}
+	}
+
+	return nil, fmt.Errorf("repository configuration not available")
+}
+
+// getDefaultHost returns the default host for a provider.
+func getDefaultHost(provider string) string {
+	switch provider {
+	case "github":
+		return "github.com"
+	case "gitlab":
+		return "gitlab.com"
+	case "codeberg":
+		return "codeberg.org"
+	case "gitea":
+		return "gitea.io"
+	case "bitbucket":
+		return "bitbucket.org"
+	case "sourcehut":
+		return "sr.ht"
+	default:
+		return ""
+	}
+}
+
+// getProviderFromHost returns the provider name for a known host.
+func getProviderFromHost(host string) string {
+	if p, ok := KnownProviders[host]; ok {
+		return p
+	}
+	return "custom"
+}
+
+// GenerateResult contains the generated changelog and any warnings.
+type GenerateResult struct {
+	Content                string
+	SkippedNonConventional []*ParsedCommit
+}
+
+// GenerateVersionChangelog generates the changelog content for a version.
+func (g *Generator) GenerateVersionChangelog(version, previousVersion string, commits []CommitInfo) (string, error) {
+	result := g.GenerateVersionChangelogWithResult(version, previousVersion, commits)
+	return result.Content, nil
+}
+
+// GenerateVersionChangelogWithResult generates the changelog content and returns detailed result.
+func (g *Generator) GenerateVersionChangelogWithResult(version, previousVersion string, commits []CommitInfo) GenerateResult {
+	// Parse and filter commits
+	parsed := ParseCommits(commits)
+	filtered := FilterCommits(parsed, g.config.ExcludePatterns)
+
+	// Group commits with options
+	groupResult := GroupCommitsWithOptions(filtered, g.config.Groups, g.config.IncludeNonConventional)
+	grouped := groupResult.Grouped
+	sortedKeys := SortedGroupKeys(grouped)
+
+	// Resolve remote for links
+	remote, _ := g.resolveRemote() // Ignore error, just won't have links
+
+	// Build changelog content
+	var sb strings.Builder
+
+	// Version header
+	date := time.Now().Format("2006-01-02")
+	sb.WriteString(fmt.Sprintf("## %s - %s\n\n", version, date))
+
+	// Compare link
+	if remote != nil && previousVersion != "" {
+		compareURL := g.buildCompareURL(remote, previousVersion, version)
+		if compareURL != "" {
+			sb.WriteString(fmt.Sprintf("[compare changes](%s)\n\n", compareURL))
+		}
+	}
+
+	// Grouped commits
+	for _, label := range sortedKeys {
+		commits := grouped[label]
+		if len(commits) == 0 {
+			continue
+		}
+
+		// Section header with optional icon
+		icon := commits[0].GroupIcon
+		if icon != "" {
+			sb.WriteString(fmt.Sprintf("### %s %s\n\n", icon, label))
+		} else {
+			sb.WriteString(fmt.Sprintf("### %s\n\n", label))
+		}
+
+		// Commit entries
+		for _, c := range commits {
+			entry := g.formatCommitEntry(c, remote)
+			sb.WriteString(entry)
+		}
+		sb.WriteString("\n")
+	}
+
+	// Contributors section
+	if g.config.Contributors != nil && g.config.Contributors.Enabled {
+		contributors := GetContributorsFn(commits)
+		if len(contributors) > 0 {
+			sb.WriteString("### Contributors\n\n")
+			for _, contrib := range contributors {
+				g.writeContributorEntry(&sb, contrib, remote)
+			}
+			sb.WriteString("\n")
+		}
+	}
+
+	return GenerateResult{
+		Content:                sb.String(),
+		SkippedNonConventional: groupResult.SkippedNonConventional,
+	}
+}
+
+// buildCompareURL generates a compare URL for the provider.
+func (g *Generator) buildCompareURL(remote *RemoteInfo, prev, curr string) string {
+	switch remote.Provider {
+	case "github", "gitea", "codeberg":
+		return fmt.Sprintf("https://%s/%s/%s/compare/%s...%s",
+			remote.Host, remote.Owner, remote.Repo, prev, curr)
+	case "gitlab":
+		return fmt.Sprintf("https://%s/%s/%s/-/compare/%s...%s",
+			remote.Host, remote.Owner, remote.Repo, prev, curr)
+	case "bitbucket":
+		return fmt.Sprintf("https://%s/%s/%s/branches/compare/%s%%0D%s",
+			remote.Host, remote.Owner, remote.Repo, curr, prev)
+	case "sourcehut":
+		return fmt.Sprintf("https://git.%s/%s/%s/log/%s..%s",
+			remote.Host, remote.Owner, remote.Repo, prev, curr)
+	default:
+		// For custom providers, use GitHub-style URL as best effort
+		return fmt.Sprintf("https://%s/%s/%s/compare/%s...%s",
+			remote.Host, remote.Owner, remote.Repo, prev, curr)
+	}
+}
+
+// writeContributorEntry writes a contributor entry to the builder.
+func (g *Generator) writeContributorEntry(sb *strings.Builder, contrib Contributor, remote *RemoteInfo) {
+	if remote != nil {
+		host := remote.Host
+		if contrib.Host != "" {
+			host = contrib.Host
+		}
+		fmt.Fprintf(sb, "- %s ([@%s](https://%s/%s))\n",
+			contrib.Name, contrib.Username, host, contrib.Username)
+	} else {
+		fmt.Fprintf(sb, "- %s\n", contrib.Name)
+	}
+}
+
+// formatCommitEntry formats a single commit entry.
+func (g *Generator) formatCommitEntry(c *GroupedCommit, remote *RemoteInfo) string {
+	var sb strings.Builder
+
+	sb.WriteString("- ")
+
+	// Add scope if present
+	if c.Scope != "" {
+		sb.WriteString(fmt.Sprintf("**%s:** ", c.Scope))
+	}
+
+	// Add description
+	sb.WriteString(c.Description)
+
+	// Add commit link (always) and PR link (if present)
+	if remote != nil {
+		commitURL := g.buildCommitURL(remote, c.ShortHash)
+		sb.WriteString(fmt.Sprintf(" ([%s](%s))", c.ShortHash, commitURL))
+
+		// Add PR link if present
+		if c.PRNumber != "" {
+			prURL := g.buildPRURL(remote, c.PRNumber)
+			sb.WriteString(fmt.Sprintf(" ([#%s](%s))", c.PRNumber, prURL))
+		}
+	}
+
+	sb.WriteString("\n")
+	return sb.String()
+}
+
+// buildCommitURL generates a commit URL for the provider.
+func (g *Generator) buildCommitURL(remote *RemoteInfo, hash string) string {
+	switch remote.Provider {
+	case "github", "gitea", "codeberg":
+		return fmt.Sprintf("https://%s/%s/%s/commit/%s",
+			remote.Host, remote.Owner, remote.Repo, hash)
+	case "gitlab":
+		return fmt.Sprintf("https://%s/%s/%s/-/commit/%s",
+			remote.Host, remote.Owner, remote.Repo, hash)
+	case "bitbucket":
+		return fmt.Sprintf("https://%s/%s/%s/commits/%s",
+			remote.Host, remote.Owner, remote.Repo, hash)
+	case "sourcehut":
+		return fmt.Sprintf("https://git.%s/%s/%s/commit/%s",
+			remote.Host, remote.Owner, remote.Repo, hash)
+	default:
+		return fmt.Sprintf("https://%s/%s/%s/commit/%s",
+			remote.Host, remote.Owner, remote.Repo, hash)
+	}
+}
+
+// buildPRURL generates a PR/MR URL for the provider.
+func (g *Generator) buildPRURL(remote *RemoteInfo, prNumber string) string {
+	switch remote.Provider {
+	case "github", "gitea", "codeberg":
+		return fmt.Sprintf("https://%s/%s/%s/pull/%s",
+			remote.Host, remote.Owner, remote.Repo, prNumber)
+	case "gitlab":
+		return fmt.Sprintf("https://%s/%s/%s/-/merge_requests/%s",
+			remote.Host, remote.Owner, remote.Repo, prNumber)
+	case "bitbucket":
+		return fmt.Sprintf("https://%s/%s/%s/pull-requests/%s",
+			remote.Host, remote.Owner, remote.Repo, prNumber)
+	default:
+		return fmt.Sprintf("https://%s/%s/%s/pull/%s",
+			remote.Host, remote.Owner, remote.Repo, prNumber)
+	}
+}
+
+// WriteVersionedFile writes the changelog to a version-specific file.
+func (g *Generator) WriteVersionedFile(version, content string) error {
+	dir := g.config.ChangesDir
+	if err := os.MkdirAll(dir, 0755); err != nil {
+		return fmt.Errorf("failed to create changes directory: %w", err)
+	}
+
+	filename := fmt.Sprintf("%s.md", version)
+	path := filepath.Join(dir, filename)
+
+	if err := os.WriteFile(path, []byte(content), 0644); err != nil {
+		return fmt.Errorf("failed to write changelog file: %w", err)
+	}
+
+	return nil
+}
+
+// WriteUnifiedChangelog writes to the unified CHANGELOG.md file.
+func (g *Generator) WriteUnifiedChangelog(newContent string) error {
+	path := g.config.ChangelogPath
+
+	var existingContent string
+
+	// Read existing content if file exists
+	if data, err := os.ReadFile(path); err == nil {
+		existingContent = string(data)
+	}
+
+	var finalContent string
+
+	if existingContent == "" {
+		// Create new changelog with header
+		header := g.getDefaultHeader()
+		finalContent = header + "\n" + newContent
+	} else {
+		// Insert new content after header
+		finalContent = g.insertAfterHeader(existingContent, newContent)
+	}
+
+	if err := os.WriteFile(path, []byte(finalContent), 0644); err != nil {
+		return fmt.Errorf("failed to write changelog: %w", err)
+	}
+
+	return nil
+}
+
+// getDefaultHeader returns the default changelog header.
+func (g *Generator) getDefaultHeader() string {
+	// Try to read custom header template
+	if g.config.HeaderTemplate != "" {
+		if data, err := os.ReadFile(g.config.HeaderTemplate); err == nil {
+			return strings.TrimSpace(string(data))
+		}
+	}
+
+	return `# Changelog
+
+All notable changes to this project will be documented in this file.
+
+The format adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).`
+}
+
+// insertAfterHeader inserts new content after the changelog header.
+func (g *Generator) insertAfterHeader(existing, newContent string) string {
+	lines := strings.Split(existing, "\n")
+
+	// Find the first version header (## v... or ## [v...)
+	insertIdx := -1
+	for i, line := range lines {
+		trimmed := strings.TrimSpace(line)
+		if strings.HasPrefix(trimmed, "## ") {
+			insertIdx = i
+			break
+		}
+	}
+
+	if insertIdx == -1 {
+		// No existing version found, append after header
+		return existing + "\n" + newContent
+	}
+
+	// Insert new content before the first version
+	before := strings.Join(lines[:insertIdx], "\n")
+	after := strings.Join(lines[insertIdx:], "\n")
+
+	// Ensure proper spacing
+	before = strings.TrimRight(before, "\n") + "\n\n"
+
+	return before + newContent + after
+}
+
+// MergeVersionedFiles merges all versioned changelog files into a unified CHANGELOG.md.
+func (g *Generator) MergeVersionedFiles() error {
+	dir := g.config.ChangesDir
+
+	// Read all version files
+	entries, err := os.ReadDir(dir)
+	if err != nil {
+		return fmt.Errorf("failed to read changes directory: %w", err)
+	}
+
+	// Collect version files (excluding header template and directories)
+	var versionFiles []string
+	for _, entry := range entries {
+		if entry.IsDir() {
+			continue
+		}
+		name := entry.Name()
+		if strings.HasPrefix(name, "v") && strings.HasSuffix(name, ".md") {
+			versionFiles = append(versionFiles, filepath.Join(dir, name))
+		}
+	}
+
+	if len(versionFiles) == 0 {
+		return nil // Nothing to merge
+	}
+
+	// Sort files by version (newest first)
+	sortVersionFiles(versionFiles)
+
+	// Build merged content
+	var sb strings.Builder
+
+	// Add header
+	sb.WriteString(g.getDefaultHeader())
+	sb.WriteString("\n\n")
+
+	// Add each version's content
+	for _, file := range versionFiles {
+		data, err := os.ReadFile(file)
+		if err != nil {
+			continue // Skip unreadable files
+		}
+		sb.WriteString(string(data))
+	}
+
+	// Write to unified changelog
+	path := g.config.ChangelogPath
+	if err := os.WriteFile(path, []byte(sb.String()), 0644); err != nil {
+		return fmt.Errorf("failed to write unified changelog: %w", err)
+	}
+
+	return nil
+}
+
+// sortVersionFiles sorts version files by semantic version (newest first).
+func sortVersionFiles(files []string) {
+	// Simple reverse lexicographic sort (works for vX.Y.Z format)
+	for i := 1; i < len(files); i++ {
+		for j := i; j > 0 && files[j] > files[j-1]; j-- {
+			files[j], files[j-1] = files[j-1], files[j]
+		}
+	}
+}

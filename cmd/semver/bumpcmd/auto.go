@@ -165,6 +165,11 @@ func runSingleModuleAuto(cmd *cli.Command, path, label, meta, since, until strin
 		return fmt.Errorf("failed to save version: %w", err)
 	}
 
+	// Generate changelog entry
+	if err := generateChangelogAfterBump(next, current, "auto"); err != nil {
+		return err
+	}
+
 	fmt.Printf("Bumped version from %s to %s\n", current.String(), next.String())
 	return nil
 }

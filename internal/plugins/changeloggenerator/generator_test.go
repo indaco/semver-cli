@@ -1,0 +1,920 @@
+package changeloggenerator
+
+import (
+	"os"
+	"path/filepath"
+	"strings"
+	"testing"
+)
+
+func TestNewGenerator(t *testing.T) {
+	cfg := DefaultConfig()
+	g := NewGenerator(cfg)
+
+	if g == nil {
+		t.Fatal("expected non-nil generator")
+	}
+	if g.config != cfg {
+		t.Error("expected config to match")
+	}
+}
+
+func TestGetDefaultHost(t *testing.T) {
+	tests := []struct {
+		provider string
+		want     string
+	}{
+		{"github", "github.com"},
+		{"gitlab", "gitlab.com"},
+		{"codeberg", "codeberg.org"},
+		{"gitea", "gitea.io"},
+		{"bitbucket", "bitbucket.org"},
+		{"sourcehut", "sr.ht"},
+		{"custom", ""},
+		{"unknown", ""},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.provider, func(t *testing.T) {
+			got := getDefaultHost(tt.provider)
+			if got != tt.want {
+				t.Errorf("getDefaultHost(%q) = %q, want %q", tt.provider, got, tt.want)
+			}
+		})
+	}
+}
+
+func TestGetProviderFromHost(t *testing.T) {
+	tests := []struct {
+		host string
+		want string
+	}{
+		{"github.com", "github"},
+		{"gitlab.com", "gitlab"},
+		{"codeberg.org", "codeberg"},
+		{"bitbucket.org", "bitbucket"},
+		{"custom.server.com", "custom"},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.host, func(t *testing.T) {
+			got := getProviderFromHost(tt.host)
+			if got != tt.want {
+				t.Errorf("getProviderFromHost(%q) = %q, want %q", tt.host, got, tt.want)
+			}
+		})
+	}
+}
+
+func TestBuildCompareURL(t *testing.T) {
+	g := NewGenerator(DefaultConfig())
+
+	tests := []struct {
+		name     string
+		remote   *RemoteInfo
+		prev     string
+		curr     string
+		contains string
+	}{
+		{
+			name:     "GitHub",
+			remote:   &RemoteInfo{Provider: "github", Host: "github.com", Owner: "owner", Repo: "repo"},
+			prev:     "v1.0.0",
+			curr:     "v1.1.0",
+			contains: "github.com/owner/repo/compare/v1.0.0...v1.1.0",
+		},
+		{
+			name:     "GitLab",
+			remote:   &RemoteInfo{Provider: "gitlab", Host: "gitlab.com", Owner: "group", Repo: "project"},
+			prev:     "v1.0.0",
+			curr:     "v1.1.0",
+			contains: "gitlab.com/group/project/-/compare/v1.0.0...v1.1.0",
+		},
+		{
+			name:     "Bitbucket",
+			remote:   &RemoteInfo{Provider: "bitbucket", Host: "bitbucket.org", Owner: "team", Repo: "repo"},
+			prev:     "v1.0.0",
+			curr:     "v1.1.0",
+			contains: "bitbucket.org/team/repo/branches/compare",
+		},
+		{
+			name:     "Codeberg",
+			remote:   &RemoteInfo{Provider: "codeberg", Host: "codeberg.org", Owner: "user", Repo: "project"},
+			prev:     "v1.0.0",
+			curr:     "v1.1.0",
+			contains: "codeberg.org/user/project/compare/v1.0.0...v1.1.0",
+		},
+		{
+			name:     "Sourcehut",
+			remote:   &RemoteInfo{Provider: "sourcehut", Host: "sr.ht", Owner: "~user", Repo: "repo"},
+			prev:     "v1.0.0",
+			curr:     "v1.1.0",
+			contains: "git.sr.ht/~user/repo/log/v1.0.0..v1.1.0",
+		},
+		{
+			name:     "Gitea",
+			remote:   &RemoteInfo{Provider: "gitea", Host: "gitea.io", Owner: "org", Repo: "repo"},
+			prev:     "v1.0.0",
+			curr:     "v1.1.0",
+			contains: "gitea.io/org/repo/compare/v1.0.0...v1.1.0",
+		},
+		{
+			name:     "Custom",
+			remote:   &RemoteInfo{Provider: "custom", Host: "git.example.com", Owner: "org", Repo: "repo"},
+			prev:     "v1.0.0",
+			curr:     "v1.1.0",
+			contains: "git.example.com/org/repo/compare/v1.0.0...v1.1.0",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got := g.buildCompareURL(tt.remote, tt.prev, tt.curr)
+			if !strings.Contains(got, tt.contains) {
+				t.Errorf("buildCompareURL() = %q, expected to contain %q", got, tt.contains)
+			}
+		})
+	}
+}
+
+func TestBuildCommitURL(t *testing.T) {
+	g := NewGenerator(DefaultConfig())
+
+	tests := []struct {
+		name     string
+		remote   *RemoteInfo
+		hash     string
+		contains string
+	}{
+		{
+			name:     "GitHub",
+			remote:   &RemoteInfo{Provider: "github", Host: "github.com", Owner: "owner", Repo: "repo"},
+			hash:     "abc123",
+			contains: "github.com/owner/repo/commit/abc123",
+		},
+		{
+			name:     "GitLab",
+			remote:   &RemoteInfo{Provider: "gitlab", Host: "gitlab.com", Owner: "group", Repo: "project"},
+			hash:     "def456",
+			contains: "gitlab.com/group/project/-/commit/def456",
+		},
+		{
+			name:     "Bitbucket",
+			remote:   &RemoteInfo{Provider: "bitbucket", Host: "bitbucket.org", Owner: "team", Repo: "repo"},
+			hash:     "ghi789",
+			contains: "bitbucket.org/team/repo/commits/ghi789",
+		},
+		{
+			name:     "Sourcehut",
+			remote:   &RemoteInfo{Provider: "sourcehut", Host: "sr.ht", Owner: "~user", Repo: "repo"},
+			hash:     "jkl012",
+			contains: "git.sr.ht/~user/repo/commit/jkl012",
+		},
+		{
+			name:     "Codeberg",
+			remote:   &RemoteInfo{Provider: "codeberg", Host: "codeberg.org", Owner: "user", Repo: "project"},
+			hash:     "mno345",
+			contains: "codeberg.org/user/project/commit/mno345",
+		},
+		{
+			name:     "Gitea",
+			remote:   &RemoteInfo{Provider: "gitea", Host: "gitea.io", Owner: "org", Repo: "repo"},
+			hash:     "pqr678",
+			contains: "gitea.io/org/repo/commit/pqr678",
+		},
+		{
+			name:     "Custom",
+			remote:   &RemoteInfo{Provider: "custom", Host: "git.example.com", Owner: "org", Repo: "repo"},
+			hash:     "stu901",
+			contains: "git.example.com/org/repo/commit/stu901",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got := g.buildCommitURL(tt.remote, tt.hash)
+			if !strings.Contains(got, tt.contains) {
+				t.Errorf("buildCommitURL() = %q, expected to contain %q", got, tt.contains)
+			}
+		})
+	}
+}
+
+func TestBuildPRURL(t *testing.T) {
+	g := NewGenerator(DefaultConfig())
+
+	tests := []struct {
+		name     string
+		remote   *RemoteInfo
+		prNumber string
+		contains string
+	}{
+		{
+			name:     "GitHub",
+			remote:   &RemoteInfo{Provider: "github", Host: "github.com", Owner: "owner", Repo: "repo"},
+			prNumber: "123",
+			contains: "github.com/owner/repo/pull/123",
+		},
+		{
+			name:     "GitLab",
+			remote:   &RemoteInfo{Provider: "gitlab", Host: "gitlab.com", Owner: "group", Repo: "project"},
+			prNumber: "456",
+			contains: "gitlab.com/group/project/-/merge_requests/456",
+		},
+		{
+			name:     "Bitbucket",
+			remote:   &RemoteInfo{Provider: "bitbucket", Host: "bitbucket.org", Owner: "team", Repo: "repo"},
+			prNumber: "789",
+			contains: "bitbucket.org/team/repo/pull-requests/789",
+		},
+		{
+			name:     "Codeberg",
+			remote:   &RemoteInfo{Provider: "codeberg", Host: "codeberg.org", Owner: "user", Repo: "project"},
+			prNumber: "42",
+			contains: "codeberg.org/user/project/pull/42",
+		},
+		{
+			name:     "Gitea",
+			remote:   &RemoteInfo{Provider: "gitea", Host: "gitea.io", Owner: "org", Repo: "repo"},
+			prNumber: "99",
+			contains: "gitea.io/org/repo/pull/99",
+		},
+		{
+			name:     "Custom",
+			remote:   &RemoteInfo{Provider: "custom", Host: "git.example.com", Owner: "org", Repo: "repo"},
+			prNumber: "77",
+			contains: "git.example.com/org/repo/pull/77",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got := g.buildPRURL(tt.remote, tt.prNumber)
+			if !strings.Contains(got, tt.contains) {
+				t.Errorf("buildPRURL() = %q, expected to contain %q", got, tt.contains)
+			}
+		})
+	}
+}
+
+func TestFormatCommitEntry(t *testing.T) {
+	g := NewGenerator(DefaultConfig())
+	remote := &RemoteInfo{Provider: "github", Host: "github.com", Owner: "owner", Repo: "repo"}
+
+	tests := []struct {
+		name     string
+		commit   *GroupedCommit
+		remote   *RemoteInfo
+		contains []string
+	}{
+		{
+			name: "Basic commit",
+			commit: &GroupedCommit{
+				ParsedCommit: &ParsedCommit{
+					CommitInfo:  CommitInfo{ShortHash: "abc123"},
+					Description: "add feature",
+				},
+			},
+			remote:   remote,
+			contains: []string{"- add feature", "abc123"},
+		},
+		{
+			name: "Commit with scope",
+			commit: &GroupedCommit{
+				ParsedCommit: &ParsedCommit{
+					CommitInfo:  CommitInfo{ShortHash: "def456"},
+					Description: "update config",
+					Scope:       "cli",
+				},
+			},
+			remote:   remote,
+			contains: []string{"**cli:**", "update config"},
+		},
+		{
+			name: "Commit with PR number",
+			commit: &GroupedCommit{
+				ParsedCommit: &ParsedCommit{
+					CommitInfo:  CommitInfo{ShortHash: "ghi789"},
+					Description: "fix bug",
+					PRNumber:    "42",
+				},
+			},
+			remote:   remote,
+			contains: []string{"fix bug", "ghi789", "#42", "pull/42"},
+		},
+		{
+			name: "Commit without remote",
+			commit: &GroupedCommit{
+				ParsedCommit: &ParsedCommit{
+					CommitInfo:  CommitInfo{ShortHash: "jkl012"},
+					Description: "simple change",
+				},
+			},
+			remote:   nil,
+			contains: []string{"- simple change"},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got := g.formatCommitEntry(tt.commit, tt.remote)
+			for _, want := range tt.contains {
+				if !strings.Contains(got, want) {
+					t.Errorf("formatCommitEntry() = %q, expected to contain %q", got, want)
+				}
+			}
+		})
+	}
+}
+
+func TestWriteContributorEntry(t *testing.T) {
+	g := NewGenerator(DefaultConfig())
+	remote := &RemoteInfo{Provider: "github", Host: "github.com", Owner: "owner", Repo: "repo"}
+
+	tests := []struct {
+		name     string
+		contrib  Contributor
+		remote   *RemoteInfo
+		contains []string
+	}{
+		{
+			name:     "With remote",
+			contrib:  Contributor{Name: "Alice", Username: "alice", Host: "github.com"},
+			remote:   remote,
+			contains: []string{"Alice", "@alice", "github.com/alice"},
+		},
+		{
+			name:     "Without remote",
+			contrib:  Contributor{Name: "Bob", Username: "bob"},
+			remote:   nil,
+			contains: []string{"- Bob"},
+		},
+		{
+			name:     "Contributor with different host",
+			contrib:  Contributor{Name: "Charlie", Username: "charlie", Host: "gitlab.com"},
+			remote:   remote,
+			contains: []string{"Charlie", "@charlie", "gitlab.com/charlie"},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			var sb strings.Builder
+			g.writeContributorEntry(&sb, tt.contrib, tt.remote)
+			got := sb.String()
+			for _, want := range tt.contains {
+				if !strings.Contains(got, want) {
+					t.Errorf("writeContributorEntry() = %q, expected to contain %q", got, want)
+				}
+			}
+		})
+	}
+}
+
+func TestGenerateVersionChangelog(t *testing.T) {
+	cfg := DefaultConfig()
+	cfg.Repository = &RepositoryConfig{
+		Provider: "github",
+		Host:     "github.com",
+		Owner:    "testowner",
+		Repo:     "testrepo",
+	}
+	cfg.Contributors = &ContributorsConfig{Enabled: false}
+	g := NewGenerator(cfg)
+
+	commits := []CommitInfo{
+		{Hash: "abc123", ShortHash: "abc123", Subject: "feat: add feature", Author: "Alice", AuthorEmail: "alice@example.com"},
+		{Hash: "def456", ShortHash: "def456", Subject: "fix: fix bug", Author: "Bob", AuthorEmail: "bob@example.com"},
+	}
+
+	content, err := g.GenerateVersionChangelog("v1.0.0", "v0.9.0", commits)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	// Check version header
+	if !strings.Contains(content, "## v1.0.0") {
+		t.Error("expected version header")
+	}
+
+	// Check compare link
+	if !strings.Contains(content, "compare/v0.9.0...v1.0.0") {
+		t.Error("expected compare link")
+	}
+
+	// Check grouped content
+	if !strings.Contains(content, "add feature") {
+		t.Error("expected feature description")
+	}
+	if !strings.Contains(content, "fix bug") {
+		t.Error("expected fix description")
+	}
+}
+
+func TestGenerateVersionChangelog_WithContributors(t *testing.T) {
+	cfg := DefaultConfig()
+	cfg.Repository = &RepositoryConfig{
+		Provider: "github",
+		Host:     "github.com",
+		Owner:    "testowner",
+		Repo:     "testrepo",
+	}
+	cfg.Contributors = &ContributorsConfig{Enabled: true}
+	g := NewGenerator(cfg)
+
+	commits := []CommitInfo{
+		{Hash: "abc123", ShortHash: "abc123", Subject: "feat: add feature", Author: "Alice", AuthorEmail: "alice@users.noreply.github.com"},
+	}
+
+	content, err := g.GenerateVersionChangelog("v1.0.0", "v0.9.0", commits)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	// Check contributors section
+	if !strings.Contains(content, "### Contributors") {
+		t.Error("expected contributors section")
+	}
+	if !strings.Contains(content, "Alice") {
+		t.Error("expected Alice in contributors")
+	}
+}
+
+func TestGenerateVersionChangelog_EmptyCommits(t *testing.T) {
+	cfg := DefaultConfig()
+	g := NewGenerator(cfg)
+
+	content, err := g.GenerateVersionChangelog("v1.0.0", "v0.9.0", []CommitInfo{})
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	// Should still have version header
+	if !strings.Contains(content, "## v1.0.0") {
+		t.Error("expected version header even with no commits")
+	}
+}
+
+func TestWriteVersionedFile(t *testing.T) {
+	tmpDir := t.TempDir()
+	cfg := DefaultConfig()
+	cfg.ChangesDir = filepath.Join(tmpDir, ".changes")
+	g := NewGenerator(cfg)
+
+	content := "## v1.0.0\n\nTest content"
+	err := g.WriteVersionedFile("v1.0.0", content)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	// Check file exists
+	expectedPath := filepath.Join(cfg.ChangesDir, "v1.0.0.md")
+	if _, err := os.Stat(expectedPath); os.IsNotExist(err) {
+		t.Errorf("expected file at %s", expectedPath)
+	}
+
+	// Check content
+	data, err := os.ReadFile(expectedPath)
+	if err != nil {
+		t.Fatalf("failed to read file: %v", err)
+	}
+	if string(data) != content {
+		t.Errorf("file content = %q, want %q", string(data), content)
+	}
+}
+
+func TestWriteUnifiedChangelog_New(t *testing.T) {
+	tmpDir := t.TempDir()
+	cfg := DefaultConfig()
+	cfg.ChangelogPath = filepath.Join(tmpDir, "CHANGELOG.md")
+	g := NewGenerator(cfg)
+
+	newContent := "## v1.0.0\n\nNew content"
+	err := g.WriteUnifiedChangelog(newContent)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	// Check file exists
+	if _, err := os.Stat(cfg.ChangelogPath); os.IsNotExist(err) {
+		t.Error("expected CHANGELOG.md to be created")
+	}
+
+	// Check content includes header
+	data, err := os.ReadFile(cfg.ChangelogPath)
+	if err != nil {
+		t.Fatalf("failed to read file: %v", err)
+	}
+	content := string(data)
+	if !strings.Contains(content, "# Changelog") {
+		t.Error("expected changelog header")
+	}
+	if !strings.Contains(content, "v1.0.0") {
+		t.Error("expected version content")
+	}
+}
+
+func TestWriteUnifiedChangelog_Existing(t *testing.T) {
+	tmpDir := t.TempDir()
+	cfg := DefaultConfig()
+	cfg.ChangelogPath = filepath.Join(tmpDir, "CHANGELOG.md")
+	g := NewGenerator(cfg)
+
+	// Create existing changelog
+	existingContent := `# Changelog
+
+## v0.9.0
+
+Previous content
+`
+	if err := os.WriteFile(cfg.ChangelogPath, []byte(existingContent), 0644); err != nil {
+		t.Fatalf("failed to create existing changelog: %v", err)
+	}
+
+	// Write new content
+	newContent := "## v1.0.0\n\nNew content\n\n"
+	err := g.WriteUnifiedChangelog(newContent)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	// Check content
+	data, err := os.ReadFile(cfg.ChangelogPath)
+	if err != nil {
+		t.Fatalf("failed to read file: %v", err)
+	}
+	content := string(data)
+
+	// New content should come before old
+	v1Index := strings.Index(content, "v1.0.0")
+	v09Index := strings.Index(content, "v0.9.0")
+	if v1Index > v09Index {
+		t.Error("expected new version to appear before old version")
+	}
+}
+
+func TestGetDefaultHeader(t *testing.T) {
+	cfg := DefaultConfig()
+	g := NewGenerator(cfg)
+
+	header := g.getDefaultHeader()
+
+	if !strings.Contains(header, "Changelog") {
+		t.Error("expected 'Changelog' in header")
+	}
+	if !strings.Contains(header, "Semantic Versioning") {
+		t.Error("expected 'Semantic Versioning' in header")
+	}
+}
+
+func TestGetDefaultHeader_CustomTemplate(t *testing.T) {
+	tmpDir := t.TempDir()
+	templatePath := filepath.Join(tmpDir, "header.md")
+	customHeader := "# Custom Header\n\nCustom description"
+	if err := os.WriteFile(templatePath, []byte(customHeader), 0644); err != nil {
+		t.Fatalf("failed to create template: %v", err)
+	}
+
+	cfg := DefaultConfig()
+	cfg.HeaderTemplate = templatePath
+	g := NewGenerator(cfg)
+
+	header := g.getDefaultHeader()
+
+	if header != strings.TrimSpace(customHeader) {
+		t.Errorf("header = %q, want %q", header, strings.TrimSpace(customHeader))
+	}
+}
+
+func TestInsertAfterHeader(t *testing.T) {
+	cfg := DefaultConfig()
+	g := NewGenerator(cfg)
+
+	existing := `# Changelog
+
+Some description
+
+## v0.9.0
+
+Old content
+`
+	newContent := "## v1.0.0\n\nNew content\n\n"
+
+	result := g.insertAfterHeader(existing, newContent)
+
+	// New content should be before v0.9.0
+	v1Index := strings.Index(result, "v1.0.0")
+	v09Index := strings.Index(result, "v0.9.0")
+	if v1Index > v09Index {
+		t.Error("expected new version to appear before old version")
+	}
+}
+
+func TestSortVersionFiles(t *testing.T) {
+	files := []string{
+		"/tmp/.changes/v0.1.0.md",
+		"/tmp/.changes/v1.0.0.md",
+		"/tmp/.changes/v0.9.0.md",
+	}
+
+	sortVersionFiles(files)
+
+	// Should be in reverse order (newest first)
+	if files[0] != "/tmp/.changes/v1.0.0.md" {
+		t.Errorf("expected v1.0.0.md first, got %s", files[0])
+	}
+	if files[1] != "/tmp/.changes/v0.9.0.md" {
+		t.Errorf("expected v0.9.0.md second, got %s", files[1])
+	}
+	if files[2] != "/tmp/.changes/v0.1.0.md" {
+		t.Errorf("expected v0.1.0.md third, got %s", files[2])
+	}
+}
+
+func TestResolveRemote_FromConfig(t *testing.T) {
+	cfg := DefaultConfig()
+	cfg.Repository = &RepositoryConfig{
+		Provider: "gitlab",
+		Host:     "gitlab.com",
+		Owner:    "mygroup",
+		Repo:     "myproject",
+	}
+	g := NewGenerator(cfg)
+
+	remote, err := g.resolveRemote()
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	if remote.Provider != "gitlab" {
+		t.Errorf("Provider = %q, want 'gitlab'", remote.Provider)
+	}
+	if remote.Host != "gitlab.com" {
+		t.Errorf("Host = %q, want 'gitlab.com'", remote.Host)
+	}
+	if remote.Owner != "mygroup" {
+		t.Errorf("Owner = %q, want 'mygroup'", remote.Owner)
+	}
+}
+
+func TestResolveRemote_FillDefaults(t *testing.T) {
+	cfg := DefaultConfig()
+	cfg.Repository = &RepositoryConfig{
+		Provider: "github",
+		Owner:    "owner",
+		Repo:     "repo",
+	}
+	g := NewGenerator(cfg)
+
+	remote, err := g.resolveRemote()
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	// Host should be filled from provider
+	if remote.Host != "github.com" {
+		t.Errorf("Host = %q, want 'github.com'", remote.Host)
+	}
+}
+
+func TestMergeVersionedFiles(t *testing.T) {
+	tmpDir := t.TempDir()
+	changesDir := filepath.Join(tmpDir, ".changes")
+	if err := os.MkdirAll(changesDir, 0755); err != nil {
+		t.Fatalf("failed to create changes dir: %v", err)
+	}
+
+	// Create version files
+	files := map[string]string{
+		"v0.1.0.md": "## v0.1.0\n\nFirst version\n",
+		"v0.2.0.md": "## v0.2.0\n\nSecond version\n",
+	}
+	for name, content := range files {
+		path := filepath.Join(changesDir, name)
+		if err := os.WriteFile(path, []byte(content), 0644); err != nil {
+			t.Fatalf("failed to create file: %v", err)
+		}
+	}
+
+	cfg := DefaultConfig()
+	cfg.ChangesDir = changesDir
+	cfg.ChangelogPath = filepath.Join(tmpDir, "CHANGELOG.md")
+	g := NewGenerator(cfg)
+
+	err := g.MergeVersionedFiles()
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	// Check merged file
+	data, err := os.ReadFile(cfg.ChangelogPath)
+	if err != nil {
+		t.Fatalf("failed to read changelog: %v", err)
+	}
+	content := string(data)
+
+	if !strings.Contains(content, "v0.1.0") {
+		t.Error("expected v0.1.0 in merged changelog")
+	}
+	if !strings.Contains(content, "v0.2.0") {
+		t.Error("expected v0.2.0 in merged changelog")
+	}
+}
+
+func TestMergeVersionedFiles_EmptyDir(t *testing.T) {
+	tmpDir := t.TempDir()
+	changesDir := filepath.Join(tmpDir, ".changes")
+	if err := os.MkdirAll(changesDir, 0755); err != nil {
+		t.Fatalf("failed to create changes dir: %v", err)
+	}
+
+	cfg := DefaultConfig()
+	cfg.ChangesDir = changesDir
+	g := NewGenerator(cfg)
+
+	// Should not error with empty directory
+	err := g.MergeVersionedFiles()
+	if err != nil {
+		t.Errorf("unexpected error for empty dir: %v", err)
+	}
+}
+
+func TestMergeVersionedFiles_NonexistentDir(t *testing.T) {
+	cfg := DefaultConfig()
+	cfg.ChangesDir = "/nonexistent/path"
+	g := NewGenerator(cfg)
+
+	// Should error with non-existent directory
+	err := g.MergeVersionedFiles()
+	if err == nil {
+		t.Error("expected error for non-existent dir")
+	}
+}
+
+func TestResolveRemote_AutoDetect(t *testing.T) {
+	// Save and restore original function
+	originalFn := GetRemoteInfoFn
+	defer func() { GetRemoteInfoFn = originalFn }()
+
+	// Mock GetRemoteInfoFn
+	GetRemoteInfoFn = func() (*RemoteInfo, error) {
+		return &RemoteInfo{
+			Provider: "github",
+			Host:     "github.com",
+			Owner:    "autodetected",
+			Repo:     "repo",
+		}, nil
+	}
+
+	cfg := DefaultConfig()
+	cfg.Repository = &RepositoryConfig{
+		AutoDetect: true,
+	}
+	g := NewGenerator(cfg)
+
+	remote, err := g.resolveRemote()
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	if remote.Owner != "autodetected" {
+		t.Errorf("Owner = %q, want 'autodetected'", remote.Owner)
+	}
+}
+
+func TestResolveRemote_NoConfig(t *testing.T) {
+	cfg := DefaultConfig()
+	cfg.Repository = nil
+	g := NewGenerator(cfg)
+
+	_, err := g.resolveRemote()
+	if err == nil {
+		t.Error("expected error when repository config is nil")
+	}
+}
+
+func TestResolveRemote_Cached(t *testing.T) {
+	cfg := DefaultConfig()
+	cfg.Repository = &RepositoryConfig{
+		Provider: "github",
+		Host:     "github.com",
+		Owner:    "owner",
+		Repo:     "repo",
+	}
+	g := NewGenerator(cfg)
+
+	// First call
+	remote1, err := g.resolveRemote()
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	// Second call should return cached
+	remote2, err := g.resolveRemote()
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	if remote1 != remote2 {
+		t.Error("expected cached remote to be returned")
+	}
+}
+
+func TestWriteVersionedFile_Error(t *testing.T) {
+	cfg := DefaultConfig()
+	cfg.ChangesDir = "/nonexistent/readonly/path"
+	g := NewGenerator(cfg)
+
+	err := g.WriteVersionedFile("v1.0.0", "content")
+	if err == nil {
+		t.Error("expected error for non-writable path")
+	}
+}
+
+func TestWriteUnifiedChangelog_Error(t *testing.T) {
+	cfg := DefaultConfig()
+	cfg.ChangelogPath = "/nonexistent/readonly/CHANGELOG.md"
+	g := NewGenerator(cfg)
+
+	err := g.WriteUnifiedChangelog("content")
+	if err == nil {
+		t.Error("expected error for non-writable path")
+	}
+}
+
+func TestGenerateVersionChangelog_NoRemote(t *testing.T) {
+	cfg := DefaultConfig()
+	cfg.Repository = nil
+	cfg.Contributors = &ContributorsConfig{Enabled: false}
+	g := NewGenerator(cfg)
+
+	commits := []CommitInfo{
+		{Hash: "abc123", ShortHash: "abc123", Subject: "feat: add feature", Author: "Alice", AuthorEmail: "alice@example.com"},
+	}
+
+	content, err := g.GenerateVersionChangelog("v1.0.0", "v0.9.0", commits)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	// Should have version header
+	if !strings.Contains(content, "## v1.0.0") {
+		t.Error("expected version header")
+	}
+
+	// Should NOT have compare link (no remote)
+	if strings.Contains(content, "compare") {
+		t.Error("did not expect compare link without remote")
+	}
+}
+
+func TestGenerateVersionChangelog_NoPreviousVersion(t *testing.T) {
+	cfg := DefaultConfig()
+	cfg.Repository = &RepositoryConfig{
+		Provider: "github",
+		Host:     "github.com",
+		Owner:    "owner",
+		Repo:     "repo",
+	}
+	cfg.Contributors = &ContributorsConfig{Enabled: false}
+	g := NewGenerator(cfg)
+
+	commits := []CommitInfo{
+		{Hash: "abc123", ShortHash: "abc123", Subject: "feat: add feature", Author: "Alice", AuthorEmail: "alice@example.com"},
+	}
+
+	// Empty previous version
+	content, err := g.GenerateVersionChangelog("v1.0.0", "", commits)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	// Should have version header
+	if !strings.Contains(content, "## v1.0.0") {
+		t.Error("expected version header")
+	}
+
+	// Should NOT have compare link (no previous version)
+	if strings.Contains(content, "compare") {
+		t.Error("did not expect compare link without previous version")
+	}
+}
+
+func TestInsertAfterHeader_NoVersionFound(t *testing.T) {
+	cfg := DefaultConfig()
+	g := NewGenerator(cfg)
+
+	// Existing content with no version headers
+	existing := `# Changelog
+
+Some description about this project.
+`
+	newContent := "## v1.0.0\n\nNew content\n\n"
+
+	result := g.insertAfterHeader(existing, newContent)
+
+	// New content should be appended
+	if !strings.Contains(result, "v1.0.0") {
+		t.Error("expected new version in result")
+	}
+}

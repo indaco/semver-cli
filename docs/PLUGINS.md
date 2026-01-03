@@ -6,13 +6,14 @@ Plugins are **built-in** features that extend semver-cli's core functionality. U
 
 ## Available Plugins
 
-| Plugin                                              | Description                                            | Default  |
-| --------------------------------------------------- | ------------------------------------------------------ | -------- |
-| [commit-parser](./plugins/COMMIT_PARSER.md)         | Analyzes conventional commits to determine bump type   | Enabled  |
-| [tag-manager](./plugins/TAG_MANAGER.md)             | Automatically creates git tags synchronized with bumps | Disabled |
-| [version-validator](./plugins/VERSION_VALIDATOR.md) | Enforces versioning policies and constraints           | Disabled |
-| [dependency-check](./plugins/DEPENDENCY_CHECK.md)   | Validates and syncs versions across multiple files     | Disabled |
-| [changelog-parser](./plugins/CHANGELOG_PARSER.md)   | Infers bump type from CHANGELOG.md entries             | Disabled |
+| Plugin                                                  | Description                                            | Default  |
+| ------------------------------------------------------- | ------------------------------------------------------ | -------- |
+| [commit-parser](./plugins/COMMIT_PARSER.md)             | Analyzes conventional commits to determine bump type   | Enabled  |
+| [tag-manager](./plugins/TAG_MANAGER.md)                 | Automatically creates git tags synchronized with bumps | Disabled |
+| [version-validator](./plugins/VERSION_VALIDATOR.md)     | Enforces versioning policies and constraints           | Disabled |
+| [dependency-check](./plugins/DEPENDENCY_CHECK.md)       | Validates and syncs versions across multiple files     | Disabled |
+| [changelog-parser](./plugins/CHANGELOG_PARSER.md)       | Infers bump type from CHANGELOG.md entries             | Disabled |
+| [changelog-generator](./plugins/CHANGELOG_GENERATOR.md) | Generates changelog from conventional commits          | Disabled |
 
 ## Quick Start
 
@@ -92,27 +93,20 @@ Plugins and extensions work together to create automated version management work
 # .semver.yaml
 plugins:
   commit-parser: true # Analyze commits for bump type
-
-extensions:
-  - name: commit-validator
+  changelog-generator:
     enabled: true
-    hooks: [pre-bump]
-    config:
-      allowed_types: [feat, fix, docs, chore]
-
-  - name: changelog-generator
-    enabled: true
-    hooks: [post-bump]
+    mode: "versioned"
+    repository:
+      auto-detect: true
 ```
 
 Workflow:
 
 ```bash
 semver bump auto
-# 1. commit-validator: Ensures all commits follow conventional format
-# 2. commit-parser plugin: Analyzes commits -> determines "minor" bump
-# 3. Version bumped: 1.2.3 -> 1.3.0
-# 4. changelog-generator: Updates CHANGELOG.md with new version
+# 1. commit-parser plugin: Analyzes commits -> determines "minor" bump
+# 2. Version bumped: 1.2.3 -> 1.3.0
+# 3. changelog-generator: Creates .changes/v1.3.0.md
 ```
 
 ### Pattern 2: Auto-Bump + Tag + Push
@@ -158,15 +152,15 @@ plugins:
       - path: "package.json"
         field: "version"
         format: "json"
+  changelog-generator:
+    enabled: true
+    mode: "both"
+    repository:
+      auto-detect: true
   tag-manager:
     enabled: true
     prefix: "v"
     push: true
-
-extensions:
-  - name: changelog-generator
-    enabled: true
-    hooks: [post-bump]
 ```
 
 CI Workflow:
@@ -184,7 +178,7 @@ semver bump auto
 #
 # Post-bump actions:
 #   6. dependency-check syncs package.json
-#   7. Changelog generated
+#   7. changelog-generator creates .changes/v1.3.0.md and updates CHANGELOG.md
 #   8. tag-manager creates and pushes tag v1.3.0
 ```
 
@@ -200,9 +194,11 @@ semver bump auto
 - [Version Validator](./plugins/VERSION_VALIDATOR.md) - Policy enforcement
 - [Dependency Check](./plugins/DEPENDENCY_CHECK.md) - Cross-file version sync
 - [Changelog Parser](./plugins/CHANGELOG_PARSER.md) - CHANGELOG.md analysis
+- [Changelog Generator](./plugins/CHANGELOG_GENERATOR.md) - Changelog generation from commits
 
 ### Example Configurations
 
 - [Full Configuration](./plugins/examples/full-config.yaml) - All plugins working together
-- [Dependency Check](./plugins/examples/dependency-check.yaml) - Multi-format file sync
+- [Changelog Generator](./plugins/examples/changelog-generator.yaml) - Changelog generation from commits
 - [Changelog Parser](./plugins/examples/changelog-parser.yaml) - Changelog-based versioning
+- [Dependency Check](./plugins/examples/dependency-check.yaml) - Multi-format file sync

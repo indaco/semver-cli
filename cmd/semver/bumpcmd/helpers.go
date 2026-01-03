@@ -7,6 +7,7 @@ import (
 
 	"github.com/indaco/semver-cli/internal/config"
 	"github.com/indaco/semver-cli/internal/extensionmgr"
+	"github.com/indaco/semver-cli/internal/plugins/changeloggenerator"
 	"github.com/indaco/semver-cli/internal/plugins/dependencycheck"
 	"github.com/indaco/semver-cli/internal/plugins/tagmanager"
 	"github.com/indaco/semver-cli/internal/plugins/versionvalidator"
@@ -172,5 +173,46 @@ func syncDependencies(version semver.SemVersion) error {
 	}
 
 	fmt.Printf("Synced version to %d dependency file(s)\n", len(plugin.GetConfig().Files))
+	return nil
+}
+
+// generateChangelogAfterBump generates changelog entries if changelog generator is enabled.
+// Returns nil if changelog generator is not enabled.
+func generateChangelogAfterBump(version, previousVersion semver.SemVersion, bumpType string) error {
+	cg := changeloggenerator.GetChangelogGeneratorFn()
+	if cg == nil {
+		return nil
+	}
+
+	plugin, ok := cg.(*changeloggenerator.ChangelogGeneratorPlugin)
+	if !ok || !plugin.IsEnabled() {
+		return nil
+	}
+
+	versionStr := "v" + version.String()
+
+	// Use actual git tag for commit range, not version file content
+	// The version file may contain pre-release/metadata that doesn't match a real tag
+	prevVersionStr, err := changeloggenerator.GetLatestTagFn()
+	if err != nil {
+		// If no tags exist, generate from all commits
+		prevVersionStr = ""
+	}
+
+	if err := cg.GenerateForVersion(versionStr, prevVersionStr, bumpType); err != nil {
+		return fmt.Errorf("failed to generate changelog: %w", err)
+	}
+
+	mode := plugin.GetConfig().Mode
+	switch mode {
+	case "versioned":
+		fmt.Printf("Generated changelog: %s/%s.md\n", plugin.GetConfig().ChangesDir, versionStr)
+	case "unified":
+		fmt.Printf("Updated changelog: %s\n", plugin.GetConfig().ChangelogPath)
+	case "both":
+		fmt.Printf("Generated changelog: %s/%s.md and %s\n",
+			plugin.GetConfig().ChangesDir, versionStr, plugin.GetConfig().ChangelogPath)
+	}
+
 	return nil
 }

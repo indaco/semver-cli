@@ -187,12 +187,11 @@ The plugin expects standard Keep a Changelog format:
 
 All subsection headers are case-insensitive.
 
-## Example Configuration Files
+## See Also
 
-See the `docs/examples/` directory for complete configuration examples:
-
-- `.semver-changelog.yaml` - Full configuration with all plugins
-- `CHANGELOG.md` - Example changelog file
+- [Example Configuration](./examples/changelog-parser.yaml) - Complete changelog-parser setup
+- [Full Plugin Configuration](./examples/full-config.yaml) - All plugins working together
+- [Example CHANGELOG.md](./examples/CHANGELOG-example.md) - Sample changelog file format
 
 ## Testing
 

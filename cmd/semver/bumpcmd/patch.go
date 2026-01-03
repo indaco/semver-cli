@@ -97,6 +97,11 @@ func runSingleModulePatchBump(ctx context.Context, cmd *cli.Command, cfg *config
 		return err
 	}
 
+	// Generate changelog entry
+	if err := generateChangelogAfterBump(newVersion, previousVersion, "patch"); err != nil {
+		return err
+	}
+
 	if err := runPostBumpExtensionHooks(ctx, cfg, execCtx.Path, previousVersion.String(), "patch", isSkipHooks); err != nil {
 		return err
 	}

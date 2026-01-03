@@ -467,8 +467,9 @@ Ensure your pattern has exactly one capturing group `(.*?)`.
 - Large files may have performance impact
 - Binary files are not supported
 
-## Example Configuration
+## See Also
 
-See [examples/dependency-check.yaml](./examples/dependency-check.yaml) for a comprehensive configuration example covering all supported file formats.
-
-For a complete configuration with all plugins working together, see [examples/full-config.yaml](./examples/full-config.yaml).
+- [Example Configuration](./examples/dependency-check.yaml) - Multi-format file sync examples
+- [Full Plugin Configuration](./examples/full-config.yaml) - All plugins working together
+- [Version Validator](./VERSION_VALIDATOR.md) - Validate versions before syncing
+- [Tag Manager](./TAG_MANAGER.md) - Create git tags after syncing

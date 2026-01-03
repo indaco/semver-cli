@@ -26,7 +26,7 @@ func newCLI(cfg *config.Config) *cli.Command {
 	return &cli.Command{
 		Name:    "semver",
 		Version: fmt.Sprintf("v%s", version.GetVersion()),
-		Usage:   "Manage semantic versioning with a .version file",
+		Usage:   "Semantic versioning with a .version file",
 		Flags: []cli.Flag{
 			&cli.StringFlag{
 				Name:    "path",

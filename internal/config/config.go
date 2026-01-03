@@ -10,11 +10,12 @@ import (
 )
 
 type PluginConfig struct {
-	CommitParser     bool                    `yaml:"commit-parser"`
-	TagManager       *TagManagerConfig       `yaml:"tag-manager,omitempty"`
-	VersionValidator *VersionValidatorConfig `yaml:"version-validator,omitempty"`
-	DependencyCheck  *DependencyCheckConfig  `yaml:"dependency-check,omitempty"`
-	ChangelogParser  *ChangelogParserConfig  `yaml:"changelog-parser,omitempty"`
+	CommitParser       bool                      `yaml:"commit-parser"`
+	TagManager         *TagManagerConfig         `yaml:"tag-manager,omitempty"`
+	VersionValidator   *VersionValidatorConfig   `yaml:"version-validator,omitempty"`
+	DependencyCheck    *DependencyCheckConfig    `yaml:"dependency-check,omitempty"`
+	ChangelogParser    *ChangelogParserConfig    `yaml:"changelog-parser,omitempty"`
+	ChangelogGenerator *ChangelogGeneratorConfig `yaml:"changelog-generator,omitempty"`
 }
 
 // TagManagerConfig holds configuration for the tag manager plugin.
@@ -132,6 +133,114 @@ type ChangelogParserConfig struct {
 
 	// Priority determines which parser takes precedence: "changelog" or "commits"
 	Priority string `yaml:"priority,omitempty"`
+}
+
+// ChangelogGeneratorConfig holds configuration for the changelog generator plugin.
+type ChangelogGeneratorConfig struct {
+	// Enabled controls whether the plugin is active.
+	Enabled bool `yaml:"enabled"`
+
+	// Mode determines output style: "versioned", "unified", or "both".
+	// "versioned" writes each version to a separate file (e.g., .changes/v1.2.3.md)
+	// "unified" writes to a single CHANGELOG.md file
+	// "both" writes to both locations
+	Mode string `yaml:"mode,omitempty"`
+
+	// ChangesDir is the directory for version-specific changelog files (versioned mode).
+	ChangesDir string `yaml:"changes-dir,omitempty"`
+
+	// ChangelogPath is the path to the unified changelog file.
+	ChangelogPath string `yaml:"changelog-path,omitempty"`
+
+	// HeaderTemplate is the path to a custom header template file.
+	HeaderTemplate string `yaml:"header-template,omitempty"`
+
+	// Repository contains git repository settings for link generation.
+	// Supports GitHub, GitLab, Codeberg, Gitea, Bitbucket, and custom hosts.
+	Repository *RepositoryConfig `yaml:"repository,omitempty"`
+
+	// Groups defines commit grouping rules.
+	Groups []CommitGroupConfig `yaml:"groups,omitempty"`
+
+	// ExcludePatterns lists regex patterns for commits to exclude.
+	ExcludePatterns []string `yaml:"exclude-patterns,omitempty"`
+
+	// IncludeNonConventional includes commits that don't follow conventional commit format
+	// in an "Other Changes" section. When false (default), these commits are skipped
+	// and a warning is printed listing the skipped commits.
+	IncludeNonConventional bool `yaml:"include-non-conventional,omitempty"`
+
+	// Contributors configures the contributors section.
+	Contributors *ContributorsConfig `yaml:"contributors,omitempty"`
+}
+
+// RepositoryConfig holds git repository settings for changelog links.
+// Supports multiple providers: github, gitlab, codeberg, gitea, bitbucket, custom.
+type RepositoryConfig struct {
+	// Provider is the git hosting provider: github, gitlab, codeberg, gitea, bitbucket, custom.
+	// Default: auto-detected from git remote URL.
+	Provider string `yaml:"provider,omitempty"`
+
+	// Host is the git server hostname (e.g., "github.com", "gitlab.com", "codeberg.org").
+	// Required for custom providers or when auto-detect is disabled.
+	Host string `yaml:"host,omitempty"`
+
+	// Owner is the repository owner/organization.
+	Owner string `yaml:"owner,omitempty"`
+
+	// Repo is the repository name.
+	Repo string `yaml:"repo,omitempty"`
+
+	// AutoDetect enables automatic detection from git remote.
+	AutoDetect bool `yaml:"auto-detect,omitempty"`
+}
+
+// CommitGroupConfig defines a grouping rule for commits.
+type CommitGroupConfig struct {
+	// Pattern is the regex pattern to match commit types.
+	Pattern string `yaml:"pattern"`
+
+	// Label is the section header label.
+	Label string `yaml:"label"`
+
+	// Icon is the icon/emoji for the section (optional).
+	Icon string `yaml:"icon,omitempty"`
+
+	// Order determines the display order (lower = higher priority).
+	Order int `yaml:"order,omitempty"`
+}
+
+// ContributorsConfig configures the contributors section in changelog.
+type ContributorsConfig struct {
+	// Enabled controls whether to include contributors section.
+	Enabled bool `yaml:"enabled,omitempty"`
+
+	// Format is a Go template for contributor formatting.
+	Format string `yaml:"format,omitempty"`
+}
+
+// GetChangesDir returns the changes directory with default ".changes".
+func (c *ChangelogGeneratorConfig) GetChangesDir() string {
+	if c.ChangesDir == "" {
+		return ".changes"
+	}
+	return c.ChangesDir
+}
+
+// GetChangelogPath returns the changelog path with default "CHANGELOG.md".
+func (c *ChangelogGeneratorConfig) GetChangelogPath() string {
+	if c.ChangelogPath == "" {
+		return "CHANGELOG.md"
+	}
+	return c.ChangelogPath
+}
+
+// GetMode returns the mode with default "versioned".
+func (c *ChangelogGeneratorConfig) GetMode() string {
+	if c.Mode == "" {
+		return "versioned"
+	}
+	return c.Mode
 }
 
 type ExtensionConfig struct {

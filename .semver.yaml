@@ -1,1 +1,51 @@
 path: internal/version/.version
+
+plugins:
+  changelog-generator:
+    enabled: true
+    mode: "versioned"
+    changes-dir: ".changes"
+    repository:
+      provider: "github"
+      owner: "indaco"
+      repo: "semver-cli"
+    groups:
+      - pattern: "^feat"
+        label: "Enhancements"
+        icon: "🚀"
+      - pattern: "^fix"
+        label: "Fixes"
+        icon: "🩹"
+      - pattern: "^refactor"
+        label: "Refactor"
+        icon: "💅"
+      - pattern: "^docs?"
+        label: "Documentation"
+        icon: "📖"
+      - pattern: "^perf"
+        label: "Performance"
+        icon: "⚡"
+      - pattern: "^style"
+        label: "Styling"
+        icon: "🎨"
+      - pattern: "^test"
+        label: "Testing"
+        icon: "✅"
+      - pattern: "^chore"
+        label: "Chore"
+        icon: "🏡"
+      - pattern: "^ci"
+        label: "CI"
+        icon: "🤖"
+      - pattern: "^revert"
+        label: "Revert"
+        icon: "◀️"
+      - pattern: "^build"
+        label: "Build"
+        icon: "📦"
+    exclude-patterns:
+      - "^Merge"
+      - "^WIP"
+      - "^release"
+    contributors:
+      enabled: true

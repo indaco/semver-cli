@@ -170,6 +170,12 @@ type ChangelogGeneratorConfig struct {
 	// and a warning is printed listing the skipped commits.
 	IncludeNonConventional bool `yaml:"include-non-conventional,omitempty"`
 
+	// GroupIcons maps default group labels to icons. Use this to add icons to default
+	// groups without redefining patterns and labels. Ignored if Groups is specified.
+	// Keys must match default labels: Enhancements, Fixes, Refactors, Documentation,
+	// Performance, Styling, Tests, Chores, CI, Build, Reverts.
+	GroupIcons map[string]string `yaml:"group-icons,omitempty"`
+
 	// Contributors configures the contributors section.
 	Contributors *ContributorsConfig `yaml:"contributors,omitempty"`
 }

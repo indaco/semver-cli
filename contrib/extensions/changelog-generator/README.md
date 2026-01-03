@@ -2,6 +2,28 @@
 
 This extension automatically updates `CHANGELOG.md` when you bump the version using semver-cli.
 
+> **Note**: For production changelogs with commit parsing, PR links, and contributor attribution, use the **built-in changelog-generator plugin** instead. See [docs/plugins/CHANGELOG_GENERATOR.md](../../../docs/plugins/CHANGELOG_GENERATOR.md).
+
+## When to Use This Extension
+
+- As a **simple template** for custom changelog logic
+- For **minimal version logging** without commit parsing
+- When you need a **shell-based solution** you can easily modify
+
+## When to Use the Built-in Plugin Instead
+
+- You want **automatic commit grouping** by type (feat, fix, docs, etc.)
+- You need **commit and PR/MR links**
+- You want **contributor attribution**
+- You need **multi-provider support** (GitHub, GitLab, Codeberg, etc.)
+
+```yaml
+# Use the built-in plugin instead:
+plugins:
+  changelog-generator:
+    enabled: true
+```
+
 ## Features
 
 - Automatically creates or updates `CHANGELOG.md`

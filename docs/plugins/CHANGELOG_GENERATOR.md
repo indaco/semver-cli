@@ -6,6 +6,23 @@ The changelog generator plugin automatically generates changelog entries from co
 
 Built-in, **disabled by default**
 
+## Plugin vs Extension
+
+There are two changelog generation options in semver-cli:
+
+| Feature | Built-in Plugin | Shell Extension |
+|---------|-----------------|-----------------|
+| Location | `plugins.changelog-generator` | `contrib/extensions/changelog-generator` |
+| Commit parsing | Full conventional commits | None |
+| Commit grouping | By type (feat, fix, etc.) | N/A |
+| Commit/PR links | Yes (multi-provider) | No |
+| Contributors | Yes | No |
+| Custom icons | Yes | No |
+| Customization | Highly configurable | Edit shell script |
+| Use case | Production changelogs | Simple logging / template |
+
+**Recommendation**: Use the **built-in plugin** for real changelogs. Use the extension only as a simple template or for minimal "version bumped" logging.
+
 ## Features
 
 - Automatic changelog generation from conventional commits
@@ -63,7 +80,8 @@ plugins:
 | `changelog-path`           | string | `"CHANGELOG.md"` | Path to unified changelog file                      |
 | `header-template`          | string | (built-in)       | Path to custom header template                      |
 | `repository`               | object | auto-detect      | Git repository configuration for links              |
-| `groups`                   | array  | (defaults)       | Commit grouping rules                               |
+| `groups`                   | array  | (defaults)       | Full custom commit grouping rules                   |
+| `group-icons`              | map    | (none)           | Add icons to default groups by label                |
 | `exclude-patterns`         | array  | (defaults)       | Regex patterns for commits to exclude               |
 | `include-non-conventional` | bool   | false            | Include non-conventional commits in "Other Changes" |
 | `contributors`             | object | enabled          | Contributors section configuration                  |
@@ -93,30 +111,47 @@ When `auto-detect: true`, the plugin parses the git remote URL and automatically
 
 ### Groups Configuration
 
-Groups define how commits are categorized. Order is derived from array position:
+There are two ways to configure commit groups:
+
+#### Option 1: Add Icons to Defaults (Recommended)
+
+Use `group-icons` to add icons while keeping default patterns and labels:
+
+```yaml
+group-icons:
+  Enhancements: "🚀"
+  Fixes: "🩹"
+  Refactors: "💅"
+  Documentation: "📖"
+  Performance: "⚡"
+  Styling: "🎨"
+  Tests: "✅"
+  Chores: "🏡"
+  CI: "🤖"
+  Build: "📦"
+  Reverts: "◀️"
+```
+
+Keys must match default labels exactly. You can specify only the icons you want.
+
+#### Option 2: Full Custom Groups
+
+Use `groups` for complete control over patterns, labels, and order:
 
 ```yaml
 groups:
   - pattern: "^feat"
-    label: "Enhancements"
-    icon: "" # Optional icon/emoji
+    label: "New Features"
+    icon: "🚀"
   - pattern: "^fix"
-    label: "Fixes"
-  - pattern: "^refactor"
-    label: "Refactors"
+    label: "Bug Fixes"
+    icon: "🐛"
   - pattern: "^docs?"
     label: "Documentation"
-  - pattern: "^perf"
-    label: "Performance"
-  - pattern: "^test"
-    label: "Tests"
-  - pattern: "^chore"
-    label: "Chores"
-  - pattern: "^ci"
-    label: "CI"
 ```
 
 The `pattern` field uses Go regex syntax and matches against the commit type.
+Order is derived from array position. When `groups` is specified, `group-icons` is ignored.
 
 ### Default Groups
 

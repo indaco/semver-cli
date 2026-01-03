@@ -22,37 +22,67 @@ plugins:
       # owner: "myorg"
       # repo: "myproject"
 
-    # Commit grouping configuration
-    # Groups are displayed in the order defined here
-    groups:
-      - pattern: "^feat"
-        label: "New Features"
-        icon: "" # Optional icon/emoji
+    # =========================================================================
+    # OPTION 1: Add icons to default groups (RECOMMENDED)
+    # =========================================================================
+    # Use group-icons to add icons while keeping default patterns and labels.
+    # Keys must match default labels exactly: Enhancements, Fixes, Refactors,
+    # Documentation, Performance, Styling, Tests, Chores, CI, Build, Reverts
+    group-icons:
+      Enhancements: "🚀"
+      Fixes: "🩹"
+      Refactors: "💅"
+      Documentation: "📖"
+      Performance: "⚡"
+      Styling: "🎨"
+      Tests: "✅"
+      Chores: "🏡"
+      CI: "🤖"
+      Build: "📦"
+      Reverts: "◀️"
 
-      - pattern: "^fix"
-        label: "Bug Fixes"
-        icon: ""
-
-      - pattern: "^perf"
-        label: "Performance Improvements"
-
-      - pattern: "^refactor"
-        label: "Code Refactoring"
-
-      - pattern: "^docs?"
-        label: "Documentation"
-
-      - pattern: "^test"
-        label: "Tests"
-
-      - pattern: "^ci"
-        label: "CI/CD"
-
-      - pattern: "^build"
-        label: "Build System"
-
-      - pattern: "^chore"
-        label: "Maintenance"
+    # =========================================================================
+    # OPTION 2: Full custom groups (uncomment to use instead of group-icons)
+    # =========================================================================
+    # Use groups for complete control over patterns, labels, icons, and order.
+    # When groups is specified, group-icons is ignored.
+    #
+    # groups:
+    #   - pattern: "^feat"
+    #     label: "New Features"
+    #     icon: "🚀"
+    #
+    #   - pattern: "^fix"
+    #     label: "Bug Fixes"
+    #     icon: "🐛"
+    #
+    #   - pattern: "^perf"
+    #     label: "Performance Improvements"
+    #     icon: "⚡"
+    #
+    #   - pattern: "^refactor"
+    #     label: "Code Refactoring"
+    #     icon: "💅"
+    #
+    #   - pattern: "^docs?"
+    #     label: "Documentation"
+    #     icon: "📖"
+    #
+    #   - pattern: "^test"
+    #     label: "Tests"
+    #     icon: "✅"
+    #
+    #   - pattern: "^ci"
+    #     label: "CI/CD"
+    #     icon: "🤖"
+    #
+    #   - pattern: "^build"
+    #     label: "Build System"
+    #     icon: "📦"
+    #
+    #   - pattern: "^chore"
+    #     label: "Maintenance"
+    #     icon: "🏡"
 
     # Exclude patterns - commits matching these are filtered out
     exclude-patterns:

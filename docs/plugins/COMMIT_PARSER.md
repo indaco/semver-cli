@@ -225,3 +225,9 @@ If no conventional commits are found, `bump auto` defaults to patch:
 semver bump auto
 # Output: No conventional commits found, defaulting to patch
 ```
+
+## See Also
+
+- [Full Plugin Configuration](./examples/full-config.yaml) - All plugins working together
+- [Changelog Generator](./CHANGELOG_GENERATOR.md) - Generate changelogs from commits
+- [Changelog Parser](./CHANGELOG_PARSER.md) - Alternative: infer bump from CHANGELOG.md

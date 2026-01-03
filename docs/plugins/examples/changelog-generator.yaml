@@ -1,0 +1,83 @@
+path: .version
+
+plugins:
+  # Changelog Generator - Creates changelog entries from conventional commits
+  changelog-generator:
+    enabled: true
+    # Output modes:
+    # - "versioned": Creates .changes/v{version}.md files (changie-style)
+    # - "unified": Appends to CHANGELOG.md
+    # - "both": Creates both versioned files and updates CHANGELOG.md
+    mode: "versioned"
+    changes-dir: ".changes"
+    changelog-path: "CHANGELOG.md"
+
+    # Repository configuration for commit/compare links
+    repository:
+      # Auto-detect from git remote (recommended)
+      auto-detect: true
+      # Or specify manually:
+      # provider: "github"  # github, gitlab, codeberg, gitea, bitbucket, sourcehut, custom
+      # host: "github.com"
+      # owner: "myorg"
+      # repo: "myproject"
+
+    # Commit grouping configuration
+    # Groups are displayed in the order defined here
+    groups:
+      - pattern: "^feat"
+        label: "New Features"
+        icon: "" # Optional icon/emoji
+
+      - pattern: "^fix"
+        label: "Bug Fixes"
+        icon: ""
+
+      - pattern: "^perf"
+        label: "Performance Improvements"
+
+      - pattern: "^refactor"
+        label: "Code Refactoring"
+
+      - pattern: "^docs?"
+        label: "Documentation"
+
+      - pattern: "^test"
+        label: "Tests"
+
+      - pattern: "^ci"
+        label: "CI/CD"
+
+      - pattern: "^build"
+        label: "Build System"
+
+      - pattern: "^chore"
+        label: "Maintenance"
+
+    # Exclude patterns - commits matching these are filtered out
+    exclude-patterns:
+      - "^Merge"
+      - "^WIP"
+      - "^wip"
+      - "^fixup!"
+      - "^squash!"
+
+    # Include non-conventional commits in "Other Changes" section
+    # When false (default), non-conventional commits are skipped with a warning
+    include-non-conventional: false
+
+    # Contributors section
+    contributors:
+      enabled: true
+
+  # Commit parser works well with changelog generator
+  # It determines bump type, generator creates the changelog
+  commit-parser: true
+
+  # Tag manager can create tags after changelog is generated
+  tag-manager:
+    enabled: true
+    auto-create: true
+    prefix: "v"
+    annotate: true
+    push: false

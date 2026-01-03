@@ -355,3 +355,9 @@ pattern: "^(alpha|beta|rc)(\\.[0-9]+)?$"
 # This matches: alpha, beta, rc, alpha.1, beta.2, rc.10
 # This does NOT match: dev, preview, alpha1 (missing dot)
 ```
+
+## See Also
+
+- [Full Plugin Configuration](./examples/full-config.yaml) - All plugins working together
+- [Tag Manager](./TAG_MANAGER.md) - Create git tags after validation
+- [Dependency Check](./DEPENDENCY_CHECK.md) - Sync versions across files

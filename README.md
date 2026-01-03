@@ -2,7 +2,7 @@
   <code>semver</code>
 </h1>
 <h2 align="center" style="font-size: 1.5rem;">
-  A simple CLI to manage semantic versioning using a <i>.version</i> file.
+  Semantic versioning, simplified.
 </h2>
 
 <p align="center">
@@ -29,6 +29,12 @@
   </a>
 </p>
 
+---
+
+A command-line tool for managing [SemVer 2.0.0](https://semver.org/) versions using a simple `.version` file. Works with any language or stack, integrates with CI/CD pipelines, and extends via built-in plugins for git tagging, changelog generation, and version validation.
+
+---
+
 ## Table of Contents
 
 - [Features](#features)
@@ -49,7 +55,8 @@
 - Lightweight `.version` file - SemVer 2.0.0 compliant
 - `init`, `bump`, `set`, `show`, `validate` - intuitive version control
 - Pre-release support with auto-increment (`alpha`, `beta.1`, `rc.2`, `--inc`)
-- Built-in plugins - automatic git tagging, version policy enforcement, commit parsing
+- Built-in plugins - git tagging, changelog generation, version policy enforcement, commit parsing
+- Extension system - hook external scripts into the version lifecycle
 - Monorepo/multi-module support - manage multiple `.version` files at once
 - Works standalone or in CI - `--strict` for strict mode
 - Configurable via flags, env vars, or `.semver.yaml`
@@ -58,14 +65,22 @@
 
 Most projects - especially CLIs, scripts, and internal tools - need a clean way to manage versioning outside of `go.mod` or `package.json`.
 
-The `.version` file:
+### What it is
 
-- Works in **any language**, not just Go
-- Fits seamlessly into CI/CD (e.g., Docker labels, GitHub Actions)
-- Pairs with `getVersion()` or env injection in your app
-- Keeps versioning simple, manual, and under your control
+- A **single source of truth** for your project version
+- **Language-agnostic** - works with Go, Python, Node, Rust, or any stack
+- **CI/CD friendly** - inject into Docker labels, GitHub Actions, release scripts
+- **Human-readable** - just a plain text file containing `1.2.3`
+- **Predictable** - no magic, no hidden state, version is what you set
 
-It's not trying to replace `git tag` or build tools - just making versioning predictable and portable.
+### What it is NOT
+
+- **Not a replacement for git tags** - use the `tag-manager` plugin to sync both
+- **Not a package manager** - it doesn't publish or distribute anything
+- **Not a changelog tool** - use the `changelog-generator` plugin for that
+- **Not a build system** - it just manages the version string
+
+The `.version` file complements your existing tools. Pair it with `git tag` for releases, inject it into binaries at build time, or sync it across `package.json`, `Cargo.toml`, and other files using the `dependency-check` plugin.
 
 ## Installation
 
@@ -372,13 +387,14 @@ semver init
 
 ### Available Plugins
 
-| Plugin              | Description                                            | Default  |
-| ------------------- | ------------------------------------------------------ | -------- |
-| `commit-parser`     | Analyzes conventional commits to determine bump type   | Enabled  |
-| `tag-manager`       | Automatically creates git tags synchronized with bumps | Disabled |
-| `version-validator` | Enforces versioning policies and constraints           | Disabled |
-| `dependency-check`  | Validates and syncs versions across multiple files     | Disabled |
-| `changelog-parser`  | Infers bump type from CHANGELOG.md entries             | Disabled |
+| Plugin                | Description                                            | Default  |
+| --------------------- | ------------------------------------------------------ | -------- |
+| `commit-parser`       | Analyzes conventional commits to determine bump type   | Enabled  |
+| `tag-manager`         | Automatically creates git tags synchronized with bumps | Disabled |
+| `version-validator`   | Enforces versioning policies and constraints           | Disabled |
+| `dependency-check`    | Validates and syncs versions across multiple files     | Disabled |
+| `changelog-parser`    | Infers bump type from CHANGELOG.md entries             | Disabled |
+| `changelog-generator` | Generates changelog from conventional commits          | Disabled |
 
 ### Quick Example
 
@@ -406,6 +422,11 @@ plugins:
       - path: "package.json"
         field: "version"
         format: "json"
+  changelog-generator:
+    enabled: true
+    mode: "versioned"
+    repository:
+      auto-detect: true
 ```
 
 For detailed documentation on all plugins and their configuration, see [docs/PLUGINS.md](docs/PLUGINS.md).

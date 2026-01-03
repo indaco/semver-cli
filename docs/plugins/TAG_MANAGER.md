@@ -314,3 +314,9 @@ plugins:
   tag-manager:
     prefix: "v" # Results in v1.2.3
 ```
+
+## See Also
+
+- [Full Plugin Configuration](./examples/full-config.yaml) - All plugins working together
+- [Changelog Generator](./CHANGELOG_GENERATOR.md) - Generate changelogs after tagging
+- [Version Validator](./VERSION_VALIDATOR.md) - Validate versions before tagging

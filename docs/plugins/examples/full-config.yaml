@@ -53,7 +53,38 @@ plugins:
     path: CHANGELOG.md
     require-unreleased-section: true
     infer-bump-type: true
-    priority: commits  # "changelog" to prefer changelog over commits
+    priority: commits # "changelog" to prefer changelog over commits
+
+  # Changelog Generator - Creates changelog entries from conventional commits
+  changelog-generator:
+    enabled: true
+    mode: "both" # "versioned", "unified", or "both"
+    changes-dir: ".changes"
+    changelog-path: "CHANGELOG.md"
+    repository:
+      auto-detect: true
+    groups:
+      - pattern: "^feat"
+        label: "New Features"
+      - pattern: "^fix"
+        label: "Bug Fixes"
+      - pattern: "^perf"
+        label: "Performance"
+      - pattern: "^refactor"
+        label: "Refactoring"
+      - pattern: "^docs?"
+        label: "Documentation"
+      - pattern: "^test"
+        label: "Tests"
+      - pattern: "^ci|^build"
+        label: "CI/Build"
+      - pattern: "^chore"
+        label: "Maintenance"
+    exclude-patterns:
+      - "^Merge"
+      - "^WIP"
+    contributors:
+      enabled: true
 
   # Tag Manager - Automatically creates git tags
   tag-manager:
@@ -61,4 +92,4 @@ plugins:
     auto-create: true
     prefix: v
     annotate: true
-    push: false  # Set to true for CI/CD pipelines
+    push: false # Set to true for CI/CD pipelines

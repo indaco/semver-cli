@@ -4,7 +4,7 @@ plugins:
   # Dependency check plugin - validates and syncs version numbers across files
   dependency-check:
     enabled: true
-    auto-sync: true  # Automatically update all files during version bumps
+    auto-sync: true # Automatically update all files during version bumps
     files:
       # JSON files
       - path: package.json

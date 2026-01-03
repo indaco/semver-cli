@@ -10,16 +10,16 @@ Built-in, **disabled by default**
 
 There are two changelog generation options in semver-cli:
 
-| Feature | Built-in Plugin | Shell Extension |
-|---------|-----------------|-----------------|
-| Location | `plugins.changelog-generator` | `contrib/extensions/changelog-generator` |
-| Commit parsing | Full conventional commits | None |
-| Commit grouping | By type (feat, fix, etc.) | N/A |
-| Commit/PR links | Yes (multi-provider) | No |
-| Contributors | Yes | No |
-| Custom icons | Yes | No |
-| Customization | Highly configurable | Edit shell script |
-| Use case | Production changelogs | Simple logging / template |
+| Feature         | Built-in Plugin               | Shell Extension                          |
+| --------------- | ----------------------------- | ---------------------------------------- |
+| Location        | `plugins.changelog-generator` | `contrib/extensions/changelog-generator` |
+| Commit parsing  | Full conventional commits     | None                                     |
+| Commit grouping | By type (feat, fix, etc.)     | N/A                                      |
+| Commit/PR links | Yes (multi-provider)          | No                                       |
+| Contributors    | Yes                           | No                                       |
+| Custom icons    | Yes                           | No                                       |
+| Customization   | Highly configurable           | Edit shell script                        |
+| Use case        | Production changelogs         | Simple logging / template                |
 
 **Recommendation**: Use the **built-in plugin** for real changelogs. Use the extension only as a simple template or for minimal "version bumped" logging.
 

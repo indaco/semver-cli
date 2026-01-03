@@ -269,3 +269,76 @@ func TestRepositoryConfig(t *testing.T) {
 		t.Error("expected AutoDetect to be false")
 	}
 }
+
+func TestFromConfigStruct_GroupIcons(t *testing.T) {
+	// Test with GroupIcons - should use defaults and apply icons
+	input := &config.ChangelogGeneratorConfig{
+		Enabled: true,
+		GroupIcons: map[string]string{
+			"Enhancements":  "rocket",
+			"Fixes":         "bug",
+			"Documentation": "book",
+		},
+	}
+
+	cfg := FromConfigStruct(input)
+
+	// Should use default groups (not empty)
+	if len(cfg.Groups) == 0 {
+		t.Fatal("expected default groups")
+	}
+
+	// Verify icons are applied to matching labels
+	iconsByLabel := make(map[string]string)
+	for _, g := range cfg.Groups {
+		iconsByLabel[g.Label] = g.Icon
+	}
+
+	if iconsByLabel["Enhancements"] != "rocket" {
+		t.Errorf("Enhancements icon = %q, want 'rocket'", iconsByLabel["Enhancements"])
+	}
+	if iconsByLabel["Fixes"] != "bug" {
+		t.Errorf("Fixes icon = %q, want 'bug'", iconsByLabel["Fixes"])
+	}
+	if iconsByLabel["Documentation"] != "book" {
+		t.Errorf("Documentation icon = %q, want 'book'", iconsByLabel["Documentation"])
+	}
+
+	// Labels without icons should have empty icon
+	if iconsByLabel["Refactors"] != "" {
+		t.Errorf("Refactors icon = %q, want empty", iconsByLabel["Refactors"])
+	}
+
+	// GroupIcons should be stored in config
+	if len(cfg.GroupIcons) != 3 {
+		t.Errorf("expected 3 GroupIcons, got %d", len(cfg.GroupIcons))
+	}
+}
+
+func TestFromConfigStruct_GroupsOverridesGroupIcons(t *testing.T) {
+	// Test that Groups takes precedence over GroupIcons
+	input := &config.ChangelogGeneratorConfig{
+		Enabled: true,
+		Groups: []config.CommitGroupConfig{
+			{Pattern: "^feat", Label: "New Features"},
+		},
+		GroupIcons: map[string]string{
+			"Enhancements": "rocket", // Should be ignored
+		},
+	}
+
+	cfg := FromConfigStruct(input)
+
+	// Should use provided groups, not defaults
+	if len(cfg.Groups) != 1 {
+		t.Errorf("expected 1 group, got %d", len(cfg.Groups))
+	}
+	if cfg.Groups[0].Label != "New Features" {
+		t.Errorf("Groups[0].Label = %q, want 'New Features'", cfg.Groups[0].Label)
+	}
+
+	// GroupIcons should not be applied when Groups is provided
+	if cfg.Groups[0].Icon != "" {
+		t.Errorf("expected empty icon when Groups provided, got %q", cfg.Groups[0].Icon)
+	}
+}

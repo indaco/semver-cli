@@ -32,6 +32,9 @@ type Config struct {
 	// When false (default), these commits are skipped with a warning.
 	IncludeNonConventional bool
 
+	// GroupIcons maps default group labels to icons (used when Groups is empty).
+	GroupIcons map[string]string
+
 	// Contributors configures the contributors section.
 	Contributors *ContributorsConfig
 }
@@ -142,6 +145,7 @@ func FromConfigStruct(cfg *config.ChangelogGeneratorConfig) *Config {
 
 	// Convert groups
 	if len(cfg.Groups) > 0 {
+		// Full custom groups provided - use them directly
 		result.Groups = make([]GroupConfig, len(cfg.Groups))
 		for i, g := range cfg.Groups {
 			result.Groups[i] = GroupConfig{
@@ -152,7 +156,17 @@ func FromConfigStruct(cfg *config.ChangelogGeneratorConfig) *Config {
 			}
 		}
 	} else {
+		// Use defaults, optionally with icons from GroupIcons
 		result.Groups = DefaultGroups()
+		if len(cfg.GroupIcons) > 0 {
+			result.GroupIcons = cfg.GroupIcons
+			// Apply icons to default groups by label
+			for i, g := range result.Groups {
+				if icon, ok := cfg.GroupIcons[g.Label]; ok {
+					result.Groups[i].Icon = icon
+				}
+			}
+		}
 	}
 
 	// Use default exclude patterns if none specified

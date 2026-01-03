@@ -1,0 +1,63 @@
+# Release Gate Plugin Configuration Example
+# ==========================================
+#
+# The release-gate plugin validates pre-conditions before allowing version bumps.
+# This helps prevent accidental releases from dirty worktrees, wrong branches,
+# or incomplete work.
+#
+# See: docs/plugins/RELEASE_GATE.md for full documentation
+
+# Basic configuration - clean worktree only
+# -----------------------------------------
+# plugins:
+#   release-gate:
+#     enabled: true
+#     require-clean-worktree: true
+
+# Standard configuration - production workflow
+# --------------------------------------------
+plugins:
+  release-gate:
+    enabled: true
+
+    # Block bumps if there are uncommitted changes
+    require-clean-worktree: true
+
+    # Block bumps if recent commits contain WIP markers
+    # Detected markers: WIP, fixup!, squash!, DO NOT MERGE, DNM
+    blocked-on-wip-commits: true
+
+    # Only allow bumps from these branches (supports glob patterns)
+    allowed-branches:
+      - "main"
+      - "release/*"
+      - "hotfix/*"
+
+    # Never allow bumps from these branches (takes precedence over allowed)
+    blocked-branches:
+      - "experimental/*"
+      - "wip/*"
+
+# Strict CI/CD configuration
+# --------------------------
+# plugins:
+#   release-gate:
+#     enabled: true
+#     require-clean-worktree: true
+#     blocked-on-wip-commits: true
+#     allowed-branches:
+#       - "main"
+#     blocked-branches:
+#       - "feature/*"
+#       - "bugfix/*"
+
+# Example error messages:
+# -----------------------
+# $ semver bump patch
+# Error: release-gate: uncommitted changes detected. Commit or stash changes before bumping.
+#
+# $ semver bump patch  (from feature/my-branch)
+# Error: release-gate: bumps not allowed from branch 'feature/my-branch'. Allowed branches: main, release/*
+#
+# $ semver bump patch  (with WIP commit in history)
+# Error: release-gate: WIP commit detected in recent history: "WIP: work in progress"

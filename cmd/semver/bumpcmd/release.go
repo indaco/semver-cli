@@ -78,12 +78,37 @@ func runSingleModuleRelease(cmd *cli.Command, path string, isPreserveMeta bool) 
 		newVersion.Build = ""
 	}
 
+	// Validate release gates before bumping
+	if err := validateReleaseGate(newVersion, previousVersion, "release"); err != nil {
+		return err
+	}
+
+	// Validate version policy before bumping
+	if err := validateVersionPolicy(newVersion, previousVersion, "release"); err != nil {
+		return err
+	}
+
+	// Validate dependency consistency before bumping
+	if err := validateDependencyConsistency(newVersion); err != nil {
+		return err
+	}
+
+	// Validate tag availability before bumping
+	if err := validateTagAvailable(newVersion); err != nil {
+		return err
+	}
+
 	if err := semver.SaveVersion(path, newVersion); err != nil {
 		return fmt.Errorf("failed to save version: %w", err)
 	}
 
 	// Generate changelog entry
 	if err := generateChangelogAfterBump(newVersion, previousVersion, "release"); err != nil {
+		return err
+	}
+
+	// Record audit log entry
+	if err := recordAuditLogEntry(newVersion, previousVersion, "release"); err != nil {
 		return err
 	}
 

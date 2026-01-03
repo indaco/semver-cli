@@ -52,7 +52,7 @@ func registerLocalExtension(localPath, configPath, extensionDirectory string) er
 
 	if _, err := os.Stat(absConfigPath); os.IsNotExist(err) {
 		fmt.Fprintf(os.Stderr, `
-💡 To enable extension support, create a .semver.yaml file in your project root. For example:
+To enable extension support, create a .semver.yaml file in your project root. For example:
 
     echo "extensions: []" > .semver.yaml
 
@@ -79,6 +79,6 @@ Then run this command again.
 	}
 
 	// 8. Success message
-	fmt.Printf("✅ Extension %q registered successfully.\n", manifest.Name)
+	fmt.Printf("Extension %q registered successfully.\n", manifest.Name)
 	return nil
 }

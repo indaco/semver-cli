@@ -42,9 +42,9 @@ func checkCLIOutput(t *testing.T, output, extensionName string, deleted bool) {
 	t.Helper()
 	var expected string
 	if deleted {
-		expected = fmt.Sprintf("✅ Extension %q and its directory removed successfully.", extensionName)
+		expected = fmt.Sprintf("Extension %q and its directory removed successfully.", extensionName)
 	} else {
-		expected = fmt.Sprintf("✅ Extension %q removed, but its directory is preserved.", extensionName)
+		expected = fmt.Sprintf("Extension %q removed, but its directory is preserved.", extensionName)
 	}
 	if !strings.Contains(output, expected) {
 		t.Errorf("expected output to contain %q, got:\n%s", expected, output)
@@ -159,7 +159,7 @@ func TestExtensionRegisterCmd_MissingPathArgument(t *testing.T) {
 			fmt.Fprintln(os.Stderr, err)
 			os.Exit(1) // expected non-zero exit
 		}
-		os.Exit(0) // ❌ should not happen
+		os.Exit(0) // should not happen
 	}
 
 	// Run the test with the custom environment variable to trigger the error condition

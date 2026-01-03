@@ -414,6 +414,8 @@ semver init
 | `dependency-check`    | Validates and syncs versions across multiple files     | Disabled |
 | `changelog-parser`    | Infers bump type from CHANGELOG.md entries             | Disabled |
 | `changelog-generator` | Generates changelog from conventional commits          | Disabled |
+| `release-gate`        | Pre-bump validation (clean worktree, branch, WIP)      | Disabled |
+| `audit-log`           | Records version changes with metadata to a log file    | Disabled |
 
 ### Quick Example
 

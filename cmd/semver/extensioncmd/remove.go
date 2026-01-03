@@ -74,9 +74,9 @@ func runExtenstionRemove(cmd *cli.Command) error {
 		if err := os.RemoveAll(extensionDir); err != nil {
 			return fmt.Errorf("failed to remove extension directory: %w", err)
 		}
-		fmt.Printf("✅ Extension %q and its directory removed successfully.\n", extensionName)
+		fmt.Printf("Extension %q and its directory removed successfully.\n", extensionName)
 	} else {
-		fmt.Printf("✅ Extension %q removed, but its directory is preserved.\n", extensionName)
+		fmt.Printf("Extension %q removed, but its directory is preserved.\n", extensionName)
 	}
 
 	return nil

@@ -70,6 +70,11 @@ func runSingleModuleMinorBump(ctx context.Context, cmd *cli.Command, cfg *config
 	newVersion.PreRelease = pre
 	newVersion.Build = calculateNewBuild(meta, isPreserveMeta, previousVersion.Build)
 
+	// Validate release gates before bumping
+	if err := validateReleaseGate(newVersion, previousVersion, "minor"); err != nil {
+		return err
+	}
+
 	// Validate version policy before bumping
 	if err := validateVersionPolicy(newVersion, previousVersion, "minor"); err != nil {
 		return err
@@ -100,6 +105,11 @@ func runSingleModuleMinorBump(ctx context.Context, cmd *cli.Command, cfg *config
 
 	// Generate changelog entry
 	if err := generateChangelogAfterBump(newVersion, previousVersion, "minor"); err != nil {
+		return err
+	}
+
+	// Record audit log entry
+	if err := recordAuditLogEntry(newVersion, previousVersion, "minor"); err != nil {
 		return err
 	}
 

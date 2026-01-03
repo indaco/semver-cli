@@ -2,10 +2,12 @@ package plugins
 
 import (
 	"github.com/indaco/semver-cli/internal/config"
+	"github.com/indaco/semver-cli/internal/plugins/auditlog"
 	"github.com/indaco/semver-cli/internal/plugins/changeloggenerator"
 	"github.com/indaco/semver-cli/internal/plugins/changelogparser"
 	"github.com/indaco/semver-cli/internal/plugins/commitparser"
 	"github.com/indaco/semver-cli/internal/plugins/dependencycheck"
+	"github.com/indaco/semver-cli/internal/plugins/releasegate"
 	"github.com/indaco/semver-cli/internal/plugins/tagmanager"
 	"github.com/indaco/semver-cli/internal/plugins/versionvalidator"
 )
@@ -15,41 +17,75 @@ func RegisterBuiltinPlugins(cfg *config.Config) {
 		return
 	}
 
-	if cfg.Plugins.CommitParser {
+	registerCommitParser(cfg.Plugins)
+	registerTagManager(cfg.Plugins)
+	registerVersionValidator(cfg.Plugins)
+	registerDependencyCheck(cfg.Plugins)
+	registerChangelogParser(cfg.Plugins)
+	registerChangelogGenerator(cfg.Plugins)
+	registerReleaseGate(cfg.Plugins)
+	registerAuditLog(cfg.Plugins)
+}
+
+func registerCommitParser(plugins *config.PluginConfig) {
+	if plugins.CommitParser {
 		commitparser.Register()
 	}
+}
 
-	if cfg.Plugins.TagManager != nil && cfg.Plugins.TagManager.Enabled {
+func registerTagManager(plugins *config.PluginConfig) {
+	if plugins.TagManager != nil && plugins.TagManager.Enabled {
 		tmCfg := &tagmanager.Config{
 			Enabled:    true,
-			AutoCreate: cfg.Plugins.TagManager.GetAutoCreate(),
-			Prefix:     cfg.Plugins.TagManager.GetPrefix(),
-			Annotate:   cfg.Plugins.TagManager.GetAnnotate(),
-			Push:       cfg.Plugins.TagManager.Push,
+			AutoCreate: plugins.TagManager.GetAutoCreate(),
+			Prefix:     plugins.TagManager.GetPrefix(),
+			Annotate:   plugins.TagManager.GetAnnotate(),
+			Push:       plugins.TagManager.Push,
 		}
 		tagmanager.Register(tmCfg)
 	}
+}
 
-	if cfg.Plugins.VersionValidator != nil && cfg.Plugins.VersionValidator.Enabled {
+func registerVersionValidator(plugins *config.PluginConfig) {
+	if plugins.VersionValidator != nil && plugins.VersionValidator.Enabled {
 		vvCfg := &versionvalidator.Config{
 			Enabled: true,
-			Rules:   convertValidationRules(cfg.Plugins.VersionValidator.Rules),
+			Rules:   convertValidationRules(plugins.VersionValidator.Rules),
 		}
 		versionvalidator.Register(vvCfg)
 	}
+}
 
-	if cfg.Plugins.DependencyCheck != nil && cfg.Plugins.DependencyCheck.Enabled {
-		dcCfg := convertDependencyCheckConfig(cfg.Plugins.DependencyCheck)
+func registerDependencyCheck(plugins *config.PluginConfig) {
+	if plugins.DependencyCheck != nil && plugins.DependencyCheck.Enabled {
+		dcCfg := convertDependencyCheckConfig(plugins.DependencyCheck)
 		dependencycheck.Register(dcCfg)
 	}
+}
 
-	if cfg.Plugins.ChangelogParser != nil && cfg.Plugins.ChangelogParser.Enabled {
-		clCfg := convertChangelogParserConfig(cfg.Plugins.ChangelogParser)
+func registerChangelogParser(plugins *config.PluginConfig) {
+	if plugins.ChangelogParser != nil && plugins.ChangelogParser.Enabled {
+		clCfg := convertChangelogParserConfig(plugins.ChangelogParser)
 		changelogparser.Register(clCfg)
 	}
+}
 
-	if cfg.Plugins.ChangelogGenerator != nil && cfg.Plugins.ChangelogGenerator.Enabled {
-		changeloggenerator.Register(cfg.Plugins.ChangelogGenerator)
+func registerChangelogGenerator(plugins *config.PluginConfig) {
+	if plugins.ChangelogGenerator != nil && plugins.ChangelogGenerator.Enabled {
+		changeloggenerator.Register(plugins.ChangelogGenerator)
+	}
+}
+
+func registerReleaseGate(plugins *config.PluginConfig) {
+	if plugins.ReleaseGate != nil && plugins.ReleaseGate.Enabled {
+		rgCfg := convertReleaseGateConfig(plugins.ReleaseGate)
+		releasegate.Register(rgCfg)
+	}
+}
+
+func registerAuditLog(plugins *config.PluginConfig) {
+	if plugins.AuditLog != nil && plugins.AuditLog.Enabled {
+		auditlog.Register(plugins.AuditLog)
 	}
 }
 
@@ -95,5 +131,17 @@ func convertChangelogParserConfig(cfg *config.ChangelogParserConfig) *changelogp
 		RequireUnreleasedSection: cfg.RequireUnreleasedSection,
 		InferBumpType:            cfg.InferBumpType,
 		Priority:                 cfg.Priority,
+	}
+}
+
+// convertReleaseGateConfig converts config to releasegate config.
+func convertReleaseGateConfig(cfg *config.ReleaseGateConfig) *releasegate.Config {
+	return &releasegate.Config{
+		Enabled:              cfg.Enabled,
+		RequireCleanWorktree: cfg.RequireCleanWorktree,
+		RequireCIPass:        cfg.RequireCIPass,
+		BlockedOnWIPCommits:  cfg.BlockedOnWIPCommits,
+		AllowedBranches:      cfg.AllowedBranches,
+		BlockedBranches:      cfg.BlockedBranches,
 	}
 }

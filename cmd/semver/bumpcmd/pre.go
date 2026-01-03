@@ -81,6 +81,11 @@ func runSingleModulePreBump(ctx context.Context, cmd *cli.Command, cfg *config.C
 	}
 	newVersion.Build = calculateNewBuild(meta, isPreserveMeta, previousVersion.Build)
 
+	// Validate release gates before bumping
+	if err := validateReleaseGate(newVersion, previousVersion, "pre"); err != nil {
+		return err
+	}
+
 	// Validate version policy before bumping
 	if err := validateVersionPolicy(newVersion, previousVersion, "pre"); err != nil {
 		return err
@@ -111,6 +116,11 @@ func runSingleModulePreBump(ctx context.Context, cmd *cli.Command, cfg *config.C
 
 	// Generate changelog entry
 	if err := generateChangelogAfterBump(newVersion, previousVersion, "pre"); err != nil {
+		return err
+	}
+
+	// Record audit log entry
+	if err := recordAuditLogEntry(newVersion, previousVersion, "pre"); err != nil {
 		return err
 	}
 

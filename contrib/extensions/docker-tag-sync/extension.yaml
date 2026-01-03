@@ -1,0 +1,8 @@
+name: docker-tag-sync
+version: 1.0.0
+description: Tags and optionally pushes Docker images with the new version after bumps
+author: semver-cli
+repository: https://github.com/indaco/semver-cli/tree/main/contrib/extensions/docker-tag-sync
+entry: hook.sh
+hooks:
+  - post-bump

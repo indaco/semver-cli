@@ -7,8 +7,10 @@ import (
 
 	"github.com/indaco/semver-cli/internal/config"
 	"github.com/indaco/semver-cli/internal/extensionmgr"
+	"github.com/indaco/semver-cli/internal/plugins/auditlog"
 	"github.com/indaco/semver-cli/internal/plugins/changeloggenerator"
 	"github.com/indaco/semver-cli/internal/plugins/dependencycheck"
+	"github.com/indaco/semver-cli/internal/plugins/releasegate"
 	"github.com/indaco/semver-cli/internal/plugins/tagmanager"
 	"github.com/indaco/semver-cli/internal/plugins/versionvalidator"
 	"github.com/indaco/semver-cli/internal/semver"
@@ -124,6 +126,24 @@ func validateVersionPolicy(newVersion, previousVersion semver.SemVersion, bumpTy
 	return vv.Validate(newVersion, previousVersion, bumpType)
 }
 
+// validateReleaseGate checks if quality gates pass before allowing the bump.
+// Returns nil if release gate is not enabled or all gates pass.
+func validateReleaseGate(newVersion, previousVersion semver.SemVersion, bumpType string) error {
+	rg := releasegate.GetReleaseGateFn()
+	if rg == nil {
+		return nil
+	}
+
+	// Check if the plugin is enabled
+	if plugin, ok := rg.(*releasegate.ReleaseGatePlugin); ok {
+		if !plugin.IsEnabled() {
+			return nil
+		}
+	}
+
+	return rg.ValidateRelease(newVersion, previousVersion, bumpType)
+}
+
 // validateDependencyConsistency checks if all dependency files match the current version.
 // Returns nil if dependency checker is not enabled or all files are consistent.
 func validateDependencyConsistency(version semver.SemVersion) error {
@@ -215,4 +235,27 @@ func generateChangelogAfterBump(version, previousVersion semver.SemVersion, bump
 	}
 
 	return nil
+}
+
+// recordAuditLogEntry records the version bump to the audit log if enabled.
+// Returns nil if audit log is not enabled or if logging fails (doesn't block the bump).
+func recordAuditLogEntry(version, previousVersion semver.SemVersion, bumpType string) error {
+	al := auditlog.GetAuditLogFn()
+	if al == nil {
+		return nil
+	}
+
+	plugin, ok := al.(*auditlog.AuditLogPlugin)
+	if !ok || !plugin.IsEnabled() {
+		return nil
+	}
+
+	entry := &auditlog.Entry{
+		PreviousVersion: previousVersion.String(),
+		NewVersion:      version.String(),
+		BumpType:        bumpType,
+	}
+
+	// RecordEntry handles errors gracefully and logs warnings
+	return al.RecordEntry(entry)
 }

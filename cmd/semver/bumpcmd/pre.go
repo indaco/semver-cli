@@ -119,6 +119,11 @@ func runSingleModulePreBump(ctx context.Context, cmd *cli.Command, cfg *config.C
 		return err
 	}
 
+	// Record audit log entry
+	if err := recordAuditLogEntry(newVersion, previousVersion, "pre"); err != nil {
+		return err
+	}
+
 	if err := runPostBumpExtensionHooks(ctx, cfg, execCtx.Path, previousVersion.String(), "pre", isSkipHooks); err != nil {
 		return err
 	}

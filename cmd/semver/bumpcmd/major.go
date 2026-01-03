@@ -109,6 +109,11 @@ func runSingleModuleMajorBump(ctx context.Context, cmd *cli.Command, cfg *config
 		return err
 	}
 
+	// Record audit log entry
+	if err := recordAuditLogEntry(newVersion, previousVersion, "major"); err != nil {
+		return err
+	}
+
 	if err := runPostBumpExtensionHooks(ctx, cfg, execCtx.Path, previousVersion.String(), "major", isSkipHooks); err != nil {
 		return err
 	}

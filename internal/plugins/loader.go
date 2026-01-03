@@ -2,6 +2,7 @@ package plugins
 
 import (
 	"github.com/indaco/semver-cli/internal/config"
+	"github.com/indaco/semver-cli/internal/plugins/auditlog"
 	"github.com/indaco/semver-cli/internal/plugins/changeloggenerator"
 	"github.com/indaco/semver-cli/internal/plugins/changelogparser"
 	"github.com/indaco/semver-cli/internal/plugins/commitparser"
@@ -23,6 +24,7 @@ func RegisterBuiltinPlugins(cfg *config.Config) {
 	registerChangelogParser(cfg.Plugins)
 	registerChangelogGenerator(cfg.Plugins)
 	registerReleaseGate(cfg.Plugins)
+	registerAuditLog(cfg.Plugins)
 }
 
 func registerCommitParser(plugins *config.PluginConfig) {
@@ -78,6 +80,12 @@ func registerReleaseGate(plugins *config.PluginConfig) {
 	if plugins.ReleaseGate != nil && plugins.ReleaseGate.Enabled {
 		rgCfg := convertReleaseGateConfig(plugins.ReleaseGate)
 		releasegate.Register(rgCfg)
+	}
+}
+
+func registerAuditLog(plugins *config.PluginConfig) {
+	if plugins.AuditLog != nil && plugins.AuditLog.Enabled {
+		auditlog.Register(plugins.AuditLog)
 	}
 }
 

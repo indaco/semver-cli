@@ -107,6 +107,11 @@ func runSingleModulePatchBump(ctx context.Context, cmd *cli.Command, cfg *config
 		return err
 	}
 
+	// Record audit log entry
+	if err := recordAuditLogEntry(newVersion, previousVersion, "patch"); err != nil {
+		return err
+	}
+
 	if err := runPostBumpExtensionHooks(ctx, cfg, execCtx.Path, previousVersion.String(), "patch", isSkipHooks); err != nil {
 		return err
 	}

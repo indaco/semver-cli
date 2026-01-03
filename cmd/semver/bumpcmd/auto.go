@@ -190,6 +190,11 @@ func runSingleModuleAuto(cmd *cli.Command, path, label, meta, since, until strin
 		return err
 	}
 
+	// Record audit log entry
+	if err := recordAuditLogEntry(next, current, "auto"); err != nil {
+		return err
+	}
+
 	fmt.Printf("Bumped version from %s to %s\n", current.String(), next.String())
 	return nil
 }

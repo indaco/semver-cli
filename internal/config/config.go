@@ -17,6 +17,7 @@ type PluginConfig struct {
 	ChangelogParser    *ChangelogParserConfig    `yaml:"changelog-parser,omitempty"`
 	ChangelogGenerator *ChangelogGeneratorConfig `yaml:"changelog-generator,omitempty"`
 	ReleaseGate        *ReleaseGateConfig        `yaml:"release-gate,omitempty"`
+	AuditLog           *AuditLogConfig           `yaml:"audit-log,omitempty"`
 }
 
 // TagManagerConfig holds configuration for the tag manager plugin.
@@ -245,6 +246,46 @@ type ReleaseGateConfig struct {
 
 	// BlockedBranches lists branches where bumps are never allowed.
 	BlockedBranches []string `yaml:"blocked-branches,omitempty"`
+}
+
+// AuditLogConfig holds configuration for the audit log plugin.
+type AuditLogConfig struct {
+	// Enabled controls whether the plugin is active.
+	Enabled bool `yaml:"enabled"`
+
+	// Path is the path to the audit log file.
+	Path string `yaml:"path,omitempty"`
+
+	// Format specifies the output format: json or yaml.
+	Format string `yaml:"format,omitempty"`
+
+	// IncludeAuthor includes git author in log entries.
+	IncludeAuthor bool `yaml:"include-author,omitempty"`
+
+	// IncludeTimestamp includes ISO 8601 timestamp in log entries.
+	IncludeTimestamp bool `yaml:"include-timestamp,omitempty"`
+
+	// IncludeCommitSHA includes current commit SHA in log entries.
+	IncludeCommitSHA bool `yaml:"include-commit-sha,omitempty"`
+
+	// IncludeBranch includes current branch name in log entries.
+	IncludeBranch bool `yaml:"include-branch,omitempty"`
+}
+
+// GetPath returns the path with default ".version-history.json".
+func (c *AuditLogConfig) GetPath() string {
+	if c.Path == "" {
+		return ".version-history.json"
+	}
+	return c.Path
+}
+
+// GetFormat returns the format with default "json".
+func (c *AuditLogConfig) GetFormat() string {
+	if c.Format == "" {
+		return "json"
+	}
+	return c.Format
 }
 
 // GetChangesDir returns the changes directory with default ".changes".

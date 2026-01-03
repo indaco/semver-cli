@@ -107,6 +107,11 @@ func runSingleModuleRelease(cmd *cli.Command, path string, isPreserveMeta bool) 
 		return err
 	}
 
+	// Record audit log entry
+	if err := recordAuditLogEntry(newVersion, previousVersion, "release"); err != nil {
+		return err
+	}
+
 	fmt.Printf("Promoted to release version: %s\n", newVersion.String())
 	return nil
 }

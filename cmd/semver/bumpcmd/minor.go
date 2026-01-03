@@ -108,6 +108,11 @@ func runSingleModuleMinorBump(ctx context.Context, cmd *cli.Command, cfg *config
 		return err
 	}
 
+	// Record audit log entry
+	if err := recordAuditLogEntry(newVersion, previousVersion, "minor"); err != nil {
+		return err
+	}
+
 	if err := runPostBumpExtensionHooks(ctx, cfg, execCtx.Path, previousVersion.String(), "minor", isSkipHooks); err != nil {
 		return err
 	}

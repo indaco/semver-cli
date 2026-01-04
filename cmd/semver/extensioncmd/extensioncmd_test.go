@@ -612,3 +612,38 @@ func TestExtensionRemoveCmd_SaveConfigError(t *testing.T) {
 		t.Errorf("expected output to contain %q, got %q", expected, output)
 	}
 }
+
+/* ------------------------------------------------------------------------- */
+/* EXTENSION INSTALL COMMAND - ADDITIONAL TESTS                              */
+/* ------------------------------------------------------------------------- */
+
+func TestExtensionInstallCmd_RegisterLocalExtensionError(t *testing.T) {
+	if os.Getenv("TEST_EXTENSION_REGISTER_ERROR") == "1" {
+		tmp := t.TempDir()
+		versionPath := filepath.Join(tmp, ".version")
+
+		cfg := &config.Config{Path: versionPath}
+		appCli := testutils.BuildCLIForTests(cfg.Path, []*cli.Command{Run()})
+
+		// Run with a non-existent path to trigger the error
+		err := appCli.Run(context.Background(), []string{"semver", "extension", "install", "--path", "/non/existent/path"})
+		if err != nil {
+			fmt.Fprintln(os.Stderr, err)
+			os.Exit(1)
+		}
+		os.Exit(0)
+	}
+
+	cmd := exec.Command(os.Args[0], "-test.run=TestExtensionInstallCmd_RegisterLocalExtensionError")
+	cmd.Env = append(os.Environ(), "TEST_EXTENSION_REGISTER_ERROR=1")
+	output, err := cmd.CombinedOutput()
+
+	if err == nil {
+		t.Fatal("expected non-zero exit status")
+	}
+
+	expected := "Failed to install extension"
+	if !strings.Contains(string(output), expected) {
+		t.Errorf("expected output to contain %q, got %q", expected, string(output))
+	}
+}

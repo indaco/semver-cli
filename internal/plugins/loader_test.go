@@ -4,7 +4,12 @@ import (
 	"testing"
 
 	"github.com/indaco/semver-cli/internal/config"
+	"github.com/indaco/semver-cli/internal/plugins/auditlog"
+	"github.com/indaco/semver-cli/internal/plugins/changeloggenerator"
+	"github.com/indaco/semver-cli/internal/plugins/changelogparser"
 	"github.com/indaco/semver-cli/internal/plugins/commitparser"
+	"github.com/indaco/semver-cli/internal/plugins/dependencycheck"
+	"github.com/indaco/semver-cli/internal/plugins/releasegate"
 	"github.com/indaco/semver-cli/internal/plugins/tagmanager"
 	"github.com/indaco/semver-cli/internal/plugins/versionvalidator"
 )
@@ -281,5 +286,515 @@ func TestRegisterConfiguredPlugins_AllPlugins(t *testing.T) {
 	}
 	if vv := versionvalidator.GetVersionValidatorFn(); vv == nil {
 		t.Error("expected version validator to be registered")
+	}
+}
+
+func TestRegisterConfiguredPlugins_WithDependencyCheck(t *testing.T) {
+	dependencycheck.ResetDependencyChecker()
+	defer dependencycheck.ResetDependencyChecker()
+
+	cfg := &config.Config{
+		Plugins: &config.PluginConfig{
+			DependencyCheck: &config.DependencyCheckConfig{
+				Enabled:  true,
+				AutoSync: true,
+				Files: []config.DependencyFileConfig{
+					{Path: "package.json", Field: "version", Format: "json"},
+				},
+			},
+		},
+	}
+
+	RegisterBuiltinPlugins(cfg)
+
+	dc := dependencycheck.GetDependencyCheckerFn()
+	if dc == nil {
+		t.Fatal("expected dependency check to be registered, got nil")
+	}
+
+	if dc.Name() != "dependency-check" {
+		t.Errorf("expected name 'dependency-check', got %q", dc.Name())
+	}
+}
+
+func TestRegisterConfiguredPlugins_DependencyCheckDisabled(t *testing.T) {
+	dependencycheck.ResetDependencyChecker()
+	defer dependencycheck.ResetDependencyChecker()
+
+	cfg := &config.Config{
+		Plugins: &config.PluginConfig{
+			DependencyCheck: &config.DependencyCheckConfig{
+				Enabled: false,
+			},
+		},
+	}
+
+	RegisterBuiltinPlugins(cfg)
+
+	if dc := dependencycheck.GetDependencyCheckerFn(); dc != nil {
+		t.Errorf("expected no dependency check to be registered when disabled")
+	}
+}
+
+func TestRegisterConfiguredPlugins_DependencyCheckNil(t *testing.T) {
+	dependencycheck.ResetDependencyChecker()
+	defer dependencycheck.ResetDependencyChecker()
+
+	cfg := &config.Config{
+		Plugins: &config.PluginConfig{
+			DependencyCheck: nil,
+		},
+	}
+
+	RegisterBuiltinPlugins(cfg)
+
+	if dc := dependencycheck.GetDependencyCheckerFn(); dc != nil {
+		t.Errorf("expected no dependency check to be registered when nil")
+	}
+}
+
+func TestRegisterConfiguredPlugins_WithChangelogParser(t *testing.T) {
+	changelogparser.ResetChangelogParser()
+	defer changelogparser.ResetChangelogParser()
+
+	cfg := &config.Config{
+		Plugins: &config.PluginConfig{
+			ChangelogParser: &config.ChangelogParserConfig{
+				Enabled:                  true,
+				Path:                     "CHANGELOG.md",
+				RequireUnreleasedSection: true,
+				InferBumpType:            true,
+				Priority:                 "changelog",
+			},
+		},
+	}
+
+	RegisterBuiltinPlugins(cfg)
+
+	cp := changelogparser.GetChangelogParserFn()
+	if cp == nil {
+		t.Fatal("expected changelog parser to be registered, got nil")
+	}
+
+	if cp.Name() != "changelog-parser" {
+		t.Errorf("expected name 'changelog-parser', got %q", cp.Name())
+	}
+}
+
+func TestRegisterConfiguredPlugins_ChangelogParserDisabled(t *testing.T) {
+	changelogparser.ResetChangelogParser()
+	defer changelogparser.ResetChangelogParser()
+
+	cfg := &config.Config{
+		Plugins: &config.PluginConfig{
+			ChangelogParser: &config.ChangelogParserConfig{
+				Enabled: false,
+			},
+		},
+	}
+
+	RegisterBuiltinPlugins(cfg)
+
+	if cp := changelogparser.GetChangelogParserFn(); cp != nil {
+		t.Errorf("expected no changelog parser to be registered when disabled")
+	}
+}
+
+func TestRegisterConfiguredPlugins_ChangelogParserNil(t *testing.T) {
+	changelogparser.ResetChangelogParser()
+	defer changelogparser.ResetChangelogParser()
+
+	cfg := &config.Config{
+		Plugins: &config.PluginConfig{
+			ChangelogParser: nil,
+		},
+	}
+
+	RegisterBuiltinPlugins(cfg)
+
+	if cp := changelogparser.GetChangelogParserFn(); cp != nil {
+		t.Errorf("expected no changelog parser to be registered when nil")
+	}
+}
+
+func TestRegisterConfiguredPlugins_WithChangelogGenerator(t *testing.T) {
+	changeloggenerator.ResetChangelogGenerator()
+	defer changeloggenerator.ResetChangelogGenerator()
+
+	cfg := &config.Config{
+		Plugins: &config.PluginConfig{
+			ChangelogGenerator: &config.ChangelogGeneratorConfig{
+				Enabled: true,
+				Mode:    "versioned",
+			},
+		},
+	}
+
+	RegisterBuiltinPlugins(cfg)
+
+	cg := changeloggenerator.GetChangelogGeneratorFn()
+	if cg == nil {
+		t.Fatal("expected changelog generator to be registered, got nil")
+	}
+
+	if cg.Name() != "changelog-generator" {
+		t.Errorf("expected name 'changelog-generator', got %q", cg.Name())
+	}
+}
+
+func TestRegisterConfiguredPlugins_ChangelogGeneratorDisabled(t *testing.T) {
+	changeloggenerator.ResetChangelogGenerator()
+	defer changeloggenerator.ResetChangelogGenerator()
+
+	cfg := &config.Config{
+		Plugins: &config.PluginConfig{
+			ChangelogGenerator: &config.ChangelogGeneratorConfig{
+				Enabled: false,
+			},
+		},
+	}
+
+	RegisterBuiltinPlugins(cfg)
+
+	if cg := changeloggenerator.GetChangelogGeneratorFn(); cg != nil {
+		t.Errorf("expected no changelog generator to be registered when disabled")
+	}
+}
+
+func TestRegisterConfiguredPlugins_ChangelogGeneratorNil(t *testing.T) {
+	changeloggenerator.ResetChangelogGenerator()
+	defer changeloggenerator.ResetChangelogGenerator()
+
+	cfg := &config.Config{
+		Plugins: &config.PluginConfig{
+			ChangelogGenerator: nil,
+		},
+	}
+
+	RegisterBuiltinPlugins(cfg)
+
+	if cg := changeloggenerator.GetChangelogGeneratorFn(); cg != nil {
+		t.Errorf("expected no changelog generator to be registered when nil")
+	}
+}
+
+func TestRegisterConfiguredPlugins_WithReleaseGate(t *testing.T) {
+	releasegate.Unregister()
+	defer releasegate.Unregister()
+
+	cfg := &config.Config{
+		Plugins: &config.PluginConfig{
+			ReleaseGate: &config.ReleaseGateConfig{
+				Enabled:              true,
+				RequireCleanWorktree: true,
+				AllowedBranches:      []string{"main", "release/*"},
+			},
+		},
+	}
+
+	RegisterBuiltinPlugins(cfg)
+
+	rg := releasegate.GetReleaseGateFn()
+	if rg == nil {
+		t.Fatal("expected release gate to be registered, got nil")
+	}
+
+	if rg.Name() != "release-gate" {
+		t.Errorf("expected name 'release-gate', got %q", rg.Name())
+	}
+}
+
+func TestRegisterConfiguredPlugins_ReleaseGateDisabled(t *testing.T) {
+	releasegate.Unregister()
+	defer releasegate.Unregister()
+
+	cfg := &config.Config{
+		Plugins: &config.PluginConfig{
+			ReleaseGate: &config.ReleaseGateConfig{
+				Enabled: false,
+			},
+		},
+	}
+
+	RegisterBuiltinPlugins(cfg)
+
+	if rg := releasegate.GetReleaseGateFn(); rg != nil {
+		t.Errorf("expected no release gate to be registered when disabled")
+	}
+}
+
+func TestRegisterConfiguredPlugins_ReleaseGateNil(t *testing.T) {
+	releasegate.Unregister()
+	defer releasegate.Unregister()
+
+	cfg := &config.Config{
+		Plugins: &config.PluginConfig{
+			ReleaseGate: nil,
+		},
+	}
+
+	RegisterBuiltinPlugins(cfg)
+
+	if rg := releasegate.GetReleaseGateFn(); rg != nil {
+		t.Errorf("expected no release gate to be registered when nil")
+	}
+}
+
+func TestRegisterConfiguredPlugins_WithAuditLog(t *testing.T) {
+	auditlog.ResetAuditLog()
+	defer auditlog.ResetAuditLog()
+
+	cfg := &config.Config{
+		Plugins: &config.PluginConfig{
+			AuditLog: &config.AuditLogConfig{
+				Enabled: true,
+				Path:    ".version-history.json",
+				Format:  "json",
+			},
+		},
+	}
+
+	RegisterBuiltinPlugins(cfg)
+
+	al := auditlog.GetAuditLogFn()
+	if al == nil {
+		t.Fatal("expected audit log to be registered, got nil")
+	}
+
+	if al.Name() != "audit-log" {
+		t.Errorf("expected name 'audit-log', got %q", al.Name())
+	}
+}
+
+func TestRegisterConfiguredPlugins_AuditLogDisabled(t *testing.T) {
+	auditlog.ResetAuditLog()
+	defer auditlog.ResetAuditLog()
+
+	cfg := &config.Config{
+		Plugins: &config.PluginConfig{
+			AuditLog: &config.AuditLogConfig{
+				Enabled: false,
+			},
+		},
+	}
+
+	RegisterBuiltinPlugins(cfg)
+
+	if al := auditlog.GetAuditLogFn(); al != nil {
+		t.Errorf("expected no audit log to be registered when disabled")
+	}
+}
+
+func TestRegisterConfiguredPlugins_AuditLogNil(t *testing.T) {
+	auditlog.ResetAuditLog()
+	defer auditlog.ResetAuditLog()
+
+	cfg := &config.Config{
+		Plugins: &config.PluginConfig{
+			AuditLog: nil,
+		},
+	}
+
+	RegisterBuiltinPlugins(cfg)
+
+	if al := auditlog.GetAuditLogFn(); al != nil {
+		t.Errorf("expected no audit log to be registered when nil")
+	}
+}
+
+func TestConvertDependencyCheckConfig(t *testing.T) {
+	tests := []struct {
+		name         string
+		input        *config.DependencyCheckConfig
+		wantEnabled  bool
+		wantAutoSync bool
+		wantFiles    int
+	}{
+		{
+			name: "full config",
+			input: &config.DependencyCheckConfig{
+				Enabled:  true,
+				AutoSync: true,
+				Files: []config.DependencyFileConfig{
+					{Path: "package.json", Field: "version", Format: "json"},
+					{Path: "go.mod", Pattern: "module version (.*)"},
+				},
+			},
+			wantEnabled:  true,
+			wantAutoSync: true,
+			wantFiles:    2,
+		},
+		{
+			name: "empty files",
+			input: &config.DependencyCheckConfig{
+				Enabled:  true,
+				AutoSync: false,
+				Files:    nil,
+			},
+			wantEnabled:  true,
+			wantAutoSync: false,
+			wantFiles:    0,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			result := convertDependencyCheckConfig(tt.input)
+			if result.Enabled != tt.wantEnabled {
+				t.Errorf("expected Enabled %v, got %v", tt.wantEnabled, result.Enabled)
+			}
+			if result.AutoSync != tt.wantAutoSync {
+				t.Errorf("expected AutoSync %v, got %v", tt.wantAutoSync, result.AutoSync)
+			}
+			if len(result.Files) != tt.wantFiles {
+				t.Errorf("expected %d files, got %d", tt.wantFiles, len(result.Files))
+			}
+		})
+	}
+}
+
+func TestConvertDependencyCheckConfig_FileDetails(t *testing.T) {
+	input := &config.DependencyCheckConfig{
+		Enabled: true,
+		Files: []config.DependencyFileConfig{
+			{Path: "package.json", Field: "version", Format: "json", Pattern: ""},
+		},
+	}
+
+	result := convertDependencyCheckConfig(input)
+	if len(result.Files) != 1 {
+		t.Fatalf("expected 1 file, got %d", len(result.Files))
+	}
+
+	file := result.Files[0]
+	if file.Path != "package.json" {
+		t.Errorf("expected path 'package.json', got %q", file.Path)
+	}
+	if file.Field != "version" {
+		t.Errorf("expected field 'version', got %q", file.Field)
+	}
+	if file.Format != "json" {
+		t.Errorf("expected format 'json', got %q", file.Format)
+	}
+}
+
+func TestConvertChangelogParserConfig(t *testing.T) {
+	tests := []struct {
+		name                  string
+		input                 *config.ChangelogParserConfig
+		wantPath              string
+		wantRequireUnreleased bool
+		wantInferBumpType     bool
+		wantPriority          string
+	}{
+		{
+			name: "full config",
+			input: &config.ChangelogParserConfig{
+				Enabled:                  true,
+				Path:                     "CHANGELOG.md",
+				RequireUnreleasedSection: true,
+				InferBumpType:            true,
+				Priority:                 "changelog",
+			},
+			wantPath:              "CHANGELOG.md",
+			wantRequireUnreleased: true,
+			wantInferBumpType:     true,
+			wantPriority:          "changelog",
+		},
+		{
+			name: "minimal config",
+			input: &config.ChangelogParserConfig{
+				Enabled: true,
+			},
+			wantPath:              "",
+			wantRequireUnreleased: false,
+			wantInferBumpType:     false,
+			wantPriority:          "",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			result := convertChangelogParserConfig(tt.input)
+			if result.Path != tt.wantPath {
+				t.Errorf("expected path %q, got %q", tt.wantPath, result.Path)
+			}
+			if result.RequireUnreleasedSection != tt.wantRequireUnreleased {
+				t.Errorf("expected RequireUnreleasedSection %v, got %v", tt.wantRequireUnreleased, result.RequireUnreleasedSection)
+			}
+			if result.InferBumpType != tt.wantInferBumpType {
+				t.Errorf("expected InferBumpType %v, got %v", tt.wantInferBumpType, result.InferBumpType)
+			}
+			if result.Priority != tt.wantPriority {
+				t.Errorf("expected priority %q, got %q", tt.wantPriority, result.Priority)
+			}
+		})
+	}
+}
+
+func TestConvertReleaseGateConfig(t *testing.T) {
+	tests := []struct {
+		name                     string
+		input                    *config.ReleaseGateConfig
+		wantEnabled              bool
+		wantRequireCleanWorktree bool
+		wantRequireCIPass        bool
+		wantBlockedOnWIP         bool
+		wantAllowedBranches      int
+		wantBlockedBranches      int
+	}{
+		{
+			name: "full config",
+			input: &config.ReleaseGateConfig{
+				Enabled:              true,
+				RequireCleanWorktree: true,
+				RequireCIPass:        true,
+				BlockedOnWIPCommits:  true,
+				AllowedBranches:      []string{"main", "release/*"},
+				BlockedBranches:      []string{"feature/*"},
+			},
+			wantEnabled:              true,
+			wantRequireCleanWorktree: true,
+			wantRequireCIPass:        true,
+			wantBlockedOnWIP:         true,
+			wantAllowedBranches:      2,
+			wantBlockedBranches:      1,
+		},
+		{
+			name: "minimal config",
+			input: &config.ReleaseGateConfig{
+				Enabled: true,
+			},
+			wantEnabled:              true,
+			wantRequireCleanWorktree: false,
+			wantRequireCIPass:        false,
+			wantBlockedOnWIP:         false,
+			wantAllowedBranches:      0,
+			wantBlockedBranches:      0,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			result := convertReleaseGateConfig(tt.input)
+			if result.Enabled != tt.wantEnabled {
+				t.Errorf("expected Enabled %v, got %v", tt.wantEnabled, result.Enabled)
+			}
+			if result.RequireCleanWorktree != tt.wantRequireCleanWorktree {
+				t.Errorf("expected RequireCleanWorktree %v, got %v", tt.wantRequireCleanWorktree, result.RequireCleanWorktree)
+			}
+			if result.RequireCIPass != tt.wantRequireCIPass {
+				t.Errorf("expected RequireCIPass %v, got %v", tt.wantRequireCIPass, result.RequireCIPass)
+			}
+			if result.BlockedOnWIPCommits != tt.wantBlockedOnWIP {
+				t.Errorf("expected BlockedOnWIPCommits %v, got %v", tt.wantBlockedOnWIP, result.BlockedOnWIPCommits)
+			}
+			if len(result.AllowedBranches) != tt.wantAllowedBranches {
+				t.Errorf("expected %d allowed branches, got %d", tt.wantAllowedBranches, len(result.AllowedBranches))
+			}
+			if len(result.BlockedBranches) != tt.wantBlockedBranches {
+				t.Errorf("expected %d blocked branches, got %d", tt.wantBlockedBranches, len(result.BlockedBranches))
+			}
+		})
 	}
 }

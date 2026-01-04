@@ -1,6 +1,7 @@
 package versionvalidator
 
 import (
+	"fmt"
 	"testing"
 
 	"github.com/indaco/semver-cli/internal/semver"
@@ -823,6 +824,89 @@ func TestVersionValidatorPlugin_BranchConstraint_EmptyFields(t *testing.T) {
 
 			if (err != nil) != tt.wantErr {
 				t.Errorf("Validate() error = %v, wantErr %v", err, tt.wantErr)
+			}
+		})
+	}
+}
+
+func TestVersionValidatorPlugin_BranchConstraint_GetBranchError(t *testing.T) {
+	original := getCurrentBranchFn
+	defer func() { getCurrentBranchFn = original }()
+
+	// Mock getCurrentBranchFn to return an error
+	getCurrentBranchFn = func() (string, error) {
+		return "", fmt.Errorf("git not available")
+	}
+
+	cfg := &Config{
+		Enabled: true,
+		Rules: []Rule{
+			{Type: RuleBranchConstraint, Branch: "main", Allowed: []string{"patch"}},
+		},
+	}
+	vv := NewVersionValidator(cfg)
+
+	// When getting branch fails, validation should pass (skip the check)
+	err := vv.Validate(semver.SemVersion{Major: 1}, semver.SemVersion{}, "major")
+	if err != nil {
+		t.Errorf("Validate() should skip branch constraint when branch lookup fails, got error: %v", err)
+	}
+}
+
+func TestMatchBranchPattern_AdditionalCases(t *testing.T) {
+	tests := []struct {
+		name    string
+		pattern string
+		branch  string
+		want    bool
+		wantErr bool
+	}{
+		{
+			name:    "exact match main",
+			pattern: "main",
+			branch:  "main",
+			want:    true,
+			wantErr: false,
+		},
+		{
+			name:    "wildcard match release",
+			pattern: "release/*",
+			branch:  "release/v1.0.0",
+			want:    true,
+			wantErr: false,
+		},
+		{
+			name:    "no match develop vs main",
+			pattern: "main",
+			branch:  "develop",
+			want:    false,
+			wantErr: false,
+		},
+		{
+			name:    "wildcard no match feature",
+			pattern: "release/*",
+			branch:  "feature/new",
+			want:    false,
+			wantErr: false,
+		},
+		{
+			name:    "multiple wildcards in pattern",
+			pattern: "feature/*/test",
+			branch:  "feature/user/test",
+			want:    true,
+			wantErr: false,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got, err := matchBranchPattern(tt.pattern, tt.branch)
+			if (err != nil) != tt.wantErr {
+				t.Errorf("matchBranchPattern() error = %v, wantErr %v", err, tt.wantErr)
+				return
+			}
+			if got != tt.want {
+				t.Errorf("matchBranchPattern() = %v, want %v", got, tt.want)
 			}
 		})
 	}

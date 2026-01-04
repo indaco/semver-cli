@@ -120,3 +120,373 @@ func TestCLI_SetVersionCommand_SaveError(t *testing.T) {
 		t.Errorf("unexpected error message: %v", err)
 	}
 }
+
+func TestCLI_SetVersionCommand_MultiModule_All(t *testing.T) {
+	tmpDir := t.TempDir()
+
+	// Create multi-module workspace
+	moduleA := filepath.Join(tmpDir, "module-a")
+	moduleB := filepath.Join(tmpDir, "module-b")
+	if err := os.MkdirAll(moduleA, 0755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.MkdirAll(moduleB, 0755); err != nil {
+		t.Fatal(err)
+	}
+
+	testutils.WriteTempVersionFile(t, moduleA, "1.0.0")
+	testutils.WriteTempVersionFile(t, moduleB, "2.0.0")
+
+	// Create config with workspace discovery enabled
+	enabled := true
+	recursive := true
+	maxDepth := 10
+	cfg := &config.Config{
+		Path: ".version",
+		Workspace: &config.WorkspaceConfig{
+			Discovery: &config.DiscoveryConfig{
+				Enabled:   &enabled,
+				Recursive: &recursive,
+				MaxDepth:  &maxDepth,
+			},
+		},
+	}
+
+	appCli := testutils.BuildCLIForTests(cfg.Path, []*cli.Command{Run(cfg)})
+
+	// Test with --all flag (non-interactive)
+	output, err := testutils.CaptureStdout(func() {
+		testutils.RunCLITest(t, appCli, []string{"semver", "set", "3.0.0", "--all"}, tmpDir)
+	})
+	if err != nil {
+		t.Fatalf("Failed to capture stdout: %v", err)
+	}
+
+	// Verify both modules were updated
+	gotA := testutils.ReadTempVersionFile(t, moduleA)
+	gotB := testutils.ReadTempVersionFile(t, moduleB)
+
+	if gotA != "3.0.0" {
+		t.Errorf("module-a version = %q, want %q", gotA, "3.0.0")
+	}
+	if gotB != "3.0.0" {
+		t.Errorf("module-b version = %q, want %q", gotB, "3.0.0")
+	}
+
+	// Verify output contains success message
+	if !strings.Contains(output, "Set version to 3.0.0") || !strings.Contains(output, "module-a") {
+		t.Errorf("expected success output, got: %q", output)
+	}
+}
+
+func TestCLI_SetVersionCommand_MultiModule_Specific(t *testing.T) {
+	tmpDir := t.TempDir()
+
+	// Create multi-module workspace
+	moduleA := filepath.Join(tmpDir, "module-a")
+	moduleB := filepath.Join(tmpDir, "module-b")
+	if err := os.MkdirAll(moduleA, 0755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.MkdirAll(moduleB, 0755); err != nil {
+		t.Fatal(err)
+	}
+
+	testutils.WriteTempVersionFile(t, moduleA, "1.0.0")
+	testutils.WriteTempVersionFile(t, moduleB, "2.0.0")
+
+	// Create config with workspace discovery enabled
+	enabled := true
+	recursive := true
+	maxDepth := 10
+	cfg := &config.Config{
+		Path: ".version",
+		Workspace: &config.WorkspaceConfig{
+			Discovery: &config.DiscoveryConfig{
+				Enabled:   &enabled,
+				Recursive: &recursive,
+				MaxDepth:  &maxDepth,
+			},
+		},
+	}
+
+	appCli := testutils.BuildCLIForTests(cfg.Path, []*cli.Command{Run(cfg)})
+
+	// Test with --module flag (target specific module)
+	testutils.RunCLITest(t, appCli, []string{"semver", "set", "5.0.0", "--module", "module-a"}, tmpDir)
+
+	// Verify only module-a was updated
+	gotA := testutils.ReadTempVersionFile(t, moduleA)
+	gotB := testutils.ReadTempVersionFile(t, moduleB)
+
+	if gotA != "5.0.0" {
+		t.Errorf("module-a version = %q, want %q", gotA, "5.0.0")
+	}
+	if gotB != "2.0.0" {
+		t.Errorf("module-b version should remain %q, got %q", "2.0.0", gotB)
+	}
+}
+
+func TestCLI_SetVersionCommand_MultiModule_WithPreAndMeta(t *testing.T) {
+	tmpDir := t.TempDir()
+
+	// Create multi-module workspace
+	moduleA := filepath.Join(tmpDir, "module-a")
+	moduleB := filepath.Join(tmpDir, "module-b")
+	if err := os.MkdirAll(moduleA, 0755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.MkdirAll(moduleB, 0755); err != nil {
+		t.Fatal(err)
+	}
+
+	testutils.WriteTempVersionFile(t, moduleA, "1.0.0")
+	testutils.WriteTempVersionFile(t, moduleB, "2.0.0")
+
+	// Create config with workspace discovery enabled
+	enabled := true
+	recursive := true
+	maxDepth := 10
+	cfg := &config.Config{
+		Path: ".version",
+		Workspace: &config.WorkspaceConfig{
+			Discovery: &config.DiscoveryConfig{
+				Enabled:   &enabled,
+				Recursive: &recursive,
+				MaxDepth:  &maxDepth,
+			},
+		},
+	}
+
+	appCli := testutils.BuildCLIForTests(cfg.Path, []*cli.Command{Run(cfg)})
+
+	// Test with --all flag and pre-release + metadata
+	testutils.RunCLITest(t, appCli, []string{
+		"semver", "set", "4.0.0",
+		"--pre", "beta.1",
+		"--meta", "build.123",
+		"--all",
+	}, tmpDir)
+
+	// Verify both modules were updated with pre-release and metadata
+	gotA := testutils.ReadTempVersionFile(t, moduleA)
+	gotB := testutils.ReadTempVersionFile(t, moduleB)
+
+	expected := "4.0.0-beta.1+build.123"
+	if gotA != expected {
+		t.Errorf("module-a version = %q, want %q", gotA, expected)
+	}
+	if gotB != expected {
+		t.Errorf("module-b version = %q, want %q", gotB, expected)
+	}
+}
+
+func TestCLI_SetVersionCommand_MultiModule_Quiet(t *testing.T) {
+	tmpDir := t.TempDir()
+
+	// Create multi-module workspace
+	moduleA := filepath.Join(tmpDir, "module-a")
+	moduleB := filepath.Join(tmpDir, "module-b")
+	if err := os.MkdirAll(moduleA, 0755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.MkdirAll(moduleB, 0755); err != nil {
+		t.Fatal(err)
+	}
+
+	testutils.WriteTempVersionFile(t, moduleA, "1.0.0")
+	testutils.WriteTempVersionFile(t, moduleB, "2.0.0")
+
+	// Create config with workspace discovery enabled
+	enabled := true
+	recursive := true
+	maxDepth := 10
+	cfg := &config.Config{
+		Path: ".version",
+		Workspace: &config.WorkspaceConfig{
+			Discovery: &config.DiscoveryConfig{
+				Enabled:   &enabled,
+				Recursive: &recursive,
+				MaxDepth:  &maxDepth,
+			},
+		},
+	}
+
+	appCli := testutils.BuildCLIForTests(cfg.Path, []*cli.Command{Run(cfg)})
+
+	// Test with --quiet flag
+	output, err := testutils.CaptureStdout(func() {
+		testutils.RunCLITest(t, appCli, []string{"semver", "set", "6.0.0", "--all", "--quiet"}, tmpDir)
+	})
+	if err != nil {
+		t.Fatalf("Failed to capture stdout: %v", err)
+	}
+
+	// Quiet mode should show minimal output
+	if !strings.Contains(output, "Success:") && !strings.Contains(output, "2 module(s)") {
+		t.Errorf("expected quiet summary, got: %q", output)
+	}
+
+	// Verify versions were still updated
+	gotA := testutils.ReadTempVersionFile(t, moduleA)
+	gotB := testutils.ReadTempVersionFile(t, moduleB)
+
+	if gotA != "6.0.0" || gotB != "6.0.0" {
+		t.Errorf("modules not updated correctly: module-a=%q, module-b=%q", gotA, gotB)
+	}
+}
+
+func TestCLI_SetVersionCommand_MultiModule_JSONFormat(t *testing.T) {
+	tmpDir := t.TempDir()
+
+	// Create multi-module workspace
+	moduleA := filepath.Join(tmpDir, "module-a")
+	moduleB := filepath.Join(tmpDir, "module-b")
+	if err := os.MkdirAll(moduleA, 0755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.MkdirAll(moduleB, 0755); err != nil {
+		t.Fatal(err)
+	}
+
+	testutils.WriteTempVersionFile(t, moduleA, "1.0.0")
+	testutils.WriteTempVersionFile(t, moduleB, "2.0.0")
+
+	// Create config with workspace discovery enabled
+	enabled := true
+	recursive := true
+	maxDepth := 10
+	cfg := &config.Config{
+		Path: ".version",
+		Workspace: &config.WorkspaceConfig{
+			Discovery: &config.DiscoveryConfig{
+				Enabled:   &enabled,
+				Recursive: &recursive,
+				MaxDepth:  &maxDepth,
+			},
+		},
+	}
+
+	appCli := testutils.BuildCLIForTests(cfg.Path, []*cli.Command{Run(cfg)})
+
+	// Test with --format json
+	output, err := testutils.CaptureStdout(func() {
+		testutils.RunCLITest(t, appCli, []string{"semver", "set", "7.0.0", "--all", "--format", "json"}, tmpDir)
+	})
+	if err != nil {
+		t.Fatalf("Failed to capture stdout: %v", err)
+	}
+
+	// Output should contain JSON
+	if !strings.Contains(output, "module-a") || !strings.Contains(output, "module-b") {
+		t.Errorf("expected JSON output with module names, got: %q", output)
+	}
+}
+
+func TestCLI_SetVersionCommand_MultiModule_Parallel(t *testing.T) {
+	tmpDir := t.TempDir()
+
+	// Create multi-module workspace with 3 modules
+	moduleA := filepath.Join(tmpDir, "module-a")
+	moduleB := filepath.Join(tmpDir, "module-b")
+	moduleC := filepath.Join(tmpDir, "module-c")
+	if err := os.MkdirAll(moduleA, 0755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.MkdirAll(moduleB, 0755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.MkdirAll(moduleC, 0755); err != nil {
+		t.Fatal(err)
+	}
+
+	testutils.WriteTempVersionFile(t, moduleA, "1.0.0")
+	testutils.WriteTempVersionFile(t, moduleB, "2.0.0")
+	testutils.WriteTempVersionFile(t, moduleC, "3.0.0")
+
+	// Create config with workspace discovery enabled
+	enabled := true
+	recursive := true
+	maxDepth := 10
+	cfg := &config.Config{
+		Path: ".version",
+		Workspace: &config.WorkspaceConfig{
+			Discovery: &config.DiscoveryConfig{
+				Enabled:   &enabled,
+				Recursive: &recursive,
+				MaxDepth:  &maxDepth,
+			},
+		},
+	}
+
+	appCli := testutils.BuildCLIForTests(cfg.Path, []*cli.Command{Run(cfg)})
+
+	// Test with --parallel flag
+	output, err := testutils.CaptureStdout(func() {
+		testutils.RunCLITest(t, appCli, []string{"semver", "set", "10.0.0", "--all", "--parallel"}, tmpDir)
+	})
+	if err != nil {
+		t.Fatalf("Failed to capture stdout: %v", err)
+	}
+
+	// Verify all modules were updated
+	gotA := testutils.ReadTempVersionFile(t, moduleA)
+	gotB := testutils.ReadTempVersionFile(t, moduleB)
+	gotC := testutils.ReadTempVersionFile(t, moduleC)
+
+	if gotA != "10.0.0" || gotB != "10.0.0" || gotC != "10.0.0" {
+		t.Errorf("modules not all updated to 10.0.0: a=%q, b=%q, c=%q", gotA, gotB, gotC)
+	}
+
+	// Should show success message
+	if !strings.Contains(output, "Set version to 10.0.0") {
+		t.Errorf("expected success message, got: %q", output)
+	}
+}
+
+func TestCLI_SetVersionCommand_MultiModule_TextFormat(t *testing.T) {
+	tmpDir := t.TempDir()
+
+	// Create multi-module workspace
+	moduleA := filepath.Join(tmpDir, "module-a")
+	moduleB := filepath.Join(tmpDir, "module-b")
+	if err := os.MkdirAll(moduleA, 0755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.MkdirAll(moduleB, 0755); err != nil {
+		t.Fatal(err)
+	}
+
+	testutils.WriteTempVersionFile(t, moduleA, "1.0.0")
+	testutils.WriteTempVersionFile(t, moduleB, "2.0.0")
+
+	// Create config with workspace discovery enabled
+	enabled := true
+	recursive := true
+	maxDepth := 10
+	cfg := &config.Config{
+		Path: ".version",
+		Workspace: &config.WorkspaceConfig{
+			Discovery: &config.DiscoveryConfig{
+				Enabled:   &enabled,
+				Recursive: &recursive,
+				MaxDepth:  &maxDepth,
+			},
+		},
+	}
+
+	appCli := testutils.BuildCLIForTests(cfg.Path, []*cli.Command{Run(cfg)})
+
+	// Test with --format text (default)
+	output, err := testutils.CaptureStdout(func() {
+		testutils.RunCLITest(t, appCli, []string{"semver", "set", "11.0.0", "--all", "--format", "text"}, tmpDir)
+	})
+	if err != nil {
+		t.Fatalf("Failed to capture stdout: %v", err)
+	}
+
+	// Verify text format output
+	if !strings.Contains(output, "module-a") || !strings.Contains(output, "module-b") {
+		t.Errorf("expected text output with module names, got: %q", output)
+	}
+}

@@ -552,3 +552,422 @@ func TestConfig_GetFormat(t *testing.T) {
 		})
 	}
 }
+
+// MockFileOpsWithErrors is a mock that can simulate file operation errors.
+type MockFileOpsWithErrors struct {
+	data       map[string][]byte
+	exists     map[string]bool
+	readError  error
+	writeError error
+}
+
+func NewMockFileOpsWithErrors() *MockFileOpsWithErrors {
+	return &MockFileOpsWithErrors{
+		data:   make(map[string][]byte),
+		exists: make(map[string]bool),
+	}
+}
+
+func (m *MockFileOpsWithErrors) ReadFile(path string) ([]byte, error) {
+	if m.readError != nil {
+		return nil, m.readError
+	}
+	if data, ok := m.data[path]; ok {
+		return data, nil
+	}
+	return nil, os.ErrNotExist
+}
+
+func (m *MockFileOpsWithErrors) WriteFile(path string, data []byte, perm os.FileMode) error {
+	if m.writeError != nil {
+		return m.writeError
+	}
+	m.data[path] = data
+	m.exists[path] = true
+	return nil
+}
+
+func (m *MockFileOpsWithErrors) FileExists(path string) bool {
+	return m.exists[path]
+}
+
+func TestAuditLogPlugin_RecordEntry_FileReadError(t *testing.T) {
+	cfg := &Config{
+		Enabled:          true,
+		Path:             ".version-history.json",
+		Format:           "json",
+		IncludeTimestamp: true,
+	}
+
+	mockGit := &MockGitOps{}
+	mockFile := NewMockFileOpsWithErrors()
+	mockFile.exists[".version-history.json"] = true
+	mockFile.readError = errors.New("disk read error")
+
+	plugin := NewAuditLogWithOps(cfg, mockGit, mockFile)
+
+	entry := &Entry{
+		PreviousVersion: "1.0.0",
+		NewVersion:      "1.0.1",
+		BumpType:        "patch",
+	}
+
+	// Should not return error (non-blocking)
+	err := plugin.RecordEntry(entry)
+	if err != nil {
+		t.Errorf("expected no error (non-blocking), got %v", err)
+	}
+}
+
+func TestAuditLogPlugin_RecordEntry_FileWriteError(t *testing.T) {
+	cfg := &Config{
+		Enabled:          true,
+		Path:             ".version-history.json",
+		Format:           "json",
+		IncludeTimestamp: true,
+	}
+
+	mockGit := &MockGitOps{}
+	mockFile := NewMockFileOpsWithErrors()
+	mockFile.writeError = errors.New("disk write error")
+
+	plugin := NewAuditLogWithOps(cfg, mockGit, mockFile)
+
+	entry := &Entry{
+		PreviousVersion: "1.0.0",
+		NewVersion:      "1.0.1",
+		BumpType:        "patch",
+	}
+
+	// Should not return error (non-blocking)
+	err := plugin.RecordEntry(entry)
+	if err != nil {
+		t.Errorf("expected no error (non-blocking), got %v", err)
+	}
+}
+
+func TestAuditLogPlugin_RecordEntry_InvalidJSONInFile(t *testing.T) {
+	cfg := &Config{
+		Enabled:          true,
+		Path:             ".version-history.json",
+		Format:           "json",
+		IncludeTimestamp: true,
+	}
+
+	mockGit := &MockGitOps{}
+	mockFile := NewMockFileOpsWithErrors()
+	mockFile.data[".version-history.json"] = []byte("invalid json{{{")
+	mockFile.exists[".version-history.json"] = true
+
+	plugin := NewAuditLogWithOps(cfg, mockGit, mockFile)
+
+	entry := &Entry{
+		PreviousVersion: "1.0.0",
+		NewVersion:      "1.0.1",
+		BumpType:        "patch",
+	}
+
+	// Should not return error (non-blocking)
+	err := plugin.RecordEntry(entry)
+	if err != nil {
+		t.Errorf("expected no error (non-blocking), got %v", err)
+	}
+}
+
+func TestAuditLogPlugin_RecordEntry_ExistingEntries(t *testing.T) {
+	cfg := &Config{
+		Enabled:          true,
+		Path:             ".version-history.json",
+		Format:           "json",
+		IncludeTimestamp: true,
+	}
+
+	// Pre-populate with existing entries
+	existingLog := AuditLogFile{
+		Entries: []Entry{
+			{
+				Timestamp:       "2026-01-01T10:00:00Z",
+				PreviousVersion: "0.9.0",
+				NewVersion:      "1.0.0",
+				BumpType:        "major",
+			},
+		},
+	}
+	existingData, _ := json.Marshal(existingLog)
+
+	mockGit := &MockGitOps{}
+	mockFile := NewMockFileOpsWithErrors()
+	mockFile.data[".version-history.json"] = existingData
+	mockFile.exists[".version-history.json"] = true
+
+	plugin := NewAuditLogWithOps(cfg, mockGit, mockFile)
+	plugin.timeFunc = func() time.Time {
+		return time.Date(2026, 1, 2, 12, 0, 0, 0, time.UTC)
+	}
+
+	entry := &Entry{
+		PreviousVersion: "1.0.0",
+		NewVersion:      "1.0.1",
+		BumpType:        "patch",
+	}
+
+	err := plugin.RecordEntry(entry)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	// Verify both entries exist
+	data := mockFile.data[cfg.Path]
+	var logFile AuditLogFile
+	if err := json.Unmarshal(data, &logFile); err != nil {
+		t.Fatalf("failed to unmarshal: %v", err)
+	}
+
+	if len(logFile.Entries) != 2 {
+		t.Errorf("expected 2 entries, got %d", len(logFile.Entries))
+	}
+
+	// Newest should be first
+	if logFile.Entries[0].NewVersion != "1.0.1" {
+		t.Errorf("expected newest entry first (1.0.1), got %q", logFile.Entries[0].NewVersion)
+	}
+}
+
+func TestAuditLogPlugin_SortEntries_InvalidTimestamps(t *testing.T) {
+	plugin := NewAuditLog(nil)
+
+	entries := []Entry{
+		{Timestamp: "invalid-timestamp", NewVersion: "1.0.0"},
+		{Timestamp: "also-invalid", NewVersion: "2.0.0"},
+		{Timestamp: "2026-01-01T10:00:00Z", NewVersion: "3.0.0"},
+	}
+
+	plugin.sortEntries(entries)
+
+	// With invalid timestamps, entries should maintain relative order (only valid one gets sorted)
+	// The valid timestamp entry should be at the end since it's the only one that parses
+	if len(entries) != 3 {
+		t.Errorf("expected 3 entries, got %d", len(entries))
+	}
+}
+
+func TestAuditLogPlugin_SortEntries_AllValid(t *testing.T) {
+	plugin := NewAuditLog(nil)
+
+	entries := []Entry{
+		{Timestamp: "2026-01-01T10:00:00Z", NewVersion: "1.0.0"},
+		{Timestamp: "2026-01-03T10:00:00Z", NewVersion: "3.0.0"},
+		{Timestamp: "2026-01-02T10:00:00Z", NewVersion: "2.0.0"},
+	}
+
+	plugin.sortEntries(entries)
+
+	// Should be sorted newest first
+	if entries[0].NewVersion != "3.0.0" {
+		t.Errorf("expected 3.0.0 first, got %q", entries[0].NewVersion)
+	}
+	if entries[1].NewVersion != "2.0.0" {
+		t.Errorf("expected 2.0.0 second, got %q", entries[1].NewVersion)
+	}
+	if entries[2].NewVersion != "1.0.0" {
+		t.Errorf("expected 1.0.0 last, got %q", entries[2].NewVersion)
+	}
+}
+
+func TestAuditLogPlugin_NewAuditLogWithOps_NilConfig(t *testing.T) {
+	mockGit := &MockGitOps{}
+	mockFile := NewMockFileOps()
+
+	plugin := NewAuditLogWithOps(nil, mockGit, mockFile)
+
+	if plugin == nil {
+		t.Fatal("expected plugin to be non-nil")
+	}
+
+	if plugin.GetConfig() == nil {
+		t.Fatal("expected config to be non-nil")
+	}
+
+	// Should use default config
+	if plugin.GetConfig().GetPath() != ".version-history.json" {
+		t.Errorf("expected default path, got %q", plugin.GetConfig().GetPath())
+	}
+}
+
+func TestDefaultFileOps_FileExists(t *testing.T) {
+	fileOps := &DefaultFileOps{}
+
+	// Test non-existent file
+	if fileOps.FileExists("/non/existent/path/file.json") {
+		t.Error("expected FileExists to return false for non-existent file")
+	}
+}
+
+func TestDefaultFileOps_ReadFile_NonExistent(t *testing.T) {
+	fileOps := &DefaultFileOps{}
+
+	_, err := fileOps.ReadFile("/non/existent/path/file.json")
+	if err == nil {
+		t.Error("expected error when reading non-existent file")
+	}
+}
+
+func TestDefaultFileOps_WriteAndReadFile(t *testing.T) {
+	fileOps := &DefaultFileOps{}
+	tmpFile := t.TempDir() + "/test-audit.json"
+
+	testData := []byte(`{"entries":[]}`)
+
+	// Write file
+	err := fileOps.WriteFile(tmpFile, testData, 0644)
+	if err != nil {
+		t.Fatalf("failed to write file: %v", err)
+	}
+
+	// Verify file exists
+	if !fileOps.FileExists(tmpFile) {
+		t.Error("expected file to exist after write")
+	}
+
+	// Read file
+	data, err := fileOps.ReadFile(tmpFile)
+	if err != nil {
+		t.Fatalf("failed to read file: %v", err)
+	}
+
+	if string(data) != string(testData) {
+		t.Errorf("expected %q, got %q", string(testData), string(data))
+	}
+}
+
+func TestDefaultGitOps_Integration(t *testing.T) {
+	// Skip if not in a git repo
+	gitOps := &DefaultGitOps{}
+
+	// These will work if we're in a git repo, otherwise they'll fail
+	// We test that the methods don't panic and return appropriate errors
+	_, err := gitOps.GetBranch()
+	if err != nil {
+		t.Skipf("skipping git integration test: %v", err)
+	}
+
+	// If we got here, we're in a git repo
+	author, err := gitOps.GetAuthor()
+	if err != nil {
+		t.Logf("GetAuthor failed (may be expected if git user not configured): %v", err)
+	} else if author == "" {
+		t.Error("expected non-empty author")
+	}
+
+	sha, err := gitOps.GetCommitSHA()
+	if err != nil {
+		t.Logf("GetCommitSHA failed (may be expected if no commits): %v", err)
+	} else if sha == "" {
+		t.Error("expected non-empty SHA")
+	}
+
+	branch, err := gitOps.GetBranch()
+	if err != nil {
+		t.Errorf("GetBranch failed: %v", err)
+	} else if branch == "" {
+		t.Error("expected non-empty branch")
+	}
+}
+
+func TestAuditLogPlugin_YAMLFormat(t *testing.T) {
+	cfg := &Config{
+		Enabled:          true,
+		Path:             ".version-history.yaml",
+		Format:           "yaml",
+		IncludeTimestamp: true,
+		IncludeAuthor:    true,
+	}
+
+	mockGit := &MockGitOps{}
+	mockFile := NewMockFileOps()
+
+	plugin := NewAuditLogWithOps(cfg, mockGit, mockFile)
+	plugin.timeFunc = func() time.Time {
+		return time.Date(2026, 1, 4, 12, 0, 0, 0, time.UTC)
+	}
+
+	entry := &Entry{
+		PreviousVersion: "1.0.0",
+		NewVersion:      "1.0.1",
+		BumpType:        "patch",
+	}
+
+	err := plugin.RecordEntry(entry)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	// Verify YAML was written
+	data, ok := mockFile.data[cfg.Path]
+	if !ok {
+		t.Fatal("expected file to be written")
+	}
+
+	var logFile AuditLogFile
+	if err := yaml.Unmarshal(data, &logFile); err != nil {
+		t.Fatalf("failed to unmarshal YAML: %v", err)
+	}
+
+	if len(logFile.Entries) != 1 {
+		t.Fatalf("expected 1 entry, got %d", len(logFile.Entries))
+	}
+}
+
+func TestAuditLogPlugin_YAMLWithExistingEntries(t *testing.T) {
+	cfg := &Config{
+		Enabled:          true,
+		Path:             ".version-history.yaml",
+		Format:           "yaml",
+		IncludeTimestamp: true,
+	}
+
+	// Pre-populate with existing entries
+	existingLog := AuditLogFile{
+		Entries: []Entry{
+			{
+				Timestamp:       "2026-01-01T10:00:00Z",
+				PreviousVersion: "0.9.0",
+				NewVersion:      "1.0.0",
+				BumpType:        "major",
+			},
+		},
+	}
+	existingData, _ := yaml.Marshal(existingLog)
+
+	mockGit := &MockGitOps{}
+	mockFile := NewMockFileOpsWithErrors()
+	mockFile.data[".version-history.yaml"] = existingData
+	mockFile.exists[".version-history.yaml"] = true
+
+	plugin := NewAuditLogWithOps(cfg, mockGit, mockFile)
+	plugin.timeFunc = func() time.Time {
+		return time.Date(2026, 1, 2, 12, 0, 0, 0, time.UTC)
+	}
+
+	entry := &Entry{
+		PreviousVersion: "1.0.0",
+		NewVersion:      "1.0.1",
+		BumpType:        "patch",
+	}
+
+	err := plugin.RecordEntry(entry)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	// Verify both entries exist
+	data := mockFile.data[cfg.Path]
+	var logFile AuditLogFile
+	if err := yaml.Unmarshal(data, &logFile); err != nil {
+		t.Fatalf("failed to unmarshal: %v", err)
+	}
+
+	if len(logFile.Entries) != 2 {
+		t.Errorf("expected 2 entries, got %d", len(logFile.Entries))
+	}
+}

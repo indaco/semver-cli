@@ -126,7 +126,7 @@ USAGE:
    verso [global options] [command [command options]]
 
 VERSION:
-   v0.6.0-rc2
+   v0.6.0-rc3
 
 COMMANDS:
    show              Display current version

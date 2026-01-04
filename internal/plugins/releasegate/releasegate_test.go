@@ -111,6 +111,25 @@ func TestReleaseGatePlugin_IsEnabled(t *testing.T) {
 	}
 }
 
+func TestReleaseGatePlugin_GetConfig(t *testing.T) {
+	t.Run("returns config when set", func(t *testing.T) {
+		config := &Config{Enabled: true, RequireCleanWorktree: true}
+		plugin := NewReleaseGate(config)
+		got := plugin.GetConfig()
+		if got != config {
+			t.Errorf("GetConfig() = %v, want %v", got, config)
+		}
+	})
+
+	t.Run("returns default config when nil passed", func(t *testing.T) {
+		plugin := NewReleaseGate(nil)
+		got := plugin.GetConfig()
+		if got == nil {
+			t.Error("GetConfig() should return default config, got nil")
+		}
+	})
+}
+
 func TestReleaseGatePlugin_ValidateRelease_Disabled(t *testing.T) {
 	plugin := NewReleaseGate(&Config{Enabled: false})
 

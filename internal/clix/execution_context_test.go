@@ -5,8 +5,8 @@ import (
 	"os"
 	"testing"
 
-	"github.com/indaco/semver-cli/internal/config"
-	"github.com/indaco/semver-cli/internal/workspace"
+	"github.com/indaco/verso/internal/config"
+	"github.com/indaco/verso/internal/workspace"
 	"github.com/urfave/cli/v3"
 )
 
@@ -518,7 +518,7 @@ func TestGetExecutionContext_PathFlagSet(t *testing.T) {
 }
 
 func TestGetExecutionContext_ConfigPathSet(t *testing.T) {
-	// When .semver.yaml has an explicit path (not default), use single-module mode
+	// When .verso.yaml has an explicit path (not default), use single-module mode
 	tmpDir := t.TempDir()
 	versionPath := tmpDir + "/custom/path/.version"
 

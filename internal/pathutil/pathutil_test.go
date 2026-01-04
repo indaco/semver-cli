@@ -5,7 +5,7 @@ import (
 	"path/filepath"
 	"testing"
 
-	"github.com/indaco/semver-cli/internal/apperrors"
+	"github.com/indaco/verso/internal/apperrors"
 )
 
 func TestValidatePath(t *testing.T) {

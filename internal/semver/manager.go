@@ -7,7 +7,7 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/indaco/semver-cli/internal/core"
+	"github.com/indaco/verso/internal/core"
 )
 
 // VersionManager handles version file operations with injected dependencies.

@@ -1,6 +1,6 @@
 # Version Policy Extension
 
-This extension enforces versioning policies and organizational rules for semver-cli. It validates version changes against configurable policies to ensure compliance with team standards.
+This extension enforces versioning policies and organizational rules for verso. It validates version changes against configurable policies to ensure compliance with team standards.
 
 ## Features
 
@@ -18,7 +18,7 @@ This extension enforces versioning policies and organizational rules for semver-
 ```bash
 cd contrib/extensions/version-policy
 make build
-semver extension install --path .
+verso extension install --path .
 ```
 
 ### Pre-built Binary
@@ -28,13 +28,13 @@ Download the appropriate binary for your platform and install:
 ```bash
 # Linux
 make build-all
-semver extension install --path .
+verso extension install --path .
 ```
 
 ### From URL (after cloning the repo)
 
 ```bash
-semver extension install --url https://github.com/indaco/semver-cli
+verso extension install --url https://github.com/indaco/verso
 # Then build and install from contrib/extensions/version-policy
 ```
 
@@ -44,7 +44,7 @@ Once installed and enabled, the extension runs automatically during version oper
 
 ```bash
 # Will validate policies before bump
-semver bump patch
+verso bump patch
 
 # Will validate policies during validation
 semver validate
@@ -52,7 +52,7 @@ semver validate
 
 ## Configuration
 
-Add configuration to your `.semver.yaml`:
+Add configuration to your `.verso.yaml`:
 
 ### Basic Configuration
 
@@ -96,7 +96,7 @@ Prevents accidental prerelease versions on production branches:
 
 ```bash
 # On main branch
-semver set 1.2.3-alpha.1
+verso set 1.2.3-alpha.1
 # Error: policy violation: prerelease versions are not allowed on main/master branch
 ```
 
@@ -106,7 +106,7 @@ Ensures all changes are committed before version changes:
 
 ```bash
 # With uncommitted changes
-semver bump patch
+verso bump patch
 # Error: policy violation: working directory must be clean (no uncommitted changes)
 ```
 
@@ -120,7 +120,7 @@ config:
 ```
 
 ```bash
-semver set 1.2.3-alpha.6
+verso set 1.2.3-alpha.6
 # Error: policy violation: prerelease iteration 6 exceeds maximum allowed (5)
 ```
 
@@ -135,11 +135,11 @@ config:
 
 ```bash
 # Allowed
-semver set 1.2.0  # Even minor
-semver set 1.3.0-alpha.1  # Odd minor but prerelease
+verso set 1.2.0  # Even minor
+verso set 1.3.0-alpha.1  # Odd minor but prerelease
 
 # Not allowed
-semver set 1.3.0  # Odd minor and stable
+verso set 1.3.0  # Odd minor and stable
 # Error: policy violation: stable releases must have even minor version
 ```
 

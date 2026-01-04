@@ -79,7 +79,7 @@ func (r *RepoURL) String() string {
 // CloneRepository clones a repository to a temporary directory
 func CloneRepository(repoURL *RepoURL) (string, error) {
 	// Create temp directory
-	tempDir, err := os.MkdirTemp("", "semver-ext-*")
+	tempDir, err := os.MkdirTemp("", "verso-ext-*")
 	if err != nil {
 		return "", fmt.Errorf("failed to create temp directory: %w", err)
 	}

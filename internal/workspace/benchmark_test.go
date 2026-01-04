@@ -7,8 +7,8 @@ import (
 	"path/filepath"
 	"testing"
 
-	"github.com/indaco/semver-cli/internal/config"
-	"github.com/indaco/semver-cli/internal/core"
+	"github.com/indaco/verso/internal/config"
+	"github.com/indaco/verso/internal/core"
 )
 
 // setupBenchmarkFS creates a mock filesystem with the specified number of modules.

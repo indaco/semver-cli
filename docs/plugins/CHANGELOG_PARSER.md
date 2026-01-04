@@ -31,7 +31,7 @@ The plugin analyzes subsections in the Unreleased section and determines the bum
 
 ## Configuration
 
-Add the following to your `.semver.yaml` file:
+Add the following to your `.verso.yaml` file:
 
 ```yaml
 plugins:
@@ -77,7 +77,7 @@ $ cat CHANGELOG.md
 - Bug fix Y
 
 # 2. Run bump auto - it will detect "minor" from "Added" section
-$ semver bump auto
+$ verso bump auto
 Inferred from changelog: minor
 Bumped version from 1.2.3 to 1.3.0
 
@@ -268,5 +268,5 @@ The implementation uses function variables (like `openFileFn`) to enable depende
 ### Priority Conflicts
 
 - If commits override changelog, check `priority` setting
-- Ensure plugin is registered in `.semver.yaml`
+- Ensure plugin is registered in `.verso.yaml`
 - Verify no conflicts with custom inference logic

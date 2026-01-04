@@ -25,7 +25,7 @@ Built-in, **enabled by default**
 
 ## Configuration
 
-Enable/disable in `.semver.yaml`:
+Enable/disable in `.verso.yaml`:
 
 ```yaml
 plugins:
@@ -47,13 +47,13 @@ The plugin integrates with the `bump auto` command:
 
 ```bash
 # Automatic bump based on conventional commits
-semver bump auto
+verso bump auto
 
 # Manual override with --label
-semver bump auto --label minor
+verso bump auto --label minor
 
 # Disable plugin inference
-semver bump auto --no-infer
+verso bump auto --no-infer
 ```
 
 ### Example Workflow
@@ -65,7 +65,7 @@ git commit -m "fix: resolve login timeout"
 git commit -m "feat!: redesign API endpoints"
 
 # Plugin analyzes commits and determines major bump
-semver bump auto
+verso bump auto
 # Output: Inferred bump type: major
 # Version bumped from 1.2.3 to 2.0.0
 ```
@@ -128,7 +128,7 @@ git commit -m "fix: correct typo"        # patch
 git commit -m "feat: add search"         # minor
 git commit -m "fix: handle edge case"    # patch
 
-semver bump auto
+verso bump auto
 # Result: minor (highest priority)
 ```
 
@@ -139,7 +139,7 @@ When you need manual control over bump types:
 ### Via Configuration
 
 ```yaml
-# .semver.yaml
+# .verso.yaml
 plugins:
   commit-parser: false
 ```
@@ -148,10 +148,10 @@ plugins:
 
 ```bash
 # Always bumps patch (ignores commits)
-semver bump auto --no-infer
+verso bump auto --no-infer
 
 # Manual override (commits still analyzed but overridden)
-semver bump auto --label minor
+verso bump auto --label minor
 ```
 
 ## Integration with Other Plugins
@@ -222,7 +222,7 @@ Verify commits use correct prefixes:
 If no conventional commits are found, `bump auto` defaults to patch:
 
 ```bash
-semver bump auto
+verso bump auto
 # Output: No conventional commits found, defaulting to patch
 ```
 

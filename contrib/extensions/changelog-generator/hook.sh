@@ -1,5 +1,5 @@
 #!/bin/sh
-# Changelog Generator Extension for semver-cli
+# Changelog Generator Extension for verso
 # This extension automatically updates CHANGELOG.md when a version is bumped
 
 # Read JSON input from stdin

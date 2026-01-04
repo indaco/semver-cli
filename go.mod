@@ -1,4 +1,4 @@
-module github.com/indaco/semver-cli
+module github.com/indaco/verso
 
 go 1.25
 

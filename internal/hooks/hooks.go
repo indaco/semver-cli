@@ -3,7 +3,7 @@ package hooks
 import (
 	"fmt"
 
-	"github.com/indaco/semver-cli/internal/console"
+	"github.com/indaco/verso/internal/console"
 )
 
 type PreReleaseHook interface {

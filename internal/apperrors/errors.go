@@ -1,4 +1,4 @@
-// Package apperrors defines custom error types for the semver-cli application.
+// Package apperrors defines custom error types for the verso application.
 // These typed errors enable proper error handling with errors.Is and errors.As
 // without coupling internal packages to the CLI framework.
 package apperrors

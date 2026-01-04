@@ -3,7 +3,7 @@ package tagmanager
 import (
 	"fmt"
 
-	"github.com/indaco/semver-cli/internal/semver"
+	"github.com/indaco/verso/internal/semver"
 )
 
 // TagManager defines the interface for git tag operations.

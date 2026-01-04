@@ -1,6 +1,6 @@
 # Extension System
 
-The semver-cli extension system allows you to extend the functionality of the CLI tool by writing custom scripts that execute at specific hook points during version management operations.
+The verso extension system allows you to extend the functionality of the CLI tool by writing custom scripts that execute at specific hook points during version management operations.
 
 ## Overview
 
@@ -10,7 +10,7 @@ Extensions are executable scripts (shell scripts, Python, Node.js, etc.) that:
 2. Perform custom operations
 3. Return JSON output on stdout
 
-Extensions are installed locally and configured in `.semver.yaml`.
+Extensions are installed locally and configured in `.verso.yaml`.
 
 ## Hook Points
 
@@ -257,29 +257,29 @@ If your extension fails, return `success: false`:
 ### From Local Path
 
 ```bash
-semver extension install /path/to/my-extension
+verso extension install /path/to/my-extension
 ```
 
 This will:
 
-1. Copy the extension to `~/.semver-extensions/my-extension/`
-2. Add the extension to `.semver.yaml`
+1. Copy the extension to `~/.verso-extensions/my-extension/`
+2. Add the extension to `.verso.yaml`
 3. Enable the extension by default
 
 ### Configuration
 
-Extensions are configured in `.semver.yaml`:
+Extensions are configured in `.verso.yaml`:
 
 ```yaml
 path: .version
 
 extensions:
   - name: changelog-generator
-    path: /Users/username/.semver-extensions/changelog-generator
+    path: /Users/username/.verso-extensions/changelog-generator
     enabled: true
 
   - name: git-tagger
-    path: /Users/username/.semver-extensions/git-tagger
+    path: /Users/username/.verso-extensions/git-tagger
     enabled: true
 ```
 
@@ -294,7 +294,7 @@ extensions:
 ### List Installed Extensions
 
 ```bash
-semver extension list
+verso extension list
 ```
 
 Output:
@@ -304,29 +304,29 @@ Installed Extensions:
 
 changelog-generator (1.0.0)
   Description: Automatically updates CHANGELOG.md on version bumps
-  Location: /Users/username/.semver-extensions/changelog-generator
+  Location: /Users/username/.verso-extensions/changelog-generator
   Status: enabled
 ```
 
 ### Remove an Extension
 
 ```bash
-semver extension remove changelog-generator
+verso extension remove changelog-generator
 ```
 
 This will:
 
-1. Remove the extension from `.semver.yaml`
+1. Remove the extension from `.verso.yaml`
 2. Optionally delete the extension files
 
 ### Disable an Extension
 
-Edit `.semver.yaml` and set `enabled: false`:
+Edit `.verso.yaml` and set `enabled: false`:
 
 ```yaml
 extensions:
   - name: changelog-generator
-    path: /Users/username/.semver-extensions/changelog-generator
+    path: /Users/username/.verso-extensions/changelog-generator
     enabled: false # Disabled
 ```
 
@@ -335,7 +335,7 @@ extensions:
 Extensions run automatically when you execute bump commands:
 
 ```bash
-semver bump patch
+verso bump patch
 # Pre-bump extensions run
 # Version is bumped
 # Post-bump extensions run
@@ -346,7 +346,7 @@ semver bump patch
 To skip extension execution, use the `--skip-hooks` flag:
 
 ```bash
-semver bump patch --skip-hooks
+verso bump patch --skip-hooks
 ```
 
 Note: This also skips pre-release hooks.
@@ -383,15 +383,15 @@ See the `contrib/extensions/` directory for reference implementations:
 
 ### Extension not found
 
-Ensure the extension is installed and listed in `.semver.yaml`:
+Ensure the extension is installed and listed in `.verso.yaml`:
 
 ```bash
-semver extension list
+verso extension list
 ```
 
 ### Extension not executing
 
-1. Check if the extension is enabled in `.semver.yaml`
+1. Check if the extension is enabled in `.verso.yaml`
 2. Verify the script is executable: `chmod +x hook.sh`
 3. Ensure the script has a proper shebang line: `#!/bin/sh`
 4. Check hook points match: extension must support the hook being triggered
@@ -423,7 +423,7 @@ The output should be valid JSON that can be parsed.
 
 ### Multiple Extensions
 
-Multiple extensions can be configured for the same hook point. They execute in the order they appear in `.semver.yaml`.
+Multiple extensions can be configured for the same hook point. They execute in the order they appear in `.verso.yaml`.
 
 ### Extension Data
 

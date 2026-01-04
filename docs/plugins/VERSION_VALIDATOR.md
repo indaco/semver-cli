@@ -23,7 +23,7 @@ Built-in, **disabled by default**
 
 ## Configuration
 
-Enable and configure in `.semver.yaml`:
+Enable and configure in `.verso.yaml`:
 
 ```yaml
 plugins:
@@ -68,11 +68,11 @@ rules:
 ```
 
 ```bash
-semver bump minor --pre alpha.1   # OK
-semver bump minor --pre beta      # OK
-semver bump minor --pre rc.2      # OK
-semver bump minor --pre preview   # Error: pre-release label "preview" does not match required pattern
-semver bump minor --pre dev       # Error: pre-release label "dev" does not match required pattern
+verso bump minor --pre alpha.1   # OK
+verso bump minor --pre beta      # OK
+verso bump minor --pre rc.2      # OK
+verso bump minor --pre preview   # Error: pre-release label "preview" does not match required pattern
+verso bump minor --pre dev       # Error: pre-release label "dev" does not match required pattern
 ```
 
 ### Version Number Limits
@@ -91,11 +91,11 @@ rules:
 
 ```bash
 # At version 10.0.0:
-semver bump major
+verso bump major
 # Error: major version 11 exceeds maximum allowed value 10
 
 # At version 1.99.0:
-semver bump minor
+verso bump minor
 # Error: minor version 100 exceeds maximum allowed value 99
 ```
 
@@ -111,11 +111,11 @@ rules:
 
 ```bash
 # At version 0.1.0-alpha:
-semver bump minor              # Error: version 0.x.x requires a pre-release label
-semver bump minor --pre beta   # OK: 0.2.0-beta
+verso bump minor              # Error: version 0.x.x requires a pre-release label
+verso bump minor --pre beta   # OK: 0.2.0-beta
 
 # At version 1.0.0:
-semver bump minor              # OK: 1.1.0 (rule only applies to 0.x)
+verso bump minor              # OK: 1.1.0 (rule only applies to 0.x)
 ```
 
 ### Branch-Based Constraints
@@ -137,15 +137,15 @@ rules:
 
 ```bash
 # On branch release/1.0:
-semver bump minor   # Error: bump type "minor" is not allowed on branch "release/1.0"
-semver bump patch   # OK
+verso bump minor   # Error: bump type "minor" is not allowed on branch "release/1.0"
+verso bump patch   # OK
 
 # On branch main:
-semver bump major   # Error: bump type "major" is not allowed on branch "main"
-semver bump minor   # OK
+verso bump major   # Error: bump type "major" is not allowed on branch "main"
+verso bump minor   # OK
 
 # On branch develop:
-semver bump major   # OK (all types allowed)
+verso bump major   # OK (all types allowed)
 ```
 
 Branch patterns support glob syntax:
@@ -165,9 +165,9 @@ rules:
 ```
 
 ```bash
-semver bump major   # Error: major bumps are not allowed by policy
-semver bump minor   # OK
-semver bump patch   # OK
+verso bump major   # Error: major bumps are not allowed by policy
+verso bump minor   # OK
+verso bump patch   # OK
 ```
 
 Useful for:
@@ -276,7 +276,7 @@ plugins:
 Execution order:
 
 ```bash
-semver bump major
+verso bump major
 # 1. version-validator: Checks if major version is within limit
 # 2. dependency-check: Validates file consistency
 # 3. tag-manager: Validates tag doesn't exist

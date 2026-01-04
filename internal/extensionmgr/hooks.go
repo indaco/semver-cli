@@ -7,9 +7,9 @@ import (
 	"path/filepath"
 	"slices"
 
-	"github.com/indaco/semver-cli/internal/config"
-	"github.com/indaco/semver-cli/internal/console"
-	"github.com/indaco/semver-cli/internal/extensions"
+	"github.com/indaco/verso/internal/config"
+	"github.com/indaco/verso/internal/console"
+	"github.com/indaco/verso/internal/extensions"
 )
 
 // HookType represents the different hook points available in the extension system

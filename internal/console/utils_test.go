@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"testing"
 
-	"github.com/indaco/semver-cli/internal/testutils"
+	"github.com/indaco/verso/internal/testutils"
 )
 
 func TestPrintSuccess(t *testing.T) {

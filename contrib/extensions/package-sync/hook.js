@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 /**
- * Package Sync Extension for semver-cli
+ * Package Sync Extension for verso
  * Synchronizes version to package.json and other JSON files
  */
 

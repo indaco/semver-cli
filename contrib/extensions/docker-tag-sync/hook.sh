@@ -1,9 +1,9 @@
 #!/usr/bin/env bash
 #
-# Docker Tag Sync Extension for semver-cli
+# Docker Tag Sync Extension for verso
 # Tags and optionally pushes Docker images with the new version after bumps
 #
-# Configuration options (via .semver.yaml):
+# Configuration options (via .verso.yaml):
 #   image: Image name (required, e.g., "myapp" or "registry.io/org/myapp")
 #   source-tag: Source tag to re-tag (default: "latest")
 #   prefix: Version prefix for the tag (default: "v")

@@ -4,7 +4,7 @@ import (
 	"errors"
 	"testing"
 
-	"github.com/indaco/semver-cli/internal/testutils"
+	"github.com/indaco/verso/internal/testutils"
 )
 
 func TestRunPreReleaseHooks(t *testing.T) {

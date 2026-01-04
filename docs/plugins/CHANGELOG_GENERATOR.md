@@ -8,7 +8,7 @@ Built-in, **disabled by default**
 
 ## Plugin vs Extension
 
-There are two changelog generation options in semver-cli:
+There are two changelog generation options in verso:
 
 | Feature         | Built-in Plugin               | Shell Extension                          |
 | --------------- | ----------------------------- | ---------------------------------------- |
@@ -45,7 +45,7 @@ There are two changelog generation options in semver-cli:
 
 ## Configuration
 
-Enable and configure in `.semver.yaml`:
+Enable and configure in `.verso.yaml`:
 
 ```yaml
 plugins:
@@ -278,7 +278,7 @@ Once enabled, the plugin works automatically with all bump commands.
 ### Basic Usage
 
 ```bash
-semver bump patch
+verso bump patch
 # Output: Version bumped from 1.2.3 to 1.2.4
 # Creates: .changes/v1.2.4.md
 ```
@@ -286,7 +286,7 @@ semver bump patch
 ### With Auto Bump
 
 ```bash
-semver bump auto
+verso bump auto
 # 1. Analyzes commits to determine bump type
 # 2. Bumps version
 # 3. Generates changelog entry
@@ -415,7 +415,7 @@ plugins:
 Workflow:
 
 ```bash
-semver bump auto
+verso bump auto
 # 1. commit-parser analyzes commits -> determines bump type
 # 2. Version bumped
 # 3. changelog-generator creates entry with same commits

@@ -6,12 +6,12 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/indaco/semver-cli/internal/apperrors"
-	"github.com/indaco/semver-cli/internal/config"
-	"github.com/indaco/semver-cli/internal/core"
-	"github.com/indaco/semver-cli/internal/semver"
-	"github.com/indaco/semver-cli/internal/tui"
-	"github.com/indaco/semver-cli/internal/workspace"
+	"github.com/indaco/verso/internal/apperrors"
+	"github.com/indaco/verso/internal/config"
+	"github.com/indaco/verso/internal/core"
+	"github.com/indaco/verso/internal/semver"
+	"github.com/indaco/verso/internal/tui"
+	"github.com/indaco/verso/internal/workspace"
 	"github.com/urfave/cli/v3"
 )
 
@@ -117,7 +117,7 @@ func (ec *ExecutionContext) IsMultiModule() bool {
 // GetExecutionContext determines the execution context for a command.
 // It follows this logic:
 //  1. If --path flag provided -> single-module mode
-//  2. If .semver.yaml has explicit path (not default) -> single-module mode
+//  2. If .verso.yaml has explicit path (not default) -> single-module mode
 //  3. If --all or --module flags -> multi-module mode (skip TUI)
 //  4. Detect context using workspace.Detector
 //  5. If MultiModule detected and interactive -> show TUI prompt
@@ -136,7 +136,7 @@ func GetExecutionContext(ctx context.Context, cmd *cli.Command, cfg *config.Conf
 		}, nil
 	}
 
-	// Check if .semver.yaml has an explicit path configured (not default ".version")
+	// Check if .verso.yaml has an explicit path configured (not default ".version")
 	// This takes precedence over multi-module detection
 	if cfg != nil && cfg.Path != "" && cfg.Path != ".version" {
 		return &ExecutionContext{

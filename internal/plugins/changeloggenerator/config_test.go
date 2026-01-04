@@ -3,7 +3,7 @@ package changeloggenerator
 import (
 	"testing"
 
-	"github.com/indaco/semver-cli/internal/config"
+	"github.com/indaco/verso/internal/config"
 )
 
 func TestDefaultConfig(t *testing.T) {

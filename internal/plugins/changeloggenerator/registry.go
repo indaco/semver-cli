@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/indaco/semver-cli/internal/config"
+	"github.com/indaco/verso/internal/config"
 )
 
 var (

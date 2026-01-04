@@ -7,10 +7,10 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/indaco/semver-cli/internal/config"
-	"github.com/indaco/semver-cli/internal/core"
-	"github.com/indaco/semver-cli/internal/semver"
-	"github.com/indaco/semver-cli/internal/testutils"
+	"github.com/indaco/verso/internal/config"
+	"github.com/indaco/verso/internal/core"
+	"github.com/indaco/verso/internal/semver"
+	"github.com/indaco/verso/internal/testutils"
 	"github.com/urfave/cli/v3"
 )
 

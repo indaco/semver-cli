@@ -5,7 +5,7 @@ import (
 	"regexp"
 	"strings"
 
-	"github.com/indaco/semver-cli/internal/semver"
+	"github.com/indaco/verso/internal/semver"
 )
 
 // ReleaseGate defines the interface for release gate validation.

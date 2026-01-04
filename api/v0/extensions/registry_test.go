@@ -3,7 +3,7 @@ package extensions
 import (
 	"testing"
 
-	"github.com/indaco/semver-cli/internal/testutils"
+	"github.com/indaco/verso/internal/testutils"
 )
 
 func TestRegisterExtensionMeta(t *testing.T) {

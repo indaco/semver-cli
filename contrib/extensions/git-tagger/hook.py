@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Git Tagger Extension for semver-cli
+Git Tagger Extension for verso
 Creates annotated git tags after version bumps
 """
 

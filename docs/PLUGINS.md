@@ -2,7 +2,7 @@
 
 ## Overview
 
-Plugins are **built-in** features that extend semver-cli's core functionality. Unlike extensions (which are external scripts), plugins are compiled into the binary and provide deep integration with version bump logic.
+Plugins are **built-in** features that extend verso's core functionality. Unlike extensions (which are external scripts), plugins are compiled into the binary and provide deep integration with version bump logic.
 
 ## Available Plugins
 
@@ -19,7 +19,7 @@ Plugins are **built-in** features that extend semver-cli's core functionality. U
 
 ## Quick Start
 
-Enable plugins in your `.semver.yaml`:
+Enable plugins in your `.verso.yaml`:
 
 ```yaml
 plugins:
@@ -58,7 +58,7 @@ plugins:
 During a version bump, plugins execute in a specific order:
 
 ```
-semver bump patch
+verso bump patch
   |
   +-- 1. release-gate: Validates pre-conditions (clean worktree, branch, WIP)
   |
@@ -88,8 +88,8 @@ Post-bump actions (6-9) are non-blocking - failures are logged but don't fail th
 | ----------------- | ------------------------------------ | --------------------------------- |
 | **Compilation**   | Built-in, compiled with CLI          | External scripts                  |
 | **Performance**   | Native Go, <1ms                      | Shell/Python/Node, ~50-100ms      |
-| **Installation**  | None required                        | `semver extension install`        |
-| **Configuration** | `.semver.yaml` plugins section       | `.semver.yaml` extensions section |
+| **Installation**  | None required                        | `verso extension install`        |
+| **Configuration** | `.verso.yaml` plugins section       | `.verso.yaml` extensions section |
 | **Use Case**      | Core version logic, validation, sync | Hook-based automation             |
 
 ## Plugins + Extensions: Powerful Combinations
@@ -99,7 +99,7 @@ Plugins and extensions work together to create automated version management work
 ### Pattern 1: Validation + Auto-Bump + Changelog
 
 ```yaml
-# .semver.yaml
+# .verso.yaml
 plugins:
   commit-parser: true # Analyze commits for bump type
   changelog-generator:
@@ -112,7 +112,7 @@ plugins:
 Workflow:
 
 ```bash
-semver bump auto
+verso bump auto
 # 1. commit-parser plugin: Analyzes commits -> determines "minor" bump
 # 2. Version bumped: 1.2.3 -> 1.3.0
 # 3. changelog-generator: Creates .changes/v1.3.0.md
@@ -133,7 +133,7 @@ plugins:
 Workflow:
 
 ```bash
-semver bump auto
+verso bump auto
 # 1. commit-parser analyzes: feat commits -> minor bump
 # 2. tag-manager validates: v1.3.0 doesn't exist
 # 3. Version: 1.2.3 -> 1.3.0
@@ -175,7 +175,7 @@ plugins:
 CI Workflow:
 
 ```bash
-semver bump auto
+verso bump auto
 # Pre-bump validation:
 #   1. version-validator: Checks branch constraints and version limits
 #   2. dependency-check: Validates file consistency

@@ -5,7 +5,7 @@ import (
 	"regexp"
 	"slices"
 
-	"github.com/indaco/semver-cli/internal/semver"
+	"github.com/indaco/verso/internal/semver"
 )
 
 // VersionValidator defines the interface for version validation plugins.

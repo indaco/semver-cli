@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Commit Validator Extension for semver-cli
+Commit Validator Extension for verso
 Validates that commits since the last tag follow conventional commit format
 """
 

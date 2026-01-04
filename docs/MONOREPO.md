@@ -1,6 +1,6 @@
 # Monorepo / Multi-Module Support
 
-This guide covers how to use `semver` to manage multiple `.version` files across a monorepo or multi-module project.
+This guide covers how to use `verso` to manage multiple `.version` files across a monorepo or multi-module project.
 
 ## Table of Contents
 
@@ -19,7 +19,7 @@ This guide covers how to use `semver` to manage multiple `.version` files across
 
 ## Overview
 
-When you have multiple services, packages, or modules in a single repository, each with its own `.version` file, `semver` can detect and operate on all of them automatically.
+When you have multiple services, packages, or modules in a single repository, each with its own `.version` file, `verso` can detect and operate on all of them automatically.
 
 **Key features:**
 
@@ -35,17 +35,17 @@ When you have multiple services, packages, or modules in a single repository, ea
 
 ### Basic Usage
 
-From your monorepo root, run any command and `semver` will detect multiple modules:
+From your monorepo root, run any command and `verso` will detect multiple modules:
 
 ```bash
 # Bump all modules
-semver bump patch --all
+verso bump patch --all
 
 # Show versions for all modules
-semver show --all
+verso show --all
 
 # Set version for all modules
-semver set 1.0.0 --all
+verso set 1.0.0 --all
 ```
 
 ### Interactive Selection
@@ -53,7 +53,7 @@ semver set 1.0.0 --all
 Without `--all`, you'll get an interactive prompt:
 
 ```bash
-semver bump patch
+verso bump patch
 
 # Output:
 # ? Select modules to bump:
@@ -66,7 +66,7 @@ semver bump patch
 ### List Discovered Modules
 
 ```bash
-semver modules list
+verso modules list
 
 # Output:
 # api     ./services/api/.version    1.2.3
@@ -78,11 +78,11 @@ semver modules list
 
 ## How It Works
 
-`semver` uses a detection hierarchy to determine the execution mode:
+`verso` uses a detection hierarchy to determine the execution mode:
 
 ```
 1. --path flag provided     -> Single-module mode (explicit path)
-2. SEMVER_PATH env set      -> Single-module mode (env path)
+2. VERSO_PATH env set      -> Single-module mode (env path)
 3. .version in current dir  -> Single-module mode (current dir)
 4. Multiple .version found  -> Multi-module mode (discovery)
 5. No .version found        -> Error
@@ -98,7 +98,7 @@ semver modules list
 
 ### Automatic Discovery
 
-By default, `semver` recursively searches for `.version` files:
+By default, `verso` recursively searches for `.version` files:
 
 ```bash
 my-monorepo/
@@ -118,23 +118,23 @@ The module name is derived from the parent directory name.
 **List all modules:**
 
 ```bash
-semver modules list
-semver modules list --verbose
-semver modules list --format json
+verso modules list
+verso modules list --verbose
+verso modules list --format json
 ```
 
 **Test discovery configuration:**
 
 ```bash
-semver modules discover
+verso modules discover
 ```
 
 ### Exclude Patterns
 
-Create a `.semverignore` file to exclude directories:
+Create a `.versoignore` file to exclude directories:
 
 ```
-# .semverignore
+# .versoignore
 vendor/
 node_modules/
 testdata/
@@ -191,7 +191,7 @@ If you choose "Select specific modules...":
 Use `--yes` to skip the prompt and select all modules:
 
 ```bash
-semver bump patch --yes
+verso bump patch --yes
 ```
 
 ---
@@ -203,44 +203,44 @@ For CI/CD or scripting, use these flags to skip interactive prompts:
 ### Operate on All Modules
 
 ```bash
-semver bump patch --all
-semver show --all
-semver set 1.0.0 --all
+verso bump patch --all
+verso show --all
+verso set 1.0.0 --all
 ```
 
 ### Operate on Specific Modules
 
 ```bash
 # Single module by name
-semver bump patch --module api
+verso bump patch --module api
 
 # Multiple modules by name
-semver bump patch --modules api,web,shared
+verso bump patch --modules api,web,shared
 
 # Modules matching a pattern
-semver bump patch --pattern "services/*"
+verso bump patch --pattern "services/*"
 ```
 
 ### Disable Prompts Explicitly
 
 ```bash
-semver bump patch --all --non-interactive
+verso bump patch --all --non-interactive
 ```
 
 ### Execution Control
 
 ```bash
 # Run operations in parallel (faster)
-semver bump patch --all --parallel
+verso bump patch --all --parallel
 
 # Stop on first error (default)
-semver bump patch --all --fail-fast
+verso bump patch --all --fail-fast
 
 # Continue even if some modules fail
-semver bump patch --all --continue-on-error
+verso bump patch --all --continue-on-error
 
 # Suppress per-module output
-semver bump patch --all --quiet
+verso bump patch --all --quiet
 ```
 
 ---
@@ -249,10 +249,10 @@ semver bump patch --all --quiet
 
 ### Workspace Configuration
 
-Configure discovery and modules in `.semver.yaml`:
+Configure discovery and modules in `.verso.yaml`:
 
 ```yaml
-# .semver.yaml
+# .verso.yaml
 path: .version
 
 # Workspace configuration (optional)
@@ -290,16 +290,16 @@ workspace:
 
 **Explicit modules:**
 
-- Define modules in `.semver.yaml`
+- Define modules in `.verso.yaml`
 - Full control over module names and paths
 - Can disable specific modules
 
 ### Config Inheritance
 
-Module-specific `.semver.yaml` files can override workspace settings:
+Module-specific `.verso.yaml` files can override workspace settings:
 
 ```yaml
-# services/api/.semver.yaml
+# services/api/.verso.yaml
 path: VERSION # Use VERSION instead of .version
 plugins:
   commit-parser: false # Disable for this module
@@ -312,7 +312,7 @@ plugins:
 ### Text Format (Default)
 
 ```bash
-semver show --all
+verso show --all
 
 # Output:
 # api     1.2.3
@@ -323,7 +323,7 @@ semver show --all
 ### JSON Format
 
 ```bash
-semver show --all --format json
+verso show --all --format json
 
 # Output:
 # [
@@ -336,7 +336,7 @@ semver show --all --format json
 ### Table Format
 
 ```bash
-semver show --all --format table
+verso show --all --format table
 
 # Output:
 # +--------+---------+
@@ -351,7 +351,7 @@ semver show --all --format table
 ### Bump Output
 
 ```bash
-semver bump patch --all
+verso bump patch --all
 
 # Output:
 # Bump patch
@@ -367,7 +367,7 @@ semver bump patch --all
 
 ### Automatic Detection
 
-`semver` automatically detects CI environments and disables interactive prompts:
+`verso` automatically detects CI environments and disables interactive prompts:
 
 **Detected CI environments:**
 
@@ -412,15 +412,15 @@ jobs:
         with:
           go-version: "1.23"
 
-      - name: Install semver
-        run: go install github.com/indaco/semver-cli/cmd/semver@latest
+      - name: Install verso
+        run: go install github.com/indaco/verso/cmd/verso@latest
 
       - name: Bump versions
         run: |
           if [ "${{ inputs.modules }}" = "all" ]; then
-            semver bump ${{ inputs.bump_type }} --all
+            verso bump ${{ inputs.bump_type }} --all
           else
-            semver bump ${{ inputs.bump_type }} --modules ${{ inputs.modules }}
+            verso bump ${{ inputs.bump_type }} --modules ${{ inputs.modules }}
           fi
 
       - name: Commit changes
@@ -439,8 +439,8 @@ jobs:
 bump-version:
   stage: release
   script:
-    - go install github.com/indaco/semver-cli/cmd/semver@latest
-    - semver bump patch --all
+    - go install github.com/indaco/verso/cmd/verso@latest
+    - verso bump patch --all
     - git add .
     - git commit -m "chore: bump version"
     - git push
@@ -456,13 +456,13 @@ bump-version:
 # bump-all.sh
 
 # Get current versions as JSON
-versions=$(semver show --all --format json)
+versions=$(verso show --all --format json)
 
 # Bump all modules
-semver bump patch --all --quiet
+verso bump patch --all --quiet
 
 # Get new versions
-new_versions=$(semver show --all --format json)
+new_versions=$(verso show --all --format json)
 
 # Output changes
 echo "Version changes:"
@@ -491,10 +491,10 @@ echo "0.1.0" > services/api/.version
 Check if the directory is excluded:
 
 ```bash
-semver modules discover
+verso modules discover
 ```
 
-Review your `.semverignore` and `.semver.yaml` exclude patterns.
+Review your `.versoignore` and `.verso.yaml` exclude patterns.
 
 ### Interactive mode not working
 
@@ -513,7 +513,7 @@ chmod 644 services/*/.version
 If you encounter race conditions, use sequential execution:
 
 ```bash
-semver bump patch --all  # Sequential by default
+verso bump patch --all  # Sequential by default
 ```
 
 ### Version format errors
@@ -521,7 +521,7 @@ semver bump patch --all  # Sequential by default
 Ensure all `.version` files contain valid semver:
 
 ```bash
-semver validate  # In each module directory
+verso validate  # In each module directory
 ```
 
 ---
@@ -547,10 +547,10 @@ semver validate  # In each module directory
 ### Module Commands
 
 ```bash
-semver modules list              # List all modules
-semver modules list --verbose    # Detailed output
-semver modules list --format json
-semver modules discover          # Test discovery settings
+verso modules list              # List all modules
+verso modules list --verbose    # Detailed output
+verso modules list --format json
+verso modules discover          # Test discovery settings
 ```
 
 ---

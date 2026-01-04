@@ -5,8 +5,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/indaco/semver-cli/internal/core"
-	"github.com/indaco/semver-cli/internal/workspace"
+	"github.com/indaco/verso/internal/core"
+	"github.com/indaco/verso/internal/workspace"
 )
 
 func TestNewShowOperation(t *testing.T) {

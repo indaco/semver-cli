@@ -1,6 +1,6 @@
-# semver-cli Extensions
+# verso Extensions
 
-This directory contains ready-to-use extensions for semver-cli. These extensions can be installed directly or used as templates for your own extensions.
+This directory contains ready-to-use extensions for verso. These extensions can be installed directly or used as templates for your own extensions.
 
 For the complete extension authoring guide, see [docs/EXTENSIONS.md](../../docs/EXTENSIONS.md).
 
@@ -96,7 +96,7 @@ Extensions work seamlessly with built-in plugins for complete automation.
 The `commitparser` plugin analyzes commits, extensions handle the rest:
 
 ```yaml
-# .semver.yaml
+# .verso.yaml
 plugins:
   commit-parser: true # Built-in commit analysis
 
@@ -110,7 +110,7 @@ extensions:
 ```
 
 ```bash
-semver bump auto
+verso bump auto
 # 1. commit-validator: Ensures commits are valid
 # 2. commitparser: Analyzes commits -> determines bump type
 # 3. Version bumped
@@ -125,18 +125,18 @@ See [docs/PLUGINS.md](../../docs/PLUGINS.md) for detailed plugin documentation.
 ### From Local Path
 
 ```bash
-semver extension install --path ./contrib/extensions/git-tagger
+verso extension install --path ./contrib/extensions/git-tagger
 ```
 
 ### From URL
 
 ```bash
-semver extension install --url https://github.com/user/my-extension
+verso extension install --url https://github.com/user/my-extension
 ```
 
 ### Configuration
 
-After installation, configure in `.semver.yaml`:
+After installation, configure in `.verso.yaml`:
 
 ```yaml
 extensions:
@@ -151,10 +151,10 @@ extensions:
 
 ```bash
 # List installed extensions
-semver extension list
+verso extension list
 
 # Remove an extension
-semver extension remove git-tagger
+verso extension remove git-tagger
 ```
 
 ## Building Go Extensions
@@ -190,4 +190,4 @@ Want to contribute an extension?
 
 ## License
 
-All extensions in this directory are licensed under the same terms as semver-cli.
+All extensions in this directory are licensed under the same terms as verso.

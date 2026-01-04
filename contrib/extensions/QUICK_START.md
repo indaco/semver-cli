@@ -1,23 +1,23 @@
 # Extension Quick Start Guide
 
-Quick reference for using the semver-cli extensions.
+Quick reference for using the verso extensions.
 
 ## Installation
 
 ```bash
 # Install a single extension
-semver extension install ./contrib/extensions/git-tagger
+verso extension install ./contrib/extensions/git-tagger
 
 # List installed extensions
-semver extension list
+verso extension list
 
 # Remove an extension
-semver extension remove git-tagger
+verso extension remove git-tagger
 ```
 
 ## Configuration
 
-Add to your `.semver.yaml`:
+Add to your `.verso.yaml`:
 
 ```yaml
 extensions:
@@ -115,7 +115,7 @@ extensions:
 Then:
 
 ```bash
-semver bump auto
+verso bump auto
 # 1. Validates commits
 # 2. Bumps version
 # 3. Updates package.json

@@ -12,8 +12,8 @@ To set up a development environment for this repository, you can use [devbox](ht
 2. Clone this repository to your local machine.
 
    ```bash
-   git clone https://github.com/indaco/semver-cli.git
-   cd semver-cli
+   git clone https://github.com/indaco/verso.git
+   cd verso
    ```
 
 3. Run `devbox install` to install all dependencies specified in `devbox.json`.

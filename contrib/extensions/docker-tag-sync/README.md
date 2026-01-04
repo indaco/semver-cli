@@ -19,12 +19,12 @@ Tags Docker images with the new version after successful version bumps.
 ## Installation
 
 ```bash
-semver extension install --path ./contrib/extensions/docker-tag-sync
+verso extension install --path ./contrib/extensions/docker-tag-sync
 ```
 
 ## Configuration
 
-Add to your `.semver.yaml`:
+Add to your `.verso.yaml`:
 
 ```yaml
 extensions:
@@ -65,7 +65,7 @@ extensions:
 docker build -t myapp:latest .
 
 # Bump version - automatically tags myapp:v1.2.4
-semver bump patch
+verso bump patch
 ```
 
 ### With Registry Push
@@ -107,14 +107,14 @@ Example GitHub Actions workflow:
   run: docker build -t myapp:latest .
 
 - name: Bump version and tag image
-  run: semver bump patch
+  run: verso bump patch
 
 - name: Push to registry
   run: |
     docker push myapp:v${{ steps.version.outputs.new }}
 ```
 
-Or configure push in `.semver.yaml` for automatic pushing:
+Or configure push in `.verso.yaml` for automatic pushing:
 
 ```yaml
 extensions:
@@ -148,7 +148,7 @@ Build your Docker image before running the version bump:
 
 ```bash
 docker build -t myapp:latest .
-semver bump patch
+verso bump patch
 ```
 
 ### "Failed to push"

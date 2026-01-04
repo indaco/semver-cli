@@ -1,6 +1,6 @@
 # Git Tagger Extension
 
-This extension automatically creates git tags after version bumps using semver-cli.
+This extension automatically creates git tags after version bumps using verso.
 
 ## Features
 
@@ -16,13 +16,13 @@ This extension automatically creates git tags after version bumps using semver-c
 **From local path:**
 
 ```bash
-semver extension install --path ./contrib/extensions/git-tagger
+verso extension install --path ./contrib/extensions/git-tagger
 ```
 
 **From URL (after cloning the repo):**
 
 ```bash
-semver extension install --url https://github.com/indaco/semver-cli
+verso extension install --url https://github.com/indaco/verso
 # Then copy from contrib/extensions/git-tagger
 ```
 
@@ -31,13 +31,13 @@ semver extension install --url https://github.com/indaco/semver-cli
 Once installed and enabled, the extension will automatically run on every version bump:
 
 ```bash
-semver bump patch
+verso bump patch
 # Creates tag v1.2.3
 ```
 
 ## Configuration
 
-Add configuration to your `.semver.yaml`:
+Add configuration to your `.verso.yaml`:
 
 ```yaml
 extensions:
@@ -68,7 +68,7 @@ extensions:
 Default configuration creates annotated tags with "v" prefix:
 
 ```bash
-semver bump minor
+verso bump minor
 # Creates tag: v1.3.0
 # Message: Release 1.3.0
 ```

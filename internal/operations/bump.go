@@ -5,9 +5,9 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/indaco/semver-cli/internal/core"
-	"github.com/indaco/semver-cli/internal/semver"
-	"github.com/indaco/semver-cli/internal/workspace"
+	"github.com/indaco/verso/internal/core"
+	"github.com/indaco/verso/internal/semver"
+	"github.com/indaco/verso/internal/workspace"
 )
 
 // BumpType represents the type of version bump to perform.

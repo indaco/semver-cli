@@ -10,7 +10,7 @@ import (
 
 func BuildCLIForTests(path string, subCmds []*cli.Command) *cli.Command {
 	return &cli.Command{
-		Name: "semver",
+		Name: "verso",
 		Flags: []cli.Flag{
 			&cli.StringFlag{
 				Name:    "path",

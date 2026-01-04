@@ -1,6 +1,6 @@
 # Package Sync Extension
 
-This extension automatically synchronizes version numbers to package.json and other JSON files after version bumps using semver-cli.
+This extension automatically synchronizes version numbers to package.json and other JSON files after version bumps using verso.
 
 ## Features
 
@@ -15,13 +15,13 @@ This extension automatically synchronizes version numbers to package.json and ot
 **From local path:**
 
 ```bash
-semver extension install --path ./contrib/extensions/package-sync
+verso extension install --path ./contrib/extensions/package-sync
 ```
 
 **From URL (after cloning the repo):**
 
 ```bash
-semver extension install --url https://github.com/indaco/semver-cli
+verso extension install --url https://github.com/indaco/verso
 # Then copy from contrib/extensions/package-sync
 ```
 
@@ -30,13 +30,13 @@ semver extension install --url https://github.com/indaco/semver-cli
 Once installed and enabled, the extension will automatically run on every version bump:
 
 ```bash
-semver bump patch
+verso bump patch
 # Updates package.json version field
 ```
 
 ## Configuration
 
-Add configuration to your `.semver.yaml`:
+Add configuration to your `.verso.yaml`:
 
 ### Basic Configuration (Default)
 
@@ -88,7 +88,7 @@ extensions:
 Update package.json only:
 
 ```bash
-semver bump minor
+verso bump minor
 # package.json version: 1.2.3 -> 1.3.0
 ```
 

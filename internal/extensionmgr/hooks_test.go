@@ -7,8 +7,8 @@ import (
 	"path/filepath"
 	"testing"
 
-	"github.com/indaco/semver-cli/internal/config"
-	"github.com/indaco/semver-cli/internal/extensions"
+	"github.com/indaco/verso/internal/config"
+	"github.com/indaco/verso/internal/extensions"
 )
 
 func TestHasHook(t *testing.T) {

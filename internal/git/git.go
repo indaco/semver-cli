@@ -6,7 +6,7 @@ import (
 	"os"
 	"path/filepath"
 
-	"github.com/indaco/semver-cli/internal/cmdrunner"
+	"github.com/indaco/verso/internal/cmdrunner"
 )
 
 // Function variables to allow mocking

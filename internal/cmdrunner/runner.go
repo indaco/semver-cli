@@ -6,7 +6,7 @@ import (
 	"os/exec"
 	"time"
 
-	"github.com/indaco/semver-cli/internal/apperrors"
+	"github.com/indaco/verso/internal/apperrors"
 )
 
 // Default timeouts for command execution.

@@ -3,7 +3,7 @@ package hooks
 import (
 	"fmt"
 
-	"github.com/indaco/semver-cli/internal/config"
+	"github.com/indaco/verso/internal/config"
 )
 
 var LoadPreReleaseHooksFromConfigFn = loadPreReleaseHooksFromConfig

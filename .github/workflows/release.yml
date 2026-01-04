@@ -21,7 +21,7 @@ jobs:
           draft: false
           prerelease: false
           make_latest: "true"
-          token: ${{ secrets.SEMVER_TOKEN }}
+          token: ${{ secrets.VERSO_TOKEN }}
           body_path: ${{ github.workspace }}/.changes/${{ github.event.release.tag_name }}.md
           generate_release_notes: false
 
@@ -49,4 +49,4 @@ jobs:
           version: latest
           args: release --clean
         env:
-          GITHUB_TOKEN: ${{ secrets.SEMVER_TOKEN }}
+          GITHUB_TOKEN: ${{ secrets.VERSO_TOKEN }}

@@ -15,13 +15,13 @@ This extension validates that git commits follow the conventional commit format 
 **From local path:**
 
 ```bash
-semver extension install --path ./contrib/extensions/commit-validator
+verso extension install --path ./contrib/extensions/commit-validator
 ```
 
 **From URL (after cloning the repo):**
 
 ```bash
-semver extension install --url https://github.com/indaco/semver-cli
+verso extension install --url https://github.com/indaco/verso
 # Then copy from contrib/extensions/commit-validator
 ```
 
@@ -30,13 +30,13 @@ semver extension install --url https://github.com/indaco/semver-cli
 Once installed and enabled, the extension runs automatically before version bumps:
 
 ```bash
-semver bump patch
+verso bump patch
 # Validates all commits since last tag before bumping
 ```
 
 ## Configuration
 
-Add configuration to your `.semver.yaml`:
+Add configuration to your `.verso.yaml`:
 
 ### Basic Configuration (Default)
 
@@ -207,7 +207,7 @@ The extension fails (blocks the bump) if:
 This extension pairs well with the built-in `commitparser` plugin:
 
 ```yaml
-# .semver.yaml
+# .verso.yaml
 plugins:
   commit-parser: true
 

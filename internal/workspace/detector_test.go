@@ -5,8 +5,8 @@ import (
 	"path/filepath"
 	"testing"
 
-	"github.com/indaco/semver-cli/internal/config"
-	"github.com/indaco/semver-cli/internal/core"
+	"github.com/indaco/verso/internal/config"
+	"github.com/indaco/verso/internal/core"
 )
 
 // setupTestFS creates a mock filesystem with test files.
@@ -319,9 +319,9 @@ func TestDetector_ModuleVersionLoading(t *testing.T) {
 }
 
 func TestDetector_SemverignoreIntegration(t *testing.T) {
-	// Setup: .version files and .semverignore
+	// Setup: .version files and .versoignore
 	fs := setupTestFS(map[string]string{
-		"/project/.semverignore":        "test-*\n*.tmp\n# Comment\nignored/",
+		"/project/.versoignore":         "test-*\n*.tmp\n# Comment\nignored/",
 		"/project/module-a/.version":    "1.0.0",
 		"/project/test-module/.version": "1.0.0",
 		"/project/ignored/.version":     "1.0.0",
@@ -338,7 +338,7 @@ func TestDetector_SemverignoreIntegration(t *testing.T) {
 
 	// Should only find module-a
 	if len(modules) != 1 {
-		t.Errorf("Expected 1 module with .semverignore, got %d", len(modules))
+		t.Errorf("Expected 1 module with .versoignore, got %d", len(modules))
 		for _, m := range modules {
 			t.Logf("Found module: %s at %s", m.Name, m.Path)
 		}

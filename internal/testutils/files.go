@@ -48,11 +48,11 @@ func WriteTempVersionFile(t *testing.T, dir, version string) string {
 	return path
 }
 
-// WriteTempConfig writes a temporary `.semver.yaml` file with the given content and returns its path.
+// WriteTempConfig writes a temporary `.verso.yaml` file with the given content and returns its path.
 func WriteTempConfig(t *testing.T, content string) string {
 	t.Helper()
 	tmpDir := t.TempDir()
-	tmpPath := filepath.Join(tmpDir, ".semver.yaml")
+	tmpPath := filepath.Join(tmpDir, ".verso.yaml")
 
 	WriteFile(t, tmpPath, content, 0644)
 	return tmpPath

@@ -5,7 +5,7 @@ import (
 	"errors"
 	"testing"
 
-	"github.com/indaco/semver-cli/internal/core"
+	"github.com/indaco/verso/internal/core"
 )
 
 func TestVersionManager_Read(t *testing.T) {

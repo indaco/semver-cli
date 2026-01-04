@@ -5,7 +5,7 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/indaco/semver-cli/internal/apperrors"
+	"github.com/indaco/verso/internal/apperrors"
 )
 
 // ValidatePath ensures a path is safe and within expected boundaries.

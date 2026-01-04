@@ -7,7 +7,7 @@ import (
 	"testing"
 
 	"github.com/goccy/go-yaml"
-	"github.com/indaco/semver-cli/internal/testutils"
+	"github.com/indaco/verso/internal/testutils"
 )
 
 /* ------------------------------------------------------------------------- */
@@ -120,8 +120,8 @@ func assertDiscoveryMaxDepth(t *testing.T, disc *DiscoveryConfig, expected int) 
 
 func TestLoadConfig(t *testing.T) {
 	t.Run("from env", func(t *testing.T) {
-		os.Setenv("SEMVER_PATH", "env-defined/.version")
-		defer os.Unsetenv("SEMVER_PATH")
+		os.Setenv("VERSO_PATH", "env-defined/.version")
+		defer os.Unsetenv("VERSO_PATH")
 
 		cfg, err := LoadConfigFn()
 		checkError(t, err, false)
@@ -183,7 +183,7 @@ func TestLoadConfig(t *testing.T) {
 	t.Run("read file error (directory instead of file)", func(t *testing.T) {
 		tmpDir := t.TempDir()
 		runInTempDir(t, filepath.Join(tmpDir, "dummy"), func() {
-			if err := os.Mkdir(".semver.yaml", 0755); err != nil {
+			if err := os.Mkdir(".verso.yaml", 0755); err != nil {
 				t.Fatal(err)
 			}
 			cfg, err := LoadConfigFn()
@@ -292,8 +292,8 @@ func TestSaveConfigFn(t *testing.T) {
 					}
 
 					if !tt.wantErr {
-						if _, err := os.Stat(".semver.yaml"); err != nil {
-							t.Errorf(".semver.yaml was not created: %v", err)
+						if _, err := os.Stat(".verso.yaml"); err != nil {
+							t.Errorf(".verso.yaml was not created: %v", err)
 						}
 					}
 				})
@@ -885,14 +885,14 @@ func TestLoadConfig_ExtensionConfiguration(t *testing.T) {
 			yamlInput: `path: .version
 extensions:
   - name: git-hook
-    path: /home/user/.semver-extensions/git-hook
+    path: /home/user/.verso-extensions/git-hook
     enabled: true
 `,
 			wantErr: false,
 			check: func(t *testing.T, cfg *Config) {
 				t.Helper()
 				checkExtensionCount(t, cfg, 1)
-				checkExtension(t, cfg.Extensions[0], "git-hook", "/home/user/.semver-extensions/git-hook", true)
+				checkExtension(t, cfg.Extensions[0], "git-hook", "/home/user/.verso-extensions/git-hook", true)
 			},
 		},
 		{
@@ -1041,8 +1041,8 @@ func TestSaveConfig_WithExtensions(t *testing.T) {
 
 				if !tt.wantErr {
 					// Verify file was created
-					if _, err := os.Stat(".semver.yaml"); err != nil {
-						t.Errorf(".semver.yaml was not created: %v", err)
+					if _, err := os.Stat(".verso.yaml"); err != nil {
+						t.Errorf(".verso.yaml was not created: %v", err)
 						return
 					}
 

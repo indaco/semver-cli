@@ -5,9 +5,9 @@ before:
     - go mod tidy
 
 builds:
-  - id: semver
-    main: ./cmd/semver
-    binary: semver
+  - id: verso
+    main: ./cmd/verso
+    binary: verso
     env:
       - CGO_ENABLED=0
     goos:

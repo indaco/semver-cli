@@ -1,16 +1,16 @@
-// Package config handles configuration loading and saving for semver-cli.
+// Package config handles configuration loading and saving for verso.
 //
 // The configuration system uses a priority hierarchy for determining
 // the version file path:
 //
 //  1. --path flag (highest priority)
-//  2. SEMVER_PATH environment variable
-//  3. .semver.yaml configuration file
+//  2. VERSO_PATH environment variable
+//  3. .verso.yaml configuration file
 //  4. Default ".version" (lowest priority)
 //
 // # Configuration File Format
 //
-// The configuration file (.semver.yaml) supports the following options:
+// The configuration file (.verso.yaml) supports the following options:
 //
 //	# Path to the version file
 //	path: internal/version/.version
@@ -28,7 +28,7 @@
 //	    enabled: true             # Whether extension is active
 //
 //	  - name: git-changelog
-//	    path: /home/user/.semver-extensions/git-changelog
+//	    path: /home/user/.verso-extensions/git-changelog
 //	    enabled: true
 //
 //	  - name: legacy-notifier

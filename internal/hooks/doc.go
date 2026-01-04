@@ -1,4 +1,4 @@
-// Package hooks provides pre-release hook execution for semver-cli.
+// Package hooks provides pre-release hook execution for verso.
 //
 // Hooks are commands that run before version bumps, allowing for
 // validation, testing, or other automated checks before a version
@@ -18,7 +18,7 @@
 //
 // # Configuration
 //
-// Hooks are configured in .semver.yaml:
+// Hooks are configured in .verso.yaml:
 //
 //	pre-release-hooks:
 //	  - command: "make test"

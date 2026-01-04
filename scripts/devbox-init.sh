@@ -6,7 +6,7 @@ set -eu
 . "$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"/lib/common.sh
 
 # -------- Start --------
-h1 'Welcome to the semver-cli devbox!'
+h1 'Welcome to the verso devbox!'
 
 log_default ""
 
@@ -79,7 +79,7 @@ cat <<'TXT'
   just modernize   - Run go-modernize with auto-fix
   just check       - Run modernize, lint, and test
   just lint        - Run golangci-lint
-  just build       - Build the binary to build/semver
+  just build       - Build the binary to build/verso
   just install     - Install the binary using Go install
 
 Quick start: `just check` to run all quality checks!

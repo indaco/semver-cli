@@ -23,8 +23,8 @@ func TestBuildCLIForTests(t *testing.T) {
 
 	appCli := BuildCLIForTests(path, subCmds)
 
-	if appCli.Name != "semver" {
-		t.Errorf("BuildCLIForTests() name = %q, want %q", appCli.Name, "semver")
+	if appCli.Name != "verso" {
+		t.Errorf("BuildCLIForTests() name = %q, want %q", appCli.Name, "verso")
 	}
 
 	if len(appCli.Flags) != 2 {
@@ -49,7 +49,7 @@ func TestRunCLITest(t *testing.T) {
 	})
 
 	// This should not fail
-	RunCLITest(t, appCli, []string{"semver", "noop"}, tmpDir)
+	RunCLITest(t, appCli, []string{"verso", "noop"}, tmpDir)
 }
 
 func TestRunCLITestAllowError(t *testing.T) {
@@ -65,7 +65,7 @@ func TestRunCLITestAllowError(t *testing.T) {
 			},
 		})
 
-		err := RunCLITestAllowError(t, appCli, []string{"semver", "success"}, tmpDir)
+		err := RunCLITestAllowError(t, appCli, []string{"verso", "success"}, tmpDir)
 		if err != nil {
 			t.Errorf("RunCLITestAllowError() unexpected error = %v", err)
 		}
@@ -81,7 +81,7 @@ func TestRunCLITestAllowError(t *testing.T) {
 			},
 		})
 
-		err := RunCLITestAllowError(t, appCli, []string{"semver", "fail"}, tmpDir)
+		err := RunCLITestAllowError(t, appCli, []string{"verso", "fail"}, tmpDir)
 		if err == nil {
 			t.Error("RunCLITestAllowError() expected error, got nil")
 		}

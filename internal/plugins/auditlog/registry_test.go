@@ -3,7 +3,7 @@ package auditlog
 import (
 	"testing"
 
-	"github.com/indaco/semver-cli/internal/config"
+	"github.com/indaco/verso/internal/config"
 )
 
 func TestRegister(t *testing.T) {

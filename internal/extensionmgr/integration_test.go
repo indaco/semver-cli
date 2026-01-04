@@ -6,7 +6,7 @@ import (
 	"path/filepath"
 	"testing"
 
-	"github.com/indaco/semver-cli/internal/config"
+	"github.com/indaco/verso/internal/config"
 )
 
 // setupTestExtension creates a test extension in the given directory
@@ -42,7 +42,7 @@ echo '{"success": true, "message": "Lifecycle test hook executed"}'
 	}
 }
 
-// setupTestProject creates a test project directory with .semver.yaml
+// setupTestProject creates a test project directory with .verso.yaml
 func setupTestProject(t *testing.T, projectDir string) string {
 	t.Helper()
 
@@ -50,7 +50,7 @@ func setupTestProject(t *testing.T, projectDir string) string {
 		t.Fatalf("failed to create project directory: %v", err)
 	}
 
-	configPath := filepath.Join(projectDir, ".semver.yaml")
+	configPath := filepath.Join(projectDir, ".verso.yaml")
 	initialConfig := `path: .version
 extensions: []
 `
@@ -65,7 +65,7 @@ extensions: []
 func verifyExtensionInstalled(t *testing.T, tmpDir, extensionName string) {
 	t.Helper()
 
-	extensionDir := filepath.Join(tmpDir, ".semver-extensions")
+	extensionDir := filepath.Join(tmpDir, ".verso-extensions")
 	installedExtPath := filepath.Join(extensionDir, extensionName)
 
 	if _, err := os.Stat(installedExtPath); os.IsNotExist(err) {

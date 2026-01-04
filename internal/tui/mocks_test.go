@@ -4,7 +4,7 @@ import (
 	"errors"
 	"testing"
 
-	"github.com/indaco/semver-cli/internal/workspace"
+	"github.com/indaco/verso/internal/workspace"
 )
 
 func TestMockPrompter_PromptModuleSelection(t *testing.T) {

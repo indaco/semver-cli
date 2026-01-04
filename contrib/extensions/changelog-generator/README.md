@@ -1,6 +1,6 @@
 # Changelog Generator Extension
 
-This extension automatically updates `CHANGELOG.md` when you bump the version using semver-cli.
+This extension automatically updates `CHANGELOG.md` when you bump the version using verso.
 
 > **Note**: For production changelogs with commit parsing, PR links, and contributor attribution, use the **built-in changelog-generator plugin** instead. See [docs/plugins/CHANGELOG_GENERATOR.md](../../../docs/plugins/CHANGELOG_GENERATOR.md).
 
@@ -36,13 +36,13 @@ plugins:
 **From local path:**
 
 ```bash
-semver extension install --path ./contrib/extensions/changelog-generator
+verso extension install --path ./contrib/extensions/changelog-generator
 ```
 
 **From URL (after cloning the repo):**
 
 ```bash
-semver extension install --url https://github.com/indaco/semver-cli
+verso extension install --url https://github.com/indaco/verso
 # Then copy from contrib/extensions/changelog-generator
 ```
 
@@ -51,7 +51,7 @@ semver extension install --url https://github.com/indaco/semver-cli
 Once installed and enabled, the extension will automatically run on every version bump:
 
 ```bash
-semver bump patch
+verso bump patch
 # CHANGELOG.md will be updated automatically
 ```
 
@@ -85,7 +85,7 @@ No additional configuration required. The extension runs on the `post-bump` hook
 Combine with the `commitparser` plugin for fully automated changelog generation:
 
 ```yaml
-# .semver.yaml
+# .verso.yaml
 plugins:
   commit-parser: true # Auto-detect bump type from commits
 
@@ -103,7 +103,7 @@ git commit -m "feat: add user dashboard"
 git commit -m "fix: resolve API timeout"
 
 # Automatic bump + changelog update
-semver bump auto
+verso bump auto
 # -> Plugin infers "minor" bump from feat commits
 # -> Version: 1.2.3 -> 1.3.0
 # -> Extension updates CHANGELOG.md with new version

@@ -1,15 +1,15 @@
 package plugins
 
 import (
-	"github.com/indaco/semver-cli/internal/config"
-	"github.com/indaco/semver-cli/internal/plugins/auditlog"
-	"github.com/indaco/semver-cli/internal/plugins/changeloggenerator"
-	"github.com/indaco/semver-cli/internal/plugins/changelogparser"
-	"github.com/indaco/semver-cli/internal/plugins/commitparser"
-	"github.com/indaco/semver-cli/internal/plugins/dependencycheck"
-	"github.com/indaco/semver-cli/internal/plugins/releasegate"
-	"github.com/indaco/semver-cli/internal/plugins/tagmanager"
-	"github.com/indaco/semver-cli/internal/plugins/versionvalidator"
+	"github.com/indaco/verso/internal/config"
+	"github.com/indaco/verso/internal/plugins/auditlog"
+	"github.com/indaco/verso/internal/plugins/changeloggenerator"
+	"github.com/indaco/verso/internal/plugins/changelogparser"
+	"github.com/indaco/verso/internal/plugins/commitparser"
+	"github.com/indaco/verso/internal/plugins/dependencycheck"
+	"github.com/indaco/verso/internal/plugins/releasegate"
+	"github.com/indaco/verso/internal/plugins/tagmanager"
+	"github.com/indaco/verso/internal/plugins/versionvalidator"
 )
 
 func RegisterBuiltinPlugins(cfg *config.Config) {

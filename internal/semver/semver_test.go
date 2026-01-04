@@ -8,8 +8,8 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/indaco/semver-cli/internal/core"
-	"github.com/indaco/semver-cli/internal/testutils"
+	"github.com/indaco/verso/internal/core"
+	"github.com/indaco/verso/internal/testutils"
 )
 
 // mockGitTagReader implements GitTagReader for testing.

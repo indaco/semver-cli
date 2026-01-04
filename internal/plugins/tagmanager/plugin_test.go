@@ -4,7 +4,7 @@ import (
 	"errors"
 	"testing"
 
-	"github.com/indaco/semver-cli/internal/semver"
+	"github.com/indaco/verso/internal/semver"
 )
 
 func TestTagManagerPlugin_Name(t *testing.T) {

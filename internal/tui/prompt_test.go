@@ -3,7 +3,7 @@ package tui
 import (
 	"testing"
 
-	"github.com/indaco/semver-cli/internal/workspace"
+	"github.com/indaco/verso/internal/workspace"
 )
 
 func TestNewModulePrompt(t *testing.T) {

@@ -123,9 +123,9 @@ plugins:
 
 	path := WriteTempConfig(t, configContent)
 
-	// Verify path ends with .semver.yaml
-	if !strings.HasSuffix(path, ".semver.yaml") {
-		t.Errorf("WriteTempConfig() path should end with .semver.yaml, got %q", path)
+	// Verify path ends with .verso.yaml
+	if !strings.HasSuffix(path, ".verso.yaml") {
+		t.Errorf("WriteTempConfig() path should end with .verso.yaml, got %q", path)
 	}
 
 	// Verify content

@@ -4,8 +4,8 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/indaco/semver-cli/internal/config"
-	"github.com/indaco/semver-cli/internal/testutils"
+	"github.com/indaco/verso/internal/config"
+	"github.com/indaco/verso/internal/testutils"
 )
 
 func TestLoadPreReleaseHooksFromConfig(t *testing.T) {

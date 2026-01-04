@@ -13,7 +13,7 @@ The dependency check plugin validates and synchronizes version numbers across mu
 
 ## Configuration
 
-Add the plugin configuration to your `.semver.yaml`:
+Add the plugin configuration to your `.verso.yaml`:
 
 ```yaml
 plugins:
@@ -193,7 +193,7 @@ field: metadata.project.info.version
 When you run a bump command, the plugin validates that all configured files match the new version:
 
 ```bash
-semver bump patch
+verso bump patch
 ```
 
 If inconsistencies are detected:
@@ -211,7 +211,7 @@ Run with auto-sync enabled to fix automatically, or update files manually.
 When `auto-sync: true` is enabled, the plugin automatically updates all configured files after the `.version` file is bumped:
 
 ```bash
-semver bump patch
+verso bump patch
 ```
 
 Output:
@@ -226,7 +226,7 @@ Synced version to 3 dependency file(s)
 You can check consistency without bumping:
 
 ```bash
-semver show
+verso show
 ```
 
 The plugin runs silently during show operations and only reports errors if inconsistencies exist.
@@ -421,13 +421,13 @@ Error: dependency check failed: failed to read version from version.go: no versi
 2. **Test regex patterns**: Use a regex tester to validate your patterns before adding them
 3. **Version file first**: Always update `.version` file first, then let auto-sync handle other files
 4. **Commit atomically**: When using auto-sync, commit all changed files together
-5. **CI validation**: Add a CI check that runs `semver show` to catch inconsistencies
+5. **CI validation**: Add a CI check that runs `verso show` to catch inconsistencies
 
 ## Troubleshooting
 
 ### Plugin Not Running
 
-Check that the plugin is enabled in `.semver.yaml`:
+Check that the plugin is enabled in `.verso.yaml`:
 
 ```yaml
 plugins:

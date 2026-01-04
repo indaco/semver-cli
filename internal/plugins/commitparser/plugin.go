@@ -97,7 +97,7 @@ func (p *CommitParserPlugin) Parse(commits []string) (string, error) {
 /* REGISTRATION                                                              */
 /* ------------------------------------------------------------------------- */
 
-// Register registers the commit parser plugin with the semver plugin system.
+// Register registers the commit parser plugin with the verso plugin system.
 func Register() {
 	RegisterCommitParserFn(&CommitParserPlugin{})
 }

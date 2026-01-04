@@ -5,7 +5,7 @@ import (
 	"strings"
 
 	"github.com/charmbracelet/huh"
-	"github.com/indaco/semver-cli/internal/workspace"
+	"github.com/indaco/verso/internal/workspace"
 )
 
 // ErrCanceled is returned when the user cancels the operation.

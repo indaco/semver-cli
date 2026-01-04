@@ -4,7 +4,7 @@ import (
 	"errors"
 )
 
-// ExtensionManifest defines the metadata and entry point for a semver extension.
+// ExtensionManifest defines the metadata and entry point for a verso extension.
 // This structure is expected to be defined in a extension's `extension.yaml` file.
 //
 // All fields except Hooks are required:

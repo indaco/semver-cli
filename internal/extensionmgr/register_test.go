@@ -8,9 +8,9 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/indaco/semver-cli/internal/config"
-	"github.com/indaco/semver-cli/internal/extensions"
-	"github.com/indaco/semver-cli/internal/testutils"
+	"github.com/indaco/verso/internal/config"
+	"github.com/indaco/verso/internal/extensions"
+	"github.com/indaco/verso/internal/testutils"
 )
 
 func TestRegisterLocalExtension_Success(t *testing.T) {
@@ -32,12 +32,12 @@ entry: extension.go
 		t.Fatal(err)
 	}
 
-	cfgPath := filepath.Join(tmpDir, ".semver.yaml")
+	cfgPath := filepath.Join(tmpDir, ".verso.yaml")
 	if err := os.WriteFile(cfgPath, []byte("path: .version\n"), 0644); err != nil {
 		t.Fatal(err)
 	}
 
-	// Override .semver-extensions dir for test
+	// Override .verso-extensions dir for test
 	originalCopyDir := copyDirFn
 	defer func() { copyDirFn = originalCopyDir }()
 
@@ -56,7 +56,7 @@ entry: extension.go
 
 func TestRegisterLocalExtension_InvalidPath(t *testing.T) {
 	tmpDir := os.TempDir()
-	err := RegisterLocalExtensionFn("/nonexistent/path", ".semver.yaml", tmpDir)
+	err := RegisterLocalExtensionFn("/nonexistent/path", ".verso.yaml", tmpDir)
 	if err == nil || !strings.Contains(err.Error(), "extension path error") {
 		t.Errorf("extension extension path error, got: %v", err)
 	}
@@ -67,7 +67,7 @@ func TestRegisterLocalExtension_NotDirectory(t *testing.T) {
 	file := filepath.Join(tmpDir, "file.txt")
 	_ = os.WriteFile(file, []byte("test"), 0644)
 
-	err := RegisterLocalExtensionFn(file, ".semver.yaml", tmpDir)
+	err := RegisterLocalExtensionFn(file, ".verso.yaml", tmpDir)
 	if err == nil || !strings.Contains(err.Error(), "must be a directory") {
 		t.Errorf("expected directory error, got: %v", err)
 	}
@@ -79,7 +79,7 @@ func TestRegisterLocalExtension_InvalidManifest(t *testing.T) {
 	_ = os.Mkdir(extensionDir, 0755)
 	_ = os.WriteFile(filepath.Join(extensionDir, "extension.yaml"), []byte("invalid: yaml:::"), 0644)
 
-	err := RegisterLocalExtensionFn(extensionDir, ".semver.yaml", tmpDir)
+	err := RegisterLocalExtensionFn(extensionDir, ".verso.yaml", tmpDir)
 	if err == nil || !strings.Contains(err.Error(), "failed to load extension manifest") {
 		t.Errorf("expected manifest load error, got: %v", err)
 	}
@@ -146,9 +146,9 @@ func TestRegisterLocalExtension_DefaultConfigPath(t *testing.T) {
 		t.Fatalf("expected no error on second extension registration, got: %v", err)
 	}
 
-	// Check if the .semver.yaml file exists before loading it
+	// Check if the .verso.yaml file exists before loading it
 	if _, err := os.Stat(tmpConfigPath); os.IsNotExist(err) {
-		t.Fatalf(".semver.yaml file does not exist at %s", tmpConfigPath)
+		t.Fatalf(".verso.yaml file does not exist at %s", tmpConfigPath)
 	}
 
 	// Ensure the config file has the extension registered
@@ -196,12 +196,12 @@ func TestRegisterLocalExtension_DefaultConfigPathUsed_CurrentWorkingDir(t *testi
 	tmpDir := filepath.Dir(tmpConfigPath)
 	tmpextensionDir := setupextensionDir(t, "mock-extension", "1.0.0")
 
-	// Resolve expected path in $HOME/.semver-extensions
+	// Resolve expected path in $HOME/.verso-extensions
 	homeDir, err := os.UserHomeDir()
 	if err != nil {
 		t.Fatalf("failed to get user home directory: %v", err)
 	}
-	extensionsPath := filepath.Join(homeDir, ".semver-extensions", "mock-extension")
+	extensionsPath := filepath.Join(homeDir, ".verso-extensions", "mock-extension")
 
 	// Cleanup: remove it before and after the test
 	_ = os.RemoveAll(extensionsPath)
@@ -231,7 +231,7 @@ func TestRegisterLocalExtension_DefaultConfigPathUsed_CurrentWorkingDir(t *testi
 		t.Fatalf("expected no error on extension registration, got: %v", err)
 	}
 
-	// Assert extension was copied into $HOME/.semver-extensions
+	// Assert extension was copied into $HOME/.verso-extensions
 	if _, err := os.Stat(extensionsPath); os.IsNotExist(err) {
 		t.Fatalf("extension folder does not exist at %s", extensionsPath)
 	}
@@ -279,7 +279,7 @@ func TestRegisterLocalExtension_DefaultConfigPathUsed_OtherDir(t *testing.T) {
 	}
 
 	// Ensure the extension was copied into the temporary extension folder
-	extensionPath := filepath.Join(tmpExtensionFolder, ".semver-extensions", "mock-extension")
+	extensionPath := filepath.Join(tmpExtensionFolder, ".verso-extensions", "mock-extension")
 	if _, err := os.Stat(extensionPath); os.IsNotExist(err) {
 		t.Fatalf("extension folder does not exist at %s", extensionPath)
 	}
@@ -316,11 +316,11 @@ func TestRegisterLocalExtension_UserHomeDirError(t *testing.T) {
 func TestRegisterLocalExtension_ValidConfigPath(t *testing.T) {
 	// Set up temporary directories
 	tmpDir := t.TempDir()
-	configPath := filepath.Join(tmpDir, ".semver.yaml")
+	configPath := filepath.Join(tmpDir, ".verso.yaml")
 
 	// Create a mock config file at the given path
 	if err := os.WriteFile(configPath, []byte("path: .version"), 0644); err != nil {
-		t.Fatalf("failed to create mock .semver.yaml: %v", err)
+		t.Fatalf("failed to create mock .verso.yaml: %v", err)
 	}
 
 	// Create a mock extension directory
@@ -391,7 +391,7 @@ func TestRegisterLocalExtension_InvalidConfigPathResolution(t *testing.T) {
 	tmpextensionDir := setupextensionDir(t, "mock-extension", "1.0.0")
 
 	// Simulate an invalid config path
-	invalidConfigPath := "/invalid/path/to/.semver.yaml"
+	invalidConfigPath := "/invalid/path/to/.verso.yaml"
 
 	// Try registering the extension with the invalid config path
 	err := RegisterLocalExtensionFn(tmpextensionDir, invalidConfigPath, os.TempDir())

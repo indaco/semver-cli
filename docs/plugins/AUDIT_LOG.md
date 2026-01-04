@@ -29,7 +29,7 @@ If the audit log write fails, a warning is displayed but the version bump succee
 
 ## Configuration
 
-Enable and configure in `.semver.yaml`:
+Enable and configure in `.verso.yaml`:
 
 ```yaml
 plugins:
@@ -124,14 +124,14 @@ Once enabled, the plugin works automatically with all bump commands.
 
 ```bash
 # Enable audit log
-cat > .semver.yaml << EOF
+cat > .verso.yaml << EOF
 plugins:
   audit-log:
     enabled: true
 EOF
 
 # Bump version
-semver bump patch
+verso bump patch
 # Output: Version bumped from 1.2.3 to 1.2.4
 
 # Check audit log
@@ -289,7 +289,7 @@ The audit log plugin is designed to be **non-blocking**:
 If git commands fail (e.g., not in a git repository):
 
 ```bash
-semver bump patch
+verso bump patch
 # Warning: failed to enrich audit log entry: git command failed
 # Version bumped from 1.2.3 to 1.2.4
 # (Audit log entry created but without git metadata)
@@ -300,7 +300,7 @@ semver bump patch
 If the log file can't be written:
 
 ```bash
-semver bump patch
+verso bump patch
 # Warning: failed to write audit log: permission denied
 # Version bumped from 1.2.3 to 1.2.4
 # (Version bump succeeds despite logging failure)
@@ -311,7 +311,7 @@ semver bump patch
 If git user.name or user.email are not configured:
 
 ```bash
-semver bump patch
+verso bump patch
 # Warning: failed to enrich audit log entry: git config user.name not set
 # Version bumped from 1.2.3 to 1.2.4
 # (Entry created without author information)

@@ -4,7 +4,7 @@ gobuild := go + " build"
 goclean := go + " clean"
 
 # Binary name
-app_name := "semver"
+app_name := "verso"
 
 # Directories
 build_dir := "build"

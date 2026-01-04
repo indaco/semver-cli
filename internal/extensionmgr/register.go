@@ -5,8 +5,8 @@ import (
 	"os"
 	"path/filepath"
 
-	"github.com/indaco/semver-cli/internal/config"
-	"github.com/indaco/semver-cli/internal/extensions"
+	"github.com/indaco/verso/internal/config"
+	"github.com/indaco/verso/internal/extensions"
 )
 
 var (
@@ -37,24 +37,24 @@ func registerLocalExtension(localPath, configPath, extensionDirectory string) er
 		if err != nil {
 			return fmt.Errorf("failed to get user home directory: %w", err)
 		}
-		baseDir = filepath.Join(homeDir, ".semver-extensions")
+		baseDir = filepath.Join(homeDir, ".verso-extensions")
 	} else {
-		baseDir = filepath.Join(baseDir, ".semver-extensions")
+		baseDir = filepath.Join(baseDir, ".verso-extensions")
 	}
 
 	destPath := filepath.Join(baseDir, manifest.Name)
 
 	// 4. Resolve and validate config path
 	if configPath == "" {
-		configPath = ".semver.yaml"
+		configPath = ".verso.yaml"
 	}
 	absConfigPath, _ := filepath.Abs(configPath)
 
 	if _, err := os.Stat(absConfigPath); os.IsNotExist(err) {
 		fmt.Fprintf(os.Stderr, `
-To enable extension support, create a .semver.yaml file in your project root. For example:
+To enable extension support, create a .verso.yaml file in your project root. For example:
 
-    echo "extensions: []" > .semver.yaml
+    echo "extensions: []" > .verso.yaml
 
 Then run this command again.
 `)

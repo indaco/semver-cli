@@ -1263,3 +1263,156 @@ extensions:
 		})
 	}
 }
+
+/* ------------------------------------------------------------------------- */
+/* AUDIT LOG CONFIG GETTER TESTS                                             */
+/* ------------------------------------------------------------------------- */
+
+func TestAuditLogConfig_GetPath(t *testing.T) {
+	tests := []struct {
+		name     string
+		config   *AuditLogConfig
+		expected string
+	}{
+		{
+			name:     "empty path returns default",
+			config:   &AuditLogConfig{Path: ""},
+			expected: ".version-history.json",
+		},
+		{
+			name:     "custom path returns custom",
+			config:   &AuditLogConfig{Path: "custom-history.json"},
+			expected: "custom-history.json",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			result := tt.config.GetPath()
+			if result != tt.expected {
+				t.Errorf("expected %q, got %q", tt.expected, result)
+			}
+		})
+	}
+}
+
+func TestAuditLogConfig_GetFormat(t *testing.T) {
+	tests := []struct {
+		name     string
+		config   *AuditLogConfig
+		expected string
+	}{
+		{
+			name:     "empty format returns default",
+			config:   &AuditLogConfig{Format: ""},
+			expected: "json",
+		},
+		{
+			name:     "custom format returns custom",
+			config:   &AuditLogConfig{Format: "yaml"},
+			expected: "yaml",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			result := tt.config.GetFormat()
+			if result != tt.expected {
+				t.Errorf("expected %q, got %q", tt.expected, result)
+			}
+		})
+	}
+}
+
+/* ------------------------------------------------------------------------- */
+/* CHANGELOG GENERATOR CONFIG GETTER TESTS                                   */
+/* ------------------------------------------------------------------------- */
+
+func TestChangelogGeneratorConfig_GetChangesDir(t *testing.T) {
+	tests := []struct {
+		name     string
+		config   *ChangelogGeneratorConfig
+		expected string
+	}{
+		{
+			name:     "empty changes dir returns default",
+			config:   &ChangelogGeneratorConfig{ChangesDir: ""},
+			expected: ".changes",
+		},
+		{
+			name:     "custom changes dir returns custom",
+			config:   &ChangelogGeneratorConfig{ChangesDir: "changelog-entries"},
+			expected: "changelog-entries",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			result := tt.config.GetChangesDir()
+			if result != tt.expected {
+				t.Errorf("expected %q, got %q", tt.expected, result)
+			}
+		})
+	}
+}
+
+func TestChangelogGeneratorConfig_GetChangelogPath(t *testing.T) {
+	tests := []struct {
+		name     string
+		config   *ChangelogGeneratorConfig
+		expected string
+	}{
+		{
+			name:     "empty changelog path returns default",
+			config:   &ChangelogGeneratorConfig{ChangelogPath: ""},
+			expected: "CHANGELOG.md",
+		},
+		{
+			name:     "custom changelog path returns custom",
+			config:   &ChangelogGeneratorConfig{ChangelogPath: "docs/HISTORY.md"},
+			expected: "docs/HISTORY.md",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			result := tt.config.GetChangelogPath()
+			if result != tt.expected {
+				t.Errorf("expected %q, got %q", tt.expected, result)
+			}
+		})
+	}
+}
+
+func TestChangelogGeneratorConfig_GetMode(t *testing.T) {
+	tests := []struct {
+		name     string
+		config   *ChangelogGeneratorConfig
+		expected string
+	}{
+		{
+			name:     "empty mode returns default",
+			config:   &ChangelogGeneratorConfig{Mode: ""},
+			expected: "versioned",
+		},
+		{
+			name:     "unified mode returns unified",
+			config:   &ChangelogGeneratorConfig{Mode: "unified"},
+			expected: "unified",
+		},
+		{
+			name:     "both mode returns both",
+			config:   &ChangelogGeneratorConfig{Mode: "both"},
+			expected: "both",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			result := tt.config.GetMode()
+			if result != tt.expected {
+				t.Errorf("expected %q, got %q", tt.expected, result)
+			}
+		})
+	}
+}

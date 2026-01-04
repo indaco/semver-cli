@@ -10,6 +10,14 @@ app_name := "verso"
 build_dir := "build"
 cmd_dir := "cmd/" + app_name
 
+# Build optimization flags
+# -s: Omit the symbol table and debug information
+# -w: Omit the DWARF symbol table
+ldflags := "-s -w"
+
+# -trimpath: Remove file system paths from binary
+buildflags := "-trimpath"
+
 # Default recipe: show help
 default: help
 
@@ -63,13 +71,15 @@ test-force:
 # Run modernize, lint, and reportcard
 check: modernize lint reportcard
 
-# Build the binary with development metadata
+# Build the binary with optimizations (reduced size)
 build:
-    @echo "* Building the binary..."
+    @echo "* Building optimized binary..."
     mkdir -p {{ build_dir }}
-    {{ gobuild }} -o {{ build_dir }}/{{ app_name }} ./{{ cmd_dir }}
+    {{ gobuild }} {{ buildflags }} -ldflags="{{ ldflags }}" -o {{ build_dir }}/{{ app_name }} ./{{ cmd_dir }}
+    @echo "* Binary size:"
+    @ls -lh {{ build_dir }}/{{ app_name }} | awk '{print "  " $5}'
 
 # Install the binary using Go install
 install: check test-force
     @echo "* Install the binary using Go install"
-    cd {{ cmd_dir }} && {{ go }} install .
+    cd {{ cmd_dir }} && {{ go }} install {{ buildflags }} -ldflags="{{ ldflags }}" .

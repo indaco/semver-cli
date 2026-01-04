@@ -10,6 +10,10 @@ builds:
     binary: verso
     env:
       - CGO_ENABLED=0
+    flags:
+      - -trimpath
+    ldflags:
+      - -s -w
     goos:
       - linux
       - windows

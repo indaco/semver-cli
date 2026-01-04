@@ -12,10 +12,17 @@ import (
 	"github.com/indaco/semver-cli/internal/clix"
 	"github.com/indaco/semver-cli/internal/config"
 	"github.com/indaco/semver-cli/internal/hooks"
+	"github.com/indaco/semver-cli/internal/plugins/auditlog"
+	"github.com/indaco/semver-cli/internal/plugins/changeloggenerator"
 	"github.com/indaco/semver-cli/internal/plugins/commitparser"
 	"github.com/indaco/semver-cli/internal/plugins/commitparser/gitlog"
+	"github.com/indaco/semver-cli/internal/plugins/dependencycheck"
+	"github.com/indaco/semver-cli/internal/plugins/releasegate"
+	"github.com/indaco/semver-cli/internal/plugins/tagmanager"
+	"github.com/indaco/semver-cli/internal/plugins/versionvalidator"
 	"github.com/indaco/semver-cli/internal/semver"
 	"github.com/indaco/semver-cli/internal/testutils"
+	"github.com/indaco/semver-cli/internal/workspace"
 	"github.com/urfave/cli/v3"
 )
 
@@ -1025,4 +1032,654 @@ func TestCLI_BumpPreCmd_PreserveMetadata(t *testing.T) {
 			}
 		})
 	}
+}
+
+/* ------------------------------------------------------------------------- */
+/* HELPER FUNCTION TESTS                                                     */
+/* ------------------------------------------------------------------------- */
+
+func TestCalculateNewBuild(t *testing.T) {
+	tests := []struct {
+		name         string
+		meta         string
+		preserveMeta bool
+		currentBuild string
+		expected     string
+	}{
+		{"new meta overrides", "ci.123", false, "old.456", "ci.123"},
+		{"new meta with preserve", "ci.123", true, "old.456", "ci.123"},
+		{"preserve existing", "", true, "old.456", "old.456"},
+		{"clear when not preserving", "", false, "old.456", ""},
+		{"empty when no current", "", true, "", ""},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			result := calculateNewBuild(tt.meta, tt.preserveMeta, tt.currentBuild)
+			if result != tt.expected {
+				t.Errorf("expected %q, got %q", tt.expected, result)
+			}
+		})
+	}
+}
+
+func TestExtractVersionPointers(t *testing.T) {
+	strPtr := func(s string) *string { return &s }
+
+	tests := []struct {
+		name          string
+		version       semver.SemVersion
+		expectedPre   *string
+		expectedBuild *string
+	}{
+		{
+			name:          "both populated",
+			version:       semver.SemVersion{Major: 1, Minor: 2, Patch: 3, PreRelease: "alpha.1", Build: "ci.99"},
+			expectedPre:   strPtr("alpha.1"),
+			expectedBuild: strPtr("ci.99"),
+		},
+		{
+			name:          "only prerelease",
+			version:       semver.SemVersion{Major: 1, Minor: 2, Patch: 3, PreRelease: "beta.2"},
+			expectedPre:   strPtr("beta.2"),
+			expectedBuild: nil,
+		},
+		{
+			name:          "only build",
+			version:       semver.SemVersion{Major: 1, Minor: 2, Patch: 3, Build: "build.42"},
+			expectedPre:   nil,
+			expectedBuild: strPtr("build.42"),
+		},
+		{
+			name:          "both empty",
+			version:       semver.SemVersion{Major: 1, Minor: 2, Patch: 3},
+			expectedPre:   nil,
+			expectedBuild: nil,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			pre, build := extractVersionPointers(tt.version)
+			assertStringPtr(t, "prerelease", tt.expectedPre, pre)
+			assertStringPtr(t, "build", tt.expectedBuild, build)
+		})
+	}
+}
+
+func assertStringPtr(t *testing.T, name string, expected, actual *string) {
+	t.Helper()
+	if expected == nil && actual != nil {
+		t.Errorf("expected %s pointer to be nil, got %q", name, *actual)
+	}
+	if expected != nil && actual == nil {
+		t.Errorf("expected %s pointer to be %q, got nil", name, *expected)
+	}
+	if expected != nil && actual != nil && *expected != *actual {
+		t.Errorf("expected %s %q, got %q", name, *expected, *actual)
+	}
+}
+
+func TestPromotePreRelease(t *testing.T) {
+	tests := []struct {
+		name         string
+		current      semver.SemVersion
+		preserveMeta bool
+		expected     semver.SemVersion
+	}{
+		{
+			name:         "promote without preserving meta",
+			current:      semver.SemVersion{Major: 1, Minor: 2, Patch: 3, PreRelease: "alpha.1", Build: "ci.99"},
+			preserveMeta: false,
+			expected:     semver.SemVersion{Major: 1, Minor: 2, Patch: 3},
+		},
+		{
+			name:         "promote with preserving meta",
+			current:      semver.SemVersion{Major: 1, Minor: 2, Patch: 3, PreRelease: "alpha.1", Build: "ci.99"},
+			preserveMeta: true,
+			expected:     semver.SemVersion{Major: 1, Minor: 2, Patch: 3, Build: "ci.99"},
+		},
+		{
+			name:         "promote without meta",
+			current:      semver.SemVersion{Major: 2, Minor: 0, Patch: 0, PreRelease: "rc.1"},
+			preserveMeta: true,
+			expected:     semver.SemVersion{Major: 2, Minor: 0, Patch: 0},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			result := promotePreRelease(tt.current, tt.preserveMeta)
+			if result.String() != tt.expected.String() {
+				t.Errorf("expected %q, got %q", tt.expected.String(), result.String())
+			}
+		})
+	}
+}
+
+func TestSetBuildMetadata(t *testing.T) {
+	tests := []struct {
+		name     string
+		current  semver.SemVersion
+		next     semver.SemVersion
+		meta     string
+		preserve bool
+		expected string
+	}{
+		{
+			name:     "set new meta",
+			current:  semver.SemVersion{Major: 1, Minor: 2, Patch: 3, Build: "old"},
+			next:     semver.SemVersion{Major: 1, Minor: 2, Patch: 4},
+			meta:     "new",
+			preserve: false,
+			expected: "new",
+		},
+		{
+			name:     "preserve meta",
+			current:  semver.SemVersion{Major: 1, Minor: 2, Patch: 3, Build: "old"},
+			next:     semver.SemVersion{Major: 1, Minor: 2, Patch: 4},
+			meta:     "",
+			preserve: true,
+			expected: "old",
+		},
+		{
+			name:     "clear meta",
+			current:  semver.SemVersion{Major: 1, Minor: 2, Patch: 3, Build: "old"},
+			next:     semver.SemVersion{Major: 1, Minor: 2, Patch: 4},
+			meta:     "",
+			preserve: false,
+			expected: "",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			result := setBuildMetadata(tt.current, tt.next, tt.meta, tt.preserve)
+			if result.Build != tt.expected {
+				t.Errorf("expected build %q, got %q", tt.expected, result.Build)
+			}
+		})
+	}
+}
+
+func TestDetermineBumpType(t *testing.T) {
+	// Save original function
+	originalInferFromChangelog := tryInferBumpTypeFromChangelogParserPluginFn
+	originalInferFromCommit := tryInferBumpTypeFromCommitParserPluginFn
+	defer func() {
+		tryInferBumpTypeFromChangelogParserPluginFn = originalInferFromChangelog
+		tryInferBumpTypeFromCommitParserPluginFn = originalInferFromCommit
+	}()
+
+	tests := []struct {
+		name          string
+		label         string
+		disableInfer  bool
+		mockChangelog string
+		mockCommit    string
+		expected      string
+	}{
+		{"explicit patch", "patch", false, "", "", "patch"},
+		{"explicit minor", "minor", false, "", "", "minor"},
+		{"explicit major", "major", false, "", "", "major"},
+		{"infer from changelog minor", "", false, "minor", "", "minor"},
+		{"infer from changelog major", "", false, "major", "", "major"},
+		{"infer from commits when changelog empty", "", false, "", "minor", "minor"},
+		{"default to auto when inference disabled", "", true, "", "", "auto"},
+		{"invalid label defaults to auto", "invalid", false, "", "", "auto"},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			tryInferBumpTypeFromChangelogParserPluginFn = func() string { return tt.mockChangelog }
+			tryInferBumpTypeFromCommitParserPluginFn = func(since, until string) string { return tt.mockCommit }
+
+			result := determineBumpType(tt.label, tt.disableInfer, "", "")
+
+			if string(result) != tt.expected {
+				t.Errorf("expected %q, got %q", tt.expected, string(result))
+			}
+		})
+	}
+}
+
+func TestTryInferBumpTypeFromChangelogParserPlugin_NoParser(t *testing.T) {
+	// Ensure no parser is registered
+	originalFn := tryInferBumpTypeFromChangelogParserPluginFn
+	defer func() { tryInferBumpTypeFromChangelogParserPluginFn = originalFn }()
+
+	// Use the actual function
+	tryInferBumpTypeFromChangelogParserPluginFn = tryInferBumpTypeFromChangelogParserPlugin
+
+	label := tryInferBumpTypeFromChangelogParserPlugin()
+	if label != "" {
+		t.Errorf("expected empty label when no parser, got %q", label)
+	}
+}
+
+func TestGetNextVersion(t *testing.T) {
+	tests := []struct {
+		name         string
+		current      semver.SemVersion
+		label        string
+		disableInfer bool
+		expected     string
+		expectError  bool
+	}{
+		{
+			name:        "patch label",
+			current:     semver.SemVersion{Major: 1, Minor: 2, Patch: 3},
+			label:       "patch",
+			expected:    "1.2.4",
+			expectError: false,
+		},
+		{
+			name:        "minor label",
+			current:     semver.SemVersion{Major: 1, Minor: 2, Patch: 3},
+			label:       "minor",
+			expected:    "1.3.0",
+			expectError: false,
+		},
+		{
+			name:        "major label",
+			current:     semver.SemVersion{Major: 1, Minor: 2, Patch: 3},
+			label:       "major",
+			expected:    "2.0.0",
+			expectError: false,
+		},
+		{
+			name:         "auto bump with inference disabled",
+			current:      semver.SemVersion{Major: 1, Minor: 2, Patch: 3},
+			label:        "",
+			disableInfer: true,
+			expected:     "1.2.4",
+			expectError:  false,
+		},
+		{
+			name:        "invalid label",
+			current:     semver.SemVersion{Major: 1, Minor: 2, Patch: 3},
+			label:       "invalid",
+			expectError: true,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			result, err := getNextVersion(tt.current, tt.label, tt.disableInfer, "", "", false)
+			if tt.expectError {
+				if err == nil {
+					t.Error("expected error, got nil")
+				}
+				return
+			}
+			if err != nil {
+				t.Fatalf("unexpected error: %v", err)
+			}
+			if result.String() != tt.expected {
+				t.Errorf("expected %q, got %q", tt.expected, result.String())
+			}
+		})
+	}
+}
+
+/* ------------------------------------------------------------------------- */
+/* PRINT QUIET SUMMARY TESTS                                                 */
+/* ------------------------------------------------------------------------- */
+
+func TestPrintQuietSummary(t *testing.T) {
+	tests := []struct {
+		name     string
+		results  []workspace.ExecutionResult
+		expected string
+	}{
+		{
+			name: "all success",
+			results: []workspace.ExecutionResult{
+				{Module: &workspace.Module{Name: "mod1"}, Success: true},
+				{Module: &workspace.Module{Name: "mod2"}, Success: true},
+			},
+			expected: "Success: 2 module(s) bumped",
+		},
+		{
+			name: "with failures",
+			results: []workspace.ExecutionResult{
+				{Module: &workspace.Module{Name: "mod1"}, Success: true},
+				{Module: &workspace.Module{Name: "mod2"}, Success: false, Error: fmt.Errorf("failed")},
+			},
+			expected: "Completed: 1 succeeded, 1 failed",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			output, _ := testutils.CaptureStdout(func() {
+				printQuietSummary(tt.results)
+			})
+			if !strings.Contains(output, tt.expected) {
+				t.Errorf("expected output to contain %q, got %q", tt.expected, output)
+			}
+		})
+	}
+}
+
+/* ------------------------------------------------------------------------- */
+/* MOCK IMPLEMENTATIONS FOR HELPER TESTS                                     */
+/* ------------------------------------------------------------------------- */
+
+// mockTagManager implements tagmanager.TagManager for testing
+type mockTagManager struct {
+	validateErr error
+	createErr   error
+}
+
+func (m *mockTagManager) Name() string                                    { return "mock-tag-manager" }
+func (m *mockTagManager) Description() string                             { return "mock tag manager" }
+func (m *mockTagManager) Version() string                                 { return "1.0.0" }
+func (m *mockTagManager) ValidateTagAvailable(v semver.SemVersion) error  { return m.validateErr }
+func (m *mockTagManager) CreateTag(v semver.SemVersion, msg string) error { return m.createErr }
+func (m *mockTagManager) FormatTagName(v semver.SemVersion) string        { return "v" + v.String() }
+func (m *mockTagManager) TagExists(v semver.SemVersion) (bool, error)     { return false, nil }
+func (m *mockTagManager) PushTag(v semver.SemVersion) error               { return nil }
+func (m *mockTagManager) DeleteTag(v semver.SemVersion) error             { return nil }
+func (m *mockTagManager) GetLatestTag() (semver.SemVersion, error)        { return semver.SemVersion{}, nil }
+func (m *mockTagManager) ListTags() ([]string, error)                     { return nil, nil }
+
+// mockVersionValidator implements versionvalidator.VersionValidator for testing
+type mockVersionValidator struct {
+	validateErr error
+}
+
+func (m *mockVersionValidator) Name() string        { return "mock-version-validator" }
+func (m *mockVersionValidator) Description() string { return "mock version validator" }
+func (m *mockVersionValidator) Version() string     { return "1.0.0" }
+func (m *mockVersionValidator) Validate(newV, prevV semver.SemVersion, bumpType string) error {
+	return m.validateErr
+}
+func (m *mockVersionValidator) ValidateSet(v semver.SemVersion) error { return nil }
+
+// mockReleaseGate implements releasegate.ReleaseGate for testing
+type mockReleaseGate struct {
+	validateErr error
+}
+
+func (m *mockReleaseGate) Name() string        { return "mock-release-gate" }
+func (m *mockReleaseGate) Description() string { return "mock release gate" }
+func (m *mockReleaseGate) Version() string     { return "1.0.0" }
+func (m *mockReleaseGate) ValidateRelease(newV, prevV semver.SemVersion, bumpType string) error {
+	return m.validateErr
+}
+
+/* ------------------------------------------------------------------------- */
+/* VALIDATE TAG AVAILABLE TESTS                                              */
+/* ------------------------------------------------------------------------- */
+
+func TestValidateTagAvailable(t *testing.T) {
+	// Save original and restore after test
+	origGetTagManagerFn := tagmanager.GetTagManagerFn
+	defer func() { tagmanager.GetTagManagerFn = origGetTagManagerFn }()
+
+	version := semver.SemVersion{Major: 1, Minor: 0, Patch: 0}
+
+	t.Run("nil tag manager returns nil", func(t *testing.T) {
+		tagmanager.GetTagManagerFn = func() tagmanager.TagManager { return nil }
+		err := validateTagAvailable(version)
+		if err != nil {
+			t.Errorf("expected nil error, got %v", err)
+		}
+	})
+
+	t.Run("mock tag manager validates", func(t *testing.T) {
+		mock := &mockTagManager{}
+		tagmanager.GetTagManagerFn = func() tagmanager.TagManager { return mock }
+		err := validateTagAvailable(version)
+		if err != nil {
+			t.Errorf("expected nil error, got %v", err)
+		}
+	})
+
+	t.Run("mock tag manager returns validation error", func(t *testing.T) {
+		mock := &mockTagManager{validateErr: fmt.Errorf("tag exists")}
+		tagmanager.GetTagManagerFn = func() tagmanager.TagManager { return mock }
+		err := validateTagAvailable(version)
+		if err == nil {
+			t.Error("expected error, got nil")
+		}
+	})
+}
+
+/* ------------------------------------------------------------------------- */
+/* CREATE TAG AFTER BUMP TESTS                                               */
+/* ------------------------------------------------------------------------- */
+
+func TestCreateTagAfterBump(t *testing.T) {
+	// Save original and restore after test
+	origGetTagManagerFn := tagmanager.GetTagManagerFn
+	defer func() { tagmanager.GetTagManagerFn = origGetTagManagerFn }()
+
+	version := semver.SemVersion{Major: 1, Minor: 0, Patch: 0}
+
+	t.Run("nil tag manager returns nil", func(t *testing.T) {
+		tagmanager.GetTagManagerFn = func() tagmanager.TagManager { return nil }
+		err := createTagAfterBump(version, "minor")
+		if err != nil {
+			t.Errorf("expected nil error, got %v", err)
+		}
+	})
+
+	// Note: createTagAfterBump uses type assertion to *TagManagerPlugin
+	// so mock implementations will be treated as disabled and return nil
+}
+
+/* ------------------------------------------------------------------------- */
+/* VALIDATE VERSION POLICY TESTS                                             */
+/* ------------------------------------------------------------------------- */
+
+func TestValidateVersionPolicy(t *testing.T) {
+	// Save original and restore after test
+	origGetVersionValidatorFn := versionvalidator.GetVersionValidatorFn
+	defer func() { versionvalidator.GetVersionValidatorFn = origGetVersionValidatorFn }()
+
+	newVersion := semver.SemVersion{Major: 2, Minor: 0, Patch: 0}
+	prevVersion := semver.SemVersion{Major: 1, Minor: 0, Patch: 0}
+
+	t.Run("nil validator returns nil", func(t *testing.T) {
+		versionvalidator.GetVersionValidatorFn = func() versionvalidator.VersionValidator { return nil }
+		err := validateVersionPolicy(newVersion, prevVersion, "major")
+		if err != nil {
+			t.Errorf("expected nil error, got %v", err)
+		}
+	})
+
+	t.Run("mock validator validates successfully", func(t *testing.T) {
+		mock := &mockVersionValidator{}
+		versionvalidator.GetVersionValidatorFn = func() versionvalidator.VersionValidator { return mock }
+		err := validateVersionPolicy(newVersion, prevVersion, "major")
+		if err != nil {
+			t.Errorf("expected nil error, got %v", err)
+		}
+	})
+
+	t.Run("mock validator returns error", func(t *testing.T) {
+		mock := &mockVersionValidator{validateErr: fmt.Errorf("policy violation")}
+		versionvalidator.GetVersionValidatorFn = func() versionvalidator.VersionValidator { return mock }
+		err := validateVersionPolicy(newVersion, prevVersion, "major")
+		if err == nil {
+			t.Error("expected error, got nil")
+		}
+	})
+}
+
+/* ------------------------------------------------------------------------- */
+/* VALIDATE RELEASE GATE TESTS                                               */
+/* ------------------------------------------------------------------------- */
+
+func TestValidateReleaseGate(t *testing.T) {
+	// Save original and restore after test
+	origGetReleaseGateFn := releasegate.GetReleaseGateFn
+	defer func() { releasegate.GetReleaseGateFn = origGetReleaseGateFn }()
+
+	newVersion := semver.SemVersion{Major: 2, Minor: 0, Patch: 0}
+	prevVersion := semver.SemVersion{Major: 1, Minor: 0, Patch: 0}
+
+	t.Run("nil gate returns nil", func(t *testing.T) {
+		releasegate.GetReleaseGateFn = func() releasegate.ReleaseGate { return nil }
+		err := validateReleaseGate(newVersion, prevVersion, "major")
+		if err != nil {
+			t.Errorf("expected nil error, got %v", err)
+		}
+	})
+
+	t.Run("mock gate validates successfully", func(t *testing.T) {
+		mock := &mockReleaseGate{}
+		releasegate.GetReleaseGateFn = func() releasegate.ReleaseGate { return mock }
+		err := validateReleaseGate(newVersion, prevVersion, "major")
+		if err != nil {
+			t.Errorf("expected nil error, got %v", err)
+		}
+	})
+
+	t.Run("mock gate returns error", func(t *testing.T) {
+		mock := &mockReleaseGate{validateErr: fmt.Errorf("gate failed")}
+		releasegate.GetReleaseGateFn = func() releasegate.ReleaseGate { return mock }
+		err := validateReleaseGate(newVersion, prevVersion, "major")
+		if err == nil {
+			t.Error("expected error, got nil")
+		}
+	})
+}
+
+/* ------------------------------------------------------------------------- */
+/* VALIDATE DEPENDENCY CONSISTENCY TESTS                                     */
+/* ------------------------------------------------------------------------- */
+
+func TestValidateDependencyConsistency(t *testing.T) {
+	// Save original and restore after test
+	origGetDependencyCheckerFn := dependencycheck.GetDependencyCheckerFn
+	defer func() { dependencycheck.GetDependencyCheckerFn = origGetDependencyCheckerFn }()
+
+	version := semver.SemVersion{Major: 1, Minor: 0, Patch: 0}
+
+	t.Run("nil checker returns nil", func(t *testing.T) {
+		dependencycheck.GetDependencyCheckerFn = func() dependencycheck.DependencyChecker { return nil }
+		err := validateDependencyConsistency(version)
+		if err != nil {
+			t.Errorf("expected nil error, got %v", err)
+		}
+	})
+
+	// Note: validateDependencyConsistency uses type assertion to *DependencyCheckerPlugin
+	// so mock implementations will be treated as disabled and return nil
+}
+
+/* ------------------------------------------------------------------------- */
+/* SYNC DEPENDENCIES TESTS                                                   */
+/* ------------------------------------------------------------------------- */
+
+func TestSyncDependencies(t *testing.T) {
+	// Save original and restore after test
+	origGetDependencyCheckerFn := dependencycheck.GetDependencyCheckerFn
+	defer func() { dependencycheck.GetDependencyCheckerFn = origGetDependencyCheckerFn }()
+
+	version := semver.SemVersion{Major: 1, Minor: 0, Patch: 0}
+
+	t.Run("nil checker returns nil", func(t *testing.T) {
+		dependencycheck.GetDependencyCheckerFn = func() dependencycheck.DependencyChecker { return nil }
+		err := syncDependencies(version)
+		if err != nil {
+			t.Errorf("expected nil error, got %v", err)
+		}
+	})
+
+	// Note: syncDependencies uses type assertion to *DependencyCheckerPlugin
+	// so mock implementations will be treated as disabled and return nil
+}
+
+/* ------------------------------------------------------------------------- */
+/* GENERATE CHANGELOG AFTER BUMP TESTS                                       */
+/* ------------------------------------------------------------------------- */
+
+func TestGenerateChangelogAfterBump(t *testing.T) {
+	// Save original and restore after test
+	origGetChangelogGeneratorFn := changeloggenerator.GetChangelogGeneratorFn
+	defer func() { changeloggenerator.GetChangelogGeneratorFn = origGetChangelogGeneratorFn }()
+
+	version := semver.SemVersion{Major: 2, Minor: 0, Patch: 0}
+	prevVersion := semver.SemVersion{Major: 1, Minor: 0, Patch: 0}
+
+	t.Run("nil generator returns nil", func(t *testing.T) {
+		changeloggenerator.GetChangelogGeneratorFn = func() changeloggenerator.ChangelogGenerator { return nil }
+		err := generateChangelogAfterBump(version, prevVersion, "major")
+		if err != nil {
+			t.Errorf("expected nil error, got %v", err)
+		}
+	})
+
+	// Note: generateChangelogAfterBump uses type assertion to *ChangelogGeneratorPlugin
+	// so mock implementations will be treated as disabled and return nil
+}
+
+/* ------------------------------------------------------------------------- */
+/* RECORD AUDIT LOG ENTRY TESTS                                              */
+/* ------------------------------------------------------------------------- */
+
+func TestRecordAuditLogEntry(t *testing.T) {
+	// Save original and restore after test
+	origGetAuditLogFn := auditlog.GetAuditLogFn
+	defer func() { auditlog.GetAuditLogFn = origGetAuditLogFn }()
+
+	version := semver.SemVersion{Major: 2, Minor: 0, Patch: 0}
+	prevVersion := semver.SemVersion{Major: 1, Minor: 0, Patch: 0}
+
+	t.Run("nil audit log returns nil", func(t *testing.T) {
+		auditlog.GetAuditLogFn = func() auditlog.AuditLog { return nil }
+		err := recordAuditLogEntry(version, prevVersion, "major")
+		if err != nil {
+			t.Errorf("expected nil error, got %v", err)
+		}
+	})
+
+	// Note: recordAuditLogEntry uses type assertion to *AuditLogPlugin
+	// so mock implementations will be treated as disabled and return nil
+}
+
+/* ------------------------------------------------------------------------- */
+/* RUN PRE/POST BUMP EXTENSION HOOKS TESTS                                   */
+/* ------------------------------------------------------------------------- */
+
+func TestRunPreBumpExtensionHooks(t *testing.T) {
+	ctx := context.Background()
+	cfg := &config.Config{}
+
+	t.Run("skip hooks returns nil", func(t *testing.T) {
+		err := runPreBumpExtensionHooks(ctx, cfg, "1.0.0", "0.9.0", "minor", true)
+		if err != nil {
+			t.Errorf("expected nil error when skipping hooks, got %v", err)
+		}
+	})
+
+	t.Run("nil config with skip returns nil", func(t *testing.T) {
+		err := runPreBumpExtensionHooks(ctx, nil, "1.0.0", "0.9.0", "minor", true)
+		if err != nil {
+			t.Errorf("expected nil error when skipping hooks with nil config, got %v", err)
+		}
+	})
+}
+
+func TestRunPostBumpExtensionHooks(t *testing.T) {
+	ctx := context.Background()
+	tmpDir := t.TempDir()
+	versionPath := filepath.Join(tmpDir, ".version")
+	cfg := &config.Config{Path: versionPath}
+
+	// Create a version file
+	if err := os.WriteFile(versionPath, []byte("1.0.0\n"), 0644); err != nil {
+		t.Fatal(err)
+	}
+
+	t.Run("skip hooks returns nil", func(t *testing.T) {
+		err := runPostBumpExtensionHooks(ctx, cfg, versionPath, "0.9.0", "minor", true)
+		if err != nil {
+			t.Errorf("expected nil error when skipping hooks, got %v", err)
+		}
+	})
 }
